@@ -1,4 +1,4 @@
-﻿generator client {
+generator client {
   provider = "prisma-client-js"
 }
 
@@ -7,16 +7,78 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum RecordStato { Attivo Bozza Archiviato }
-enum Stile { Monolinea Tratteggiato Puntinato Brush Calligrafico Geometrico Organico DoppioTratto Ombreggiato Tecnico Neon Sfumato Angolare Spezzato Contour Ink }
-enum Pattern { Pieno Tratteggio Puntinato Gradiente Hachure Contorno Spezzato Inchiostro }
-enum Peso { Sottile Medio Spesso Variabile }
-enum Curvatura { Lineare Curvo Organico Angolare }
-enum AuditAction { CREATE UPDATE DELETE }
+enum RecordStato {
+  Attivo
+  Bozza
+  Archiviato
+}
+enum Stile {
+  Monolinea
+  Tratteggiato
+  Puntinato
+  Brush
+  Calligrafico
+  Geometrico
+  Organico
+  DoppioTratto
+  Ombreggiato
+  Tecnico
+  Neon
+  Sfumato
+  Angolare
+  Spezzato
+  Contour
+  Ink
+}
+enum Pattern {
+  Pieno
+  Tratteggio
+  Puntinato
+  Gradiente
+  Hachure
+  Contorno
+  Spezzato
+  Inchiostro
+}
+enum Peso {
+  Sottile
+  Medio
+  Spesso
+  Variabile
+}
+enum Curvatura {
+  Lineare
+  Curvo
+  Organico
+  Angolare
+}
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
 
-enum TraitDataType { BOOLEAN NUMERIC CATEGORICAL TEXT }
-enum Presence { resident migrant introduced endemic unknown }
-enum Role { keystone dominant engineer common invasive other }
+enum TraitDataType {
+  BOOLEAN
+  NUMERIC
+  CATEGORICAL
+  TEXT
+}
+enum Presence {
+  resident
+  migrant
+  introduced
+  endemic
+  unknown
+}
+enum Role {
+  keystone
+  dominant
+  engineer
+  common
+  invasive
+  other
+}
 
 model Record {
   id          String   @id @default(cuid())
