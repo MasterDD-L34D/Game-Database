@@ -20,15 +20,25 @@ export async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T>
 }
 
 export async function postJSON<TReq, TRes = unknown>(path: string, body: TReq, init?: RequestInit): Promise<TRes> {
+  const method = init?.method ?? 'POST';
   const res = await fetch(`${BASE}${path}`, {
-    method: 'POST',
+    ...init,
+    method,
     headers: { 'Content-Type': 'application/json', ...authHeaders(), ...(init?.headers || {}) },
     body: JSON.stringify(body),
-    ...init,
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const ct = res.headers.get('content-type') || '';
   return ct.includes('application/json') ? await res.json() : (undefined as unknown as TRes);
+}
+
+export async function deleteJSON(path: string, init?: RequestInit): Promise<void> {
+  const res = await fetch(`${BASE}${path}`, {
+    ...init,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...authHeaders(), ...(init?.headers || {}) },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }
 
 function normalizeBasePath(basePath: string) {

@@ -20,3 +20,10 @@ Per aggiungere una nuova stringa:
 4. Ricordati di importare `./i18n` nei test (già fatto in `setupTests.ts`) e, se aggiorni snapshot, rigenerali dopo aver popolato le nuove traduzioni.
 
 I test e gli snapshot devono usare i testi tradotti, quindi evita di inserire stringhe raw nei componenti.
+
+## Gestione CRUD nelle pagine elenco
+
+- Il componente `ListPage` supporta ora `createConfig`, `editConfig` e `deleteConfig` per gestire i dialog di creazione/modifica/eliminazione. Ogni configurazione accetta un array `fields` (nome, etichetta, `required`, `type: 'textarea' | 'text' | 'number'`) e le rispettive `mutation` asincrone che devono usare gli helper `postJSON`/`deleteJSON`.
+- Le azioni di riga sono esposte tramite il menù contestuale (`RowActionsMenu`) che appare automaticamente quando si passa almeno una configurazione CRUD; al termine di ogni operazione la lista viene aggiornata con un `refetch` automatico.
+- Gli esiti sono notificati tramite `SnackbarProvider`: personalizza `successMessage`/`errorMessage` nelle configurazioni se vuoi messaggi specifici, altrimenti verranno usate le stringhe di fallback in `common.feedback`.
+- Per i moduli taxonomy (`traits`, `biomes`, `species`, `ecosystems`) sono stati introdotti dialog preconfigurati con relative traduzioni in `taxonomy.json` e test di integrazione (`ListPageCrud.test.tsx`) che verificano il flusso completo.

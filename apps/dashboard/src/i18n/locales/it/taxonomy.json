@@ -6,6 +6,30 @@
       "slug": "Slug",
       "climate": "Clima",
       "description": "Descrizione"
+    },
+    "actions": {
+      "create": "Nuovo bioma"
+    },
+    "form": {
+      "slug": "Slug",
+      "name": "Nome",
+      "climate": "Clima",
+      "parentId": "Bioma padre",
+      "description": "Descrizione"
+    },
+    "dialogs": {
+      "createTitle": "Aggiungi bioma",
+      "editTitle": "Modifica bioma",
+      "deleteTitle": "Elimina bioma",
+      "deleteDescription": "Sei sicuro di voler eliminare {{name}}?"
+    },
+    "feedback": {
+      "created": "Bioma creato con successo.",
+      "createError": "Impossibile creare il bioma.",
+      "updated": "Bioma aggiornato con successo.",
+      "updateError": "Impossibile aggiornare il bioma.",
+      "deleted": "Bioma eliminato con successo.",
+      "deleteError": "Impossibile eliminare il bioma."
     }
   },
   "ecosystems": {
@@ -15,6 +39,30 @@
       "region": "Regione",
       "climate": "Clima",
       "description": "Descrizione"
+    },
+    "actions": {
+      "create": "Nuovo ecosistema"
+    },
+    "form": {
+      "slug": "Slug",
+      "name": "Nome",
+      "region": "Regione",
+      "climate": "Clima",
+      "description": "Descrizione"
+    },
+    "dialogs": {
+      "createTitle": "Aggiungi ecosistema",
+      "editTitle": "Modifica ecosistema",
+      "deleteTitle": "Elimina ecosistema",
+      "deleteDescription": "Sei sicuro di voler eliminare {{name}}?"
+    },
+    "feedback": {
+      "created": "Ecosistema creato con successo.",
+      "createError": "Impossibile creare l'ecosistema.",
+      "updated": "Ecosistema aggiornato con successo.",
+      "updateError": "Impossibile aggiornare l'ecosistema.",
+      "deleted": "Ecosistema eliminato con successo.",
+      "deleteError": "Impossibile eliminare l'ecosistema."
     }
   },
   "species": {
@@ -25,6 +73,32 @@
       "family": "Famiglia",
       "genus": "Genere",
       "status": "Stato"
+    },
+    "actions": {
+      "create": "Nuova specie"
+    },
+    "form": {
+      "slug": "Slug",
+      "scientificName": "Nome scientifico",
+      "commonName": "Nome comune",
+      "family": "Famiglia",
+      "genus": "Genere",
+      "status": "Stato",
+      "description": "Descrizione"
+    },
+    "dialogs": {
+      "createTitle": "Aggiungi specie",
+      "editTitle": "Modifica specie",
+      "deleteTitle": "Elimina specie",
+      "deleteDescription": "Sei sicuro di voler eliminare {{name}}?"
+    },
+    "feedback": {
+      "created": "Specie creata con successo.",
+      "createError": "Impossibile creare la specie.",
+      "updated": "Specie aggiornata con successo.",
+      "updateError": "Impossibile aggiornare la specie.",
+      "deleted": "Specie eliminata con successo.",
+      "deleteError": "Impossibile eliminare la specie."
     }
   },
   "traits": {
@@ -35,6 +109,31 @@
       "category": "Categoria",
       "dataType": "Tipo dato",
       "unit": "Unità"
+    },
+    "actions": {
+      "create": "Nuovo trait"
+    },
+    "form": {
+      "slug": "Slug",
+      "name": "Nome",
+      "category": "Categoria",
+      "dataType": "Tipo dato",
+      "unit": "Unità",
+      "description": "Descrizione"
+    },
+    "dialogs": {
+      "createTitle": "Aggiungi trait",
+      "editTitle": "Modifica trait",
+      "deleteTitle": "Elimina trait",
+      "deleteDescription": "Sei sicuro di voler eliminare {{name}}?"
+    },
+    "feedback": {
+      "created": "Trait creato con successo.",
+      "createError": "Impossibile creare il trait.",
+      "updated": "Trait aggiornato con successo.",
+      "updateError": "Impossibile aggiornare il trait.",
+      "deleted": "Trait eliminato con successo.",
+      "deleteError": "Impossibile eliminare il trait."
     }
   }
 }
