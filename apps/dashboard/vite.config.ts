@@ -8,4 +8,9 @@ export default defineConfig({
     port: 5174,
     proxy: { '/api': { target: 'http://localhost:3333', changeOrigin: true } },
   },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: './src/setupTests.ts',
+  },
 });
