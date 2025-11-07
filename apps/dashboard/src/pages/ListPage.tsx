@@ -405,10 +405,21 @@ export default function ListPage<T extends { id?: string }>({
   const isDeleting = deleteMutation.isPending;
 
   return (
-    <Paper className="p-4">
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }} className="mb-4">
+    <Paper
+      sx={(theme) => ({
+        padding: theme.layout.cardPadding,
+        boxShadow: theme.customShadows.card,
+        backgroundColor: theme.palette.background.paper,
+      })}
+    >
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={2}
+        alignItems={{ xs: 'stretch', sm: 'center' }}
+        sx={(theme) => ({ mb: theme.spacing(4) })}
+      >
         <Typography variant="h6">{title}</Typography>
-        <div className="flex-1" />
+        <Box sx={{ flexGrow: 1 }} />
         {createConfig && (
           <Button variant="contained" onClick={handleOpenCreate} disabled={isCreating}>
             {createConfig.triggerLabel ?? t('common:actions.add')}
@@ -423,7 +434,7 @@ export default function ListPage<T extends { id?: string }>({
         />
       </Stack>
       {isError && !isFetching && (
-        <Alert severity="error" className="mb-3">
+        <Alert severity="error" sx={(theme) => ({ mb: theme.spacing(3) })}>
           {error instanceof Error ? error.message : t('common:feedback.loadError')}
         </Alert>
       )}
@@ -436,7 +447,9 @@ export default function ListPage<T extends { id?: string }>({
         onPaginationChange={handlePaginationChange}
       />
       {!autoloadOnMount && !hasSearched && !isFetching && (
-        <div className="text-sm text-gray-500 mt-2">{t('common:search.pressEnter')}</div>
+        <Typography variant="caption" color="text.secondary" sx={(theme) => ({ display: 'block', mt: theme.spacing(2) })}>
+          {t('common:search.pressEnter')}
+        </Typography>
       )}
       {createConfig && (
         <Dialog open={createOpen} onClose={handleCloseCreate} fullWidth maxWidth="sm">

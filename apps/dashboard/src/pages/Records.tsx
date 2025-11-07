@@ -83,11 +83,29 @@ export default function Records() {
   }, [commitQuery]);
 
   return (
-    <Paper className="p-4">
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }} className="mb-2">
+    <Paper
+      sx={(theme) => ({
+        padding: theme.layout.cardPadding,
+        boxShadow: theme.customShadows.card,
+        backgroundColor: theme.palette.background.paper,
+      })}
+    >
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={2}
+        alignItems={{ xs: 'stretch', sm: 'center' }}
+        sx={(theme) => ({ mb: theme.spacing(2) })}
+      >
         <Typography variant="h6">{t('records:list.title')}</Typography>
-        <Box flex={1} />
-        <TextField size="small" placeholder={t('common:search.placeholder')} value={query} onChange={handleInputChange} onKeyDown={handleInputKeyDown} onBlur={handleInputBlur} />
+        <Box sx={{ flexGrow: 1 }} />
+        <TextField
+          size="small"
+          placeholder={t('common:search.placeholder')}
+          value={query}
+          onChange={handleInputChange}
+          onKeyDown={handleInputKeyDown}
+          onBlur={handleInputBlur}
+        />
         <Button variant="outlined" onClick={()=>setOpenFilters(true)}>{t('records:list.filtersButton')}</Button>
         <ExportMenu
           filename={t('records:list.exportFilename')}
@@ -109,7 +127,7 @@ export default function Records() {
       </Stack>
       <FilterChips filters={chips} onRemove={(key)=>setFilters((f)=>({ ...f, [key]: undefined }))} />
       <FilterSidebar open={openFilters} value={filters} onChange={setFilters} onClear={()=>setFilters({})} onClose={()=>setOpenFilters(false)} />
-      <Box className="mt-4">
+      <Box sx={(theme) => ({ mt: theme.spacing(4) })}>
         <RecordTable data={items} total={total} loading={isLoading} />
       </Box>
     </Paper>
