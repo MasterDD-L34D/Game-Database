@@ -1,0 +1,23 @@
+{
+  "aria": {
+    "table": "tabella dati",
+    "selectAllRows": "Seleziona tutte le righe",
+    "selectRow": "Seleziona riga"
+  },
+  "columns": {
+    "pin": {
+      "label": "Fissa: {{label}}",
+      "left": "sx",
+      "none": "no",
+      "right": "dx"
+    }
+  },
+  "density": {
+    "label": "Densità",
+    "compact": "Compatta",
+    "normal": "Normale"
+  },
+  "pagination": {
+    "rowsPerPage": "Righe per pagina"
+  }
+}

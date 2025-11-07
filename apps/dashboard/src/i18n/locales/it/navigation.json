@@ -1,0 +1,10 @@
+{
+  "dashboard": "Dashboard",
+  "records": "Record",
+  "traits": "Trait",
+  "biomes": "Biomi",
+  "species": "Specie",
+  "ecosystems": "Ecosistemi",
+  "toggleCollapse": "Comprimi sidebar",
+  "toggleExpand": "Espandi sidebar"
+}

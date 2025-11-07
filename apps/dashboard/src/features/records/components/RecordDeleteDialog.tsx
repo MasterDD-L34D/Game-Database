@@ -1,4 +1,5 @@
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 import type { RecordRow } from '../../../types/record';
 import { useDeleteRecordsMutation } from '../api/useDeleteRecordsMutation';
 
@@ -13,10 +14,11 @@ interface RecordDeleteDialogProps {
 export default function RecordDeleteDialog({ open, records, onClose, onDeleted, mutation }: RecordDeleteDialogProps) {
   const count = records.length;
   const disabled = mutation.isPending;
+  const { t } = useTranslation('records');
 
   const description = count === 1
-    ? `Sei sicuro di voler eliminare “${records[0]?.nome ?? 'questo record'}”?`
-    : `Sei sicuro di voler eliminare ${count} record? L'operazione non può essere annullata.`;
+    ? t('deleteDialog.single', { name: records[0]?.nome ?? t('deleteDialog.singleFallback') })
+    : t('deleteDialog.multiple', { count });
 
   const namesPreview = count > 1 ? records.slice(0, 3).map((record) => record.nome).filter(Boolean) : [];
 
@@ -40,7 +42,7 @@ export default function RecordDeleteDialog({ open, records, onClose, onDeleted, 
 
   return (
     <Dialog open={open} onClose={disabled ? undefined : onClose} aria-labelledby="record-delete-dialog-title">
-      <DialogTitle id="record-delete-dialog-title">Conferma eliminazione</DialogTitle>
+      <DialogTitle id="record-delete-dialog-title">{t('deleteDialog.title')}</DialogTitle>
       <DialogContent>
         <Typography>{description}</Typography>
         {namesPreview.length > 0 && (
@@ -50,9 +52,9 @@ export default function RecordDeleteDialog({ open, records, onClose, onDeleted, 
         )}
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={disabled}>Annulla</Button>
+        <Button onClick={onClose} disabled={disabled}>{t('deleteDialog.cancel')}</Button>
         <Button color="error" variant="contained" onClick={handleConfirm} disabled={disabled}>
-          {disabled ? 'Eliminazione...' : 'Elimina'}
+          {disabled ? t('deleteDialog.inProgress') : t('deleteDialog.confirm')}
         </Button>
       </DialogActions>
     </Dialog>

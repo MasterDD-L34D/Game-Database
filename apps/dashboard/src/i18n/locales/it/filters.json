@@ -1,0 +1,17 @@
+{
+  "sidebar": {
+    "title": "Filtri",
+    "ariaLabel": "Filtri"
+  },
+  "actions": {
+    "clear": "Pulisci",
+    "clearFilters": "Pulisci filtri",
+    "close": "Chiudi"
+  },
+  "fields": {
+    "stile": "Stile",
+    "pattern": "Pattern",
+    "peso": "Peso",
+    "curvatura": "Curvatura"
+  }
+}

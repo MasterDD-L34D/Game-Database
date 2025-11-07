@@ -1,0 +1,40 @@
+{
+  "biomes": {
+    "title": "Biomi",
+    "columns": {
+      "name": "Nome",
+      "slug": "Slug",
+      "climate": "Clima",
+      "description": "Descrizione"
+    }
+  },
+  "ecosystems": {
+    "title": "Ecosistemi",
+    "columns": {
+      "name": "Nome",
+      "region": "Regione",
+      "climate": "Clima",
+      "description": "Descrizione"
+    }
+  },
+  "species": {
+    "title": "Specie",
+    "columns": {
+      "scientificName": "Nome scientifico",
+      "commonName": "Nome comune",
+      "family": "Famiglia",
+      "genus": "Genere",
+      "status": "Stato"
+    }
+  },
+  "traits": {
+    "title": "Trait",
+    "columns": {
+      "name": "Nome",
+      "slug": "Slug",
+      "category": "Categoria",
+      "dataType": "Tipo dato",
+      "unit": "Unità"
+    }
+  }
+}

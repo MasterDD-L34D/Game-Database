@@ -1,0 +1,7 @@
+{
+  "button": "Esporta",
+  "serverCsv": "CSV (server)",
+  "serverJson": "JSON (server)",
+  "clientCsv": "CSV (client)",
+  "clientJson": "JSON (client)"
+}

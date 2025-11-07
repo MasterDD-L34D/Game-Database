@@ -1,20 +1,43 @@
 {
+  "appName": "Game",
   "actions": {
     "add": "Aggiungi",
-    "search": "Cerca",
+    "cancel": "Annulla",
+    "save": "Salva",
+    "saveChanges": "Salva modifiche",
+    "delete": "Elimina",
+    "deleteInProgress": "Eliminazione...",
+    "filters": "Filtri",
+    "clear": "Pulisci",
+    "clearFilters": "Pulisci filtri",
+    "close": "Chiudi",
+    "retry": "Riprova",
+    "view": "Dettagli",
+    "edit": "Modifica",
     "export": "Esporta",
-    "clearFilters": "Pulisci filtri"
+    "actions": "Azioni",
+    "deselect": "Deseleziona",
+    "backToList": "Torna all'elenco"
   },
-  "labels": {
-    "records": "Record",
-    "status": "Stato",
-    "name": "Nome",
-    "style": "Stile",
-    "pattern": "Pattern",
-    "weight": "Peso",
-    "curvature": "Curvatura"
+  "search": {
+    "placeholder": "Cerca",
+    "ariaLabel": "Cerca",
+    "pressEnter": "Premi Invio per cercare."
   },
-  "empty": {
-    "noData": "Nessun dato disponibile"
+  "feedback": {
+    "loadError": "Impossibile caricare i dati.",
+    "recordLoadError": "Impossibile caricare il record.",
+    "saveError": "Errore durante il salvataggio.",
+    "exportError": "Errore export: {{message}}",
+    "created": "Creato con successo",
+    "updated": "Record aggiornato con successo."
+  },
+  "status": {
+    "loading": "Caricamento…"
+  },
+  "generic": {
+    "total": "Totale",
+    "any": "(qualsiasi)",
+    "notAvailable": "—"
   }
 }

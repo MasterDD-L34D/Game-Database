@@ -1,0 +1,10 @@
+{
+  "metrics": {
+    "totalRecords": "Record totali",
+    "newRecords": "Novità",
+    "errorRecords": "Errori"
+  },
+  "errors": {
+    "loadFailed": "Caricamento statistiche non riuscito."
+  }
+}

@@ -6,6 +6,7 @@ import PaginationBar from '../PaginationBar';
 import LoadingTableSkeleton from '../LoadingTableSkeleton';
 import { ArrowUpIcon, ArrowDownIcon, ChevronUpDownIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 type Density = 'compact' | 'normal';
 type Props<TData extends { id?: string }> = {
@@ -27,6 +28,7 @@ export default function DataTable<TData extends { id?: string }>({
   pagination: extPagination, onPaginationChange: setExtPagination,
   getRowId,
 }: Props<TData>) {
+  const { t } = useTranslation('table');
   const [sorting, setSorting] = useState<SortingState>([]);
   const [intPagination, setIntPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: pageSizeOptions[0] });
   const pagination = extPagination ?? intPagination; const setPagination = setExtPagination ?? setIntPagination;
@@ -52,13 +54,13 @@ export default function DataTable<TData extends { id?: string }>({
     <Box>
       <Box className="overflow-x-auto">
         {loading ? (<LoadingTableSkeleton />) : (
-          <Table size={tableSize} aria-label="tabella dati">
+          <Table size={tableSize} aria-label={t('aria.table')}>
             <TableHead>
               {table.getHeaderGroups().map(hg => (
                 <TableRow key={hg.id}>
                   {selectable && (
                     <TableCell padding="checkbox" sx={{ position: 'sticky', left: 0, backgroundColor: 'background.paper', zIndex: 3 }}>
-                      <Checkbox indeterminate={table.getIsSomeRowsSelected()} checked={table.getIsAllRowsSelected()} onChange={table.getToggleAllRowsSelectedHandler()} inputProps={{ 'aria-label': 'Seleziona tutte le righe' }} />
+                      <Checkbox indeterminate={table.getIsSomeRowsSelected()} checked={table.getIsAllRowsSelected()} onChange={table.getToggleAllRowsSelectedHandler()} inputProps={{ 'aria-label': t('aria.selectAllRows') }} />
                     </TableCell>
                   )}
                   {hg.headers.map(header => {
@@ -85,7 +87,7 @@ export default function DataTable<TData extends { id?: string }>({
                 <TableRow key={r.id} hover className="even:bg-gray-50">
                   {selectable && (
                     <TableCell padding="checkbox" sx={{ position: 'sticky', left: 0, backgroundColor: 'background.paper', zIndex: 1 }}>
-                      <Checkbox checked={r.getIsSelected()} indeterminate={r.getIsSomeSelected?.()} onChange={r.getToggleSelectedHandler()} inputProps={{ 'aria-label': 'Seleziona riga' }} />
+                      <Checkbox checked={r.getIsSelected()} indeterminate={r.getIsSomeSelected?.()} onChange={r.getToggleSelectedHandler()} inputProps={{ 'aria-label': t('aria.selectRow') }} />
                     </TableCell>
                   )}
                   {r.getVisibleCells().map(cell => {

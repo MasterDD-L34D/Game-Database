@@ -1,0 +1,133 @@
+{
+  "common": {
+    "record": "Record",
+    "records": "Record",
+    "statuses": {
+      "attivo": "Attivo",
+      "bozza": "Bozza",
+      "archiviato": "Archiviato"
+    },
+    "fields": {
+      "id": "ID",
+      "name": "Nome",
+      "style": "Stile",
+      "pattern": "Pattern",
+      "weight": "Peso",
+      "curvature": "Curvatura",
+      "status": "Stato",
+      "createdBy": "Creato da",
+      "updatedAt": "Aggiornato il",
+      "updatedBy": "Aggiornato da",
+      "createdAt": "Creato il",
+      "actions": "Azioni",
+      "description": "Descrizione",
+      "date": "Data"
+    }
+  },
+  "list": {
+    "title": "Record",
+    "filtersButton": "Filtri",
+    "exportFilename": "record",
+    "selectedExportFilename": "record-selezionati",
+    "chips": {
+      "stile": "Stile: {{value}}",
+      "pattern": "Pattern: {{value}}",
+      "peso": "Peso: {{value}}",
+      "curvatura": "Curvatura: {{value}}"
+    }
+  },
+  "toolbar": {
+    "selectedSuffix": "selezionati",
+    "changeStatus": "Cambia stato",
+    "bulkDelete": "Elimina",
+    "bulkDeselect": "Deseleziona",
+    "totalLabel": "Totale",
+    "columns": "Colonne / Pin",
+    "pin": {
+      "label": "Fissa: {{label}}",
+      "left": "sx",
+      "none": "no",
+      "right": "dx"
+    },
+    "density": "Densità: {{mode}}",
+    "densityModes": {
+      "compact": "Compatta",
+      "normal": "Normale"
+    }
+  },
+  "filters": {
+    "sidebarTitle": "Filtri",
+    "clear": "Pulisci",
+    "close": "Chiudi"
+  },
+  "details": {
+    "breadcrumbFallback": "Dettagli",
+    "titleFallback": "Dettagli record",
+    "invalidId": "Identificativo record non valido.",
+    "loading": "Caricamento record",
+    "updatedAt": "Aggiornato il {{date}}",
+    "backToList": "Torna all'elenco",
+    "edit": "Modifica"
+  },
+  "edit": {
+    "breadcrumb": "Modifica",
+    "title": "Modifica record",
+    "subtitle": "Aggiorna le informazioni del record esistente.",
+    "invalidId": "Identificativo record non valido.",
+    "cancel": "Annulla",
+    "save": "Salva modifiche",
+    "loading": "Caricamento record",
+    "success": "Record aggiornato con successo.",
+    "error": "Errore durante il salvataggio.",
+    "fields": {
+      "name": {
+        "label": "Nome",
+        "placeholder": "Inserisci il nome"
+      },
+      "status": "Stato",
+      "description": {
+        "label": "Descrizione",
+        "placeholder": "Aggiungi una descrizione"
+      },
+      "date": "Data",
+      "style": "Stile",
+      "pattern": "Pattern",
+      "weight": "Peso",
+      "curvature": "Curvatura"
+    },
+    "emptyOption": "—"
+  },
+  "create": {
+    "title": "Nuovo record",
+    "success": "Creato con successo",
+    "errorFallback": "Errore nel salvataggio",
+    "save": "Salva",
+    "optionalPlaceholder": "(facoltativo)"
+  },
+  "deleteDialog": {
+    "title": "Conferma eliminazione",
+    "single": "Sei sicuro di voler eliminare “{{name}}”?",
+    "singleFallback": "questo record",
+    "multiple": "Sei sicuro di voler eliminare {{count}} record? L'operazione non può essere annullata.",
+    "cancel": "Annulla",
+    "confirm": "Elimina",
+    "inProgress": "Eliminazione..."
+  },
+  "table": {
+    "export": {
+      "filename": "record",
+      "selectedFilename": "record-selezionati"
+    },
+    "columns": {
+      "nome": "Nome",
+      "stile": "Stile",
+      "pattern": "Pattern",
+      "peso": "Peso",
+      "curvatura": "Curvatura",
+      "stato": "Stato",
+      "createdBy": "Creato da",
+      "updatedAt": "Aggiornato il",
+      "actions": "Azioni"
+    }
+  }
+}
