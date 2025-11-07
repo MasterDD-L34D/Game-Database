@@ -2,11 +2,13 @@
 const BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 const TOKEN = import.meta.env.VITE_API_TOKEN as string | undefined;
 const USER = import.meta.env.VITE_API_USER as string | undefined;
+const ROLES = import.meta.env.VITE_API_ROLES as string | undefined;
 
 function authHeaders() {
   return {
     ...(TOKEN ? { Authorization: `Bearer ${TOKEN}` } : {}),
     ...(USER ? { 'X-User': USER } : {}),
+    ...(ROLES ? { 'X-Roles': ROLES } : {}),
   } as Record<string, string>;
 }
 

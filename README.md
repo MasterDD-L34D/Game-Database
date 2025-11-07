@@ -34,6 +34,14 @@ npm run prisma:seed   # opzionale: record demo + tassonomia base
 node index.js         # http://localhost:3333
 ```
 
+#### Ruoli e permessi API
+
+- Imposta `API_TOKEN` in `.env` e invia l'header `Authorization: Bearer <token>` (o `X-API-Key`) per qualsiasi mutazione.
+- Le richieste devono includere anche l'identità dell'operatore (`X-User`) per tracciare `createdBy`/`updatedBy` e i log di audit.
+- Le mutazioni di tassonomia (`/api/traits`, `/api/biomes`, `/api/species`, `/api/ecosystems`) richiedono almeno uno dei ruoli `admin`, `taxonomy:manage` o `taxonomy:write` nell'header `X-Roles` (valori separati da virgola).
+  - In sviluppo puoi configurare il frontend impostando `VITE_API_ROLES` (es. `taxonomy:manage,admin`) nel file `.env.local`.
+  - Richieste prive di tali ruoli ricevono `403 Forbidden` prima di raggiungere il database.
+
 ### 3) Dashboard
 ```bash
 cd ../apps/dashboard
@@ -46,6 +54,7 @@ npm run dev           # http://localhost:5174
 > - `VITE_API_BASE_URL` per puntare al server (default: `http://localhost:3333/api`).
 > - `VITE_API_TOKEN` se usi endpoint protetti da token.
 > - `VITE_API_USER` per indicare l'identità delle operazioni registrate.
+> - `VITE_API_ROLES` per aggiungere i ruoli necessari alle mutazioni protette (`admin`, `taxonomy:manage`, `taxonomy:write`, ...).
 
 ### 4) Import taxonomy (opzionale)
 ```bash

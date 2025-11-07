@@ -1,6 +1,7 @@
 
 const express = require('express');
 const prisma = require('../db/prisma');
+const { logAudit } = require('../utils/audit');
 const router = express.Router();
 
 function buildWhereAndOrder(req) {
@@ -58,7 +59,7 @@ router.post('/', async (req, res) => {
         updatedBy: req.user || null,
       },
     });
-    await prisma.auditLog.create({ data: { entity: 'Record', entityId: created.id, action: 'CREATE', user: req.user || null, payload: created } });
+    await logAudit(req, 'Record', created.id, 'CREATE', created);
     res.status(201).json(created);
   } catch (e) {
     console.error(e);
@@ -82,7 +83,7 @@ router.patch('/:id', async (req, res) => {
         updatedBy: req.user || undefined,
       },
     });
-    await prisma.auditLog.create({ data: { entity: 'Record', entityId: updated.id, action: 'UPDATE', user: req.user || null, payload: req.body } });
+    await logAudit(req, 'Record', updated.id, 'UPDATE', req.body);
     res.json(updated);
   } catch (e) {
     if (e.code === 'P2025') return res.status(404).json({ error: 'Not found' });
@@ -96,7 +97,7 @@ router.delete('/:id', async (req, res) => {
     const existing = await prisma.record.findUnique({ where: { id: req.params.id } });
     if (!existing) return res.status(404).json({ error: 'Not found' });
     await prisma.record.delete({ where: { id: req.params.id } });
-    await prisma.auditLog.create({ data: { entity: 'Record', entityId: existing.id, action: 'DELETE', user: req.user || null, payload: existing } });
+    await logAudit(req, 'Record', existing.id, 'DELETE', existing);
     res.status(204).end();
   } catch (e) {
     console.error(e);

@@ -1,6 +1,8 @@
 
 const express = require('express');
 const prisma = require('../db/prisma');
+const { requireTaxonomyWrite } = require('../middleware/permissions');
+const { logAudit } = require('../utils/audit');
 const router = express.Router();
 
 function parsePagination(req) {
@@ -37,10 +39,6 @@ function normalizeSlug(input) {
   return input.toString().trim().toLowerCase().replace(/\s+/g, '-');
 }
 
-function getUserEmail(req) {
-  return req.user?.email || req.user || null;
-}
-
 function mapSpeciesData(body, slug, scientificName) {
   return {
     slug,
@@ -69,7 +67,7 @@ router.get('/:id', async (req, res) => {
   res.json(item);
 });
 
-router.post('/', async (req, res) => {
+router.post('/', requireTaxonomyWrite, async (req, res) => {
   try {
     const scientificName = (req.body.scientificName || '').trim();
     if (!scientificName) return res.status(400).json({ error: 'scientificName is required' });
@@ -81,15 +79,7 @@ router.post('/', async (req, res) => {
 
     const created = await prisma.species.create({ data: mapSpeciesData(req.body, slug, scientificName) });
 
-    await prisma.auditLog.create({
-      data: {
-        entity: 'Species',
-        entityId: created.id,
-        action: 'CREATE',
-        user: getUserEmail(req),
-        payload: created,
-      },
-    });
+    await logAudit(req, 'Species', created.id, 'CREATE', created);
 
     const payload = await fetchPaginatedSpecies(req);
     res.status(201).json(payload);
@@ -99,7 +89,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireTaxonomyWrite, async (req, res) => {
   try {
     const existing = await prisma.species.findFirst({ where: { OR: [{ id: req.params.id }, { slug: req.params.id }] } });
     if (!existing) return res.status(404).json({ error: 'Not found' });
@@ -121,15 +111,7 @@ router.put('/:id', async (req, res) => {
       data: mapSpeciesData(req.body, slug, scientificName),
     });
 
-    await prisma.auditLog.create({
-      data: {
-        entity: 'Species',
-        entityId: updated.id,
-        action: 'UPDATE',
-        user: getUserEmail(req),
-        payload: req.body,
-      },
-    });
+    await logAudit(req, 'Species', updated.id, 'UPDATE', req.body);
 
     const payload = await fetchPaginatedSpecies(req);
     res.json(payload);
@@ -139,22 +121,14 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireTaxonomyWrite, async (req, res) => {
   try {
     const existing = await prisma.species.findFirst({ where: { OR: [{ id: req.params.id }, { slug: req.params.id }] } });
     if (!existing) return res.status(404).json({ error: 'Not found' });
 
     await prisma.species.delete({ where: { id: existing.id } });
 
-    await prisma.auditLog.create({
-      data: {
-        entity: 'Species',
-        entityId: existing.id,
-        action: 'DELETE',
-        user: getUserEmail(req),
-        payload: existing,
-      },
-    });
+    await logAudit(req, 'Species', existing.id, 'DELETE', existing);
 
     const payload = await fetchPaginatedSpecies(req);
     res.json(payload);

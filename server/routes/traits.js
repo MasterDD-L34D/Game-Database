@@ -1,6 +1,8 @@
 
 const express = require('express');
 const prisma = require('../db/prisma');
+const { requireTaxonomyWrite } = require('../middleware/permissions');
+const { logAudit } = require('../utils/audit');
 const router = express.Router();
 
 const ALLOWED_DATA_TYPES = new Set(['BOOLEAN', 'NUMERIC', 'CATEGORICAL', 'TEXT']);
@@ -39,10 +41,6 @@ function toNumber(value) {
   return Number.isFinite(num) ? num : NaN;
 }
 
-function getUserEmail(req) {
-  return req.user?.email || req.user || null;
-}
-
 router.get('/', async (req, res) => {
   const payload = await fetchPaginatedTraits(req);
   res.json(payload);
@@ -54,7 +52,7 @@ router.get('/:id', async (req, res) => {
   res.json(item);
 });
 
-router.post('/', async (req, res) => {
+router.post('/', requireTaxonomyWrite, async (req, res) => {
   try {
     const name = (req.body.name || '').trim();
     const dataType = req.body.dataType;
@@ -108,15 +106,7 @@ router.post('/', async (req, res) => {
       },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        entity: 'Trait',
-        entityId: created.id,
-        action: 'CREATE',
-        user: getUserEmail(req),
-        payload: created,
-      },
-    });
+    await logAudit(req, 'Trait', created.id, 'CREATE', created);
 
     const payload = await fetchPaginatedTraits(req);
     res.status(201).json(payload);
@@ -126,7 +116,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireTaxonomyWrite, async (req, res) => {
   try {
     const existing = await prisma.trait.findFirst({ where: { OR: [{ id: req.params.id }, { slug: req.params.id }] } });
     if (!existing) return res.status(404).json({ error: 'Not found' });
@@ -188,15 +178,7 @@ router.put('/:id', async (req, res) => {
       },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        entity: 'Trait',
-        entityId: updated.id,
-        action: 'UPDATE',
-        user: getUserEmail(req),
-        payload: req.body,
-      },
-    });
+    await logAudit(req, 'Trait', updated.id, 'UPDATE', req.body);
 
     const payload = await fetchPaginatedTraits(req);
     res.json(payload);
@@ -206,22 +188,14 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireTaxonomyWrite, async (req, res) => {
   try {
     const existing = await prisma.trait.findFirst({ where: { OR: [{ id: req.params.id }, { slug: req.params.id }] } });
     if (!existing) return res.status(404).json({ error: 'Not found' });
 
     await prisma.trait.delete({ where: { id: existing.id } });
 
-    await prisma.auditLog.create({
-      data: {
-        entity: 'Trait',
-        entityId: existing.id,
-        action: 'DELETE',
-        user: getUserEmail(req),
-        payload: existing,
-      },
-    });
+    await logAudit(req, 'Trait', existing.id, 'DELETE', existing);
 
     const payload = await fetchPaginatedTraits(req);
     res.json(payload);
