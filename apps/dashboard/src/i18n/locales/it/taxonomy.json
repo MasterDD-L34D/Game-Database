@@ -81,8 +81,13 @@
       "slug": "Slug",
       "scientificName": "Nome scientifico",
       "commonName": "Nome comune",
+      "kingdom": "Regno",
+      "phylum": "Phylum",
+      "class": "Classe",
+      "order": "Ordine",
       "family": "Famiglia",
       "genus": "Genere",
+      "epithet": "Epiteto",
       "status": "Stato",
       "description": "Descrizione"
     },
@@ -119,7 +124,25 @@
       "category": "Categoria",
       "dataType": "Tipo dato",
       "unit": "Unità",
-      "description": "Descrizione"
+      "description": "Descrizione",
+      "allowedValues": "Valori consentiti",
+      "allowedValuesHint": "Separare i valori con virgole o nuove righe",
+      "rangeMin": "Valore minimo",
+      "rangeMax": "Valore massimo",
+      "rangeHint": "Lascia vuoto se non applicabile"
+    },
+    "dataTypes": {
+      "boolean": "Booleano",
+      "numeric": "Numerico",
+      "categorical": "Categorico",
+      "text": "Testo"
+    },
+    "validation": {
+      "allowedValuesRequired": "Inserisci almeno un valore",
+      "allowedValuesOnlyCategorical": "I valori consentiti sono disponibili solo per i trait categorici",
+      "numericRangeFormat": "Inserisci valori numerici validi",
+      "numericRangeOrder": "Il valore massimo deve essere maggiore o uguale al minimo",
+      "numericRangeOnlyNumeric": "L'intervallo numerico è disponibile solo per i trait numerici"
     },
     "dialogs": {
       "createTitle": "Aggiungi trait",

@@ -2,9 +2,10 @@ import { useCallback, useMemo } from 'react';
 import { ColumnDef, createColumnHelper } from '@tanstack/react-table';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import ListPage from './ListPage';
-import type { Ecosystem } from '../lib/taxonomy';
-import { createEcosystem, deleteEcosystem, listEcosystems, updateEcosystem } from '../lib/taxonomy';
+import { z } from 'zod';
+import ListPage from '../../../pages/ListPage';
+import type { Ecosystem } from '../../../lib/taxonomy';
+import { createEcosystem, deleteEcosystem, listEcosystems, updateEcosystem } from '../../../lib/taxonomy';
 
 const DEFAULT_PAGE_SIZE = 25;
 
@@ -31,6 +32,25 @@ export default function EcosystemListPage() {
     [t],
   );
 
+  const ecosystemSchema = useMemo(
+    () =>
+      z.object({
+        slug: z.string().trim().min(1, t('common:validation.required')),
+        name: z.string().trim().min(1, t('common:validation.required')),
+        region: z.string().trim().optional(),
+        climate: z.string().trim().optional(),
+        description: z.string().trim().optional(),
+      }),
+    [t],
+  );
+
+  type EcosystemFormValues = z.infer<typeof ecosystemSchema>;
+
+  const defaultValues = useMemo<EcosystemFormValues>(
+    () => ({ slug: '', name: '', region: '', climate: '', description: '' }),
+    [],
+  );
+
   const formFields = useMemo(
     () => [
       { name: 'slug', label: t('ecosystems.form.slug'), required: true },
@@ -42,18 +62,8 @@ export default function EcosystemListPage() {
     [t],
   );
 
-  const defaultValues = useMemo(
-    () => ({ slug: '', name: '', region: '', climate: '', description: '' }),
-    [],
-  );
-
-  const normalizeOptional = useCallback((value: string | undefined) => {
-    const trimmed = value?.trim() ?? '';
-    return trimmed ? trimmed : undefined;
-  }, []);
-
   const mapToValues = useCallback(
-    (ecosystem: Ecosystem) => ({
+    (ecosystem: Ecosystem): EcosystemFormValues => ({
       slug: ecosystem.slug ?? '',
       name: ecosystem.name ?? '',
       region: ecosystem.region ?? '',
@@ -63,16 +73,20 @@ export default function EcosystemListPage() {
     [],
   );
 
-  const mapToPayload = useCallback(
-    (values: Record<string, string>) => ({
+  const mapToPayload = useCallback((values: EcosystemFormValues) => {
+    const optional = (value?: string) => {
+      const trimmed = value?.trim() ?? '';
+      return trimmed ? trimmed : undefined;
+    };
+
+    return {
       slug: values.slug.trim(),
       name: values.name.trim(),
-      region: normalizeOptional(values.region),
-      climate: normalizeOptional(values.climate),
-      description: normalizeOptional(values.description),
-    }),
-    [normalizeOptional],
-  );
+      region: optional(values.region),
+      climate: optional(values.climate),
+      description: optional(values.description),
+    };
+  }, []);
 
   const handleStateChange = useCallback(
     (state: { query: string; page: number; pageSize: number }) => {
@@ -89,7 +103,7 @@ export default function EcosystemListPage() {
   );
 
   return (
-    <ListPage<Ecosystem>
+    <ListPage<Ecosystem, EcosystemFormValues>
       title={t('ecosystems.title')}
       columns={columns}
       fetcher={listEcosystems}
@@ -104,8 +118,9 @@ export default function EcosystemListPage() {
         dialogTitle: t('ecosystems.dialogs.createTitle'),
         submitLabel: t('common:actions.save'),
         defaultValues,
+        schema: ecosystemSchema,
         fields: formFields,
-        mutation: async (values) => {
+        onSubmit: async (values) => {
           const payload = mapToPayload(values);
           await createEcosystem(payload);
         },
@@ -116,8 +131,9 @@ export default function EcosystemListPage() {
         dialogTitle: t('ecosystems.dialogs.editTitle'),
         submitLabel: t('common:actions.saveChanges'),
         fields: formFields,
+        schema: ecosystemSchema,
         getInitialValues: mapToValues,
-        mutation: async (item, values) => {
+        onSubmit: async (item, values) => {
           if (!item.id) throw new Error('Missing id');
           const payload = mapToPayload(values);
           await updateEcosystem(item.id, payload);

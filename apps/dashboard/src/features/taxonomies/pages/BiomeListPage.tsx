@@ -2,9 +2,10 @@ import { useCallback, useMemo } from 'react';
 import { ColumnDef, createColumnHelper } from '@tanstack/react-table';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import ListPage from './ListPage';
-import type { Biome } from '../lib/taxonomy';
-import { createBiome, deleteBiome, listBiomes, updateBiome } from '../lib/taxonomy';
+import { z } from 'zod';
+import ListPage from '../../../pages/ListPage';
+import type { Biome } from '../../../lib/taxonomy';
+import { createBiome, deleteBiome, listBiomes, updateBiome } from '../../../lib/taxonomy';
 
 const DEFAULT_PAGE_SIZE = 25;
 
@@ -31,6 +32,25 @@ export default function BiomeListPage() {
     [t],
   );
 
+  const biomeSchema = useMemo(
+    () =>
+      z.object({
+        slug: z.string().trim().min(1, t('common:validation.required')),
+        name: z.string().trim().min(1, t('common:validation.required')),
+        climate: z.string().trim().optional(),
+        parentId: z.string().trim().optional(),
+        description: z.string().trim().optional(),
+      }),
+    [t],
+  );
+
+  type BiomeFormValues = z.infer<typeof biomeSchema>;
+
+  const defaultValues = useMemo<BiomeFormValues>(
+    () => ({ slug: '', name: '', climate: '', parentId: '', description: '' }),
+    [],
+  );
+
   const formFields = useMemo(
     () => [
       { name: 'slug', label: t('biomes.form.slug'), required: true },
@@ -42,18 +62,8 @@ export default function BiomeListPage() {
     [t],
   );
 
-  const defaultValues = useMemo(
-    () => ({ slug: '', name: '', climate: '', parentId: '', description: '' }),
-    [],
-  );
-
-  const normalizeOptional = useCallback((value: string | undefined) => {
-    const trimmed = value?.trim() ?? '';
-    return trimmed ? trimmed : undefined;
-  }, []);
-
   const mapToValues = useCallback(
-    (biome: Biome) => ({
+    (biome: Biome): BiomeFormValues => ({
       slug: biome.slug ?? '',
       name: biome.name ?? '',
       climate: biome.climate ?? '',
@@ -63,16 +73,20 @@ export default function BiomeListPage() {
     [],
   );
 
-  const mapToPayload = useCallback(
-    (values: Record<string, string>) => ({
+  const mapToPayload = useCallback((values: BiomeFormValues) => {
+    const optional = (value?: string) => {
+      const trimmed = value?.trim() ?? '';
+      return trimmed ? trimmed : undefined;
+    };
+
+    return {
       slug: values.slug.trim(),
       name: values.name.trim(),
-      climate: normalizeOptional(values.climate),
-      parentId: normalizeOptional(values.parentId),
-      description: normalizeOptional(values.description),
-    }),
-    [normalizeOptional],
-  );
+      climate: optional(values.climate),
+      parentId: optional(values.parentId),
+      description: optional(values.description),
+    };
+  }, []);
 
   const handleStateChange = useCallback(
     (state: { query: string; page: number; pageSize: number }) => {
@@ -89,7 +103,7 @@ export default function BiomeListPage() {
   );
 
   return (
-    <ListPage<Biome>
+    <ListPage<Biome, BiomeFormValues>
       title={t('biomes.title')}
       columns={columns}
       fetcher={listBiomes}
@@ -104,8 +118,9 @@ export default function BiomeListPage() {
         dialogTitle: t('biomes.dialogs.createTitle'),
         submitLabel: t('common:actions.save'),
         defaultValues,
+        schema: biomeSchema,
         fields: formFields,
-        mutation: async (values) => {
+        onSubmit: async (values) => {
           const payload = mapToPayload(values);
           await createBiome(payload);
         },
@@ -116,8 +131,9 @@ export default function BiomeListPage() {
         dialogTitle: t('biomes.dialogs.editTitle'),
         submitLabel: t('common:actions.saveChanges'),
         fields: formFields,
+        schema: biomeSchema,
         getInitialValues: mapToValues,
-        mutation: async (item, values) => {
+        onSubmit: async (item, values) => {
           if (!item.id) throw new Error('Missing id');
           const payload = mapToPayload(values);
           await updateBiome(item.id, payload);

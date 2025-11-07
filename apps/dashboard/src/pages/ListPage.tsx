@@ -7,48 +7,57 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  MenuItem,
   Paper,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
 import { ColumnDef, type PaginationState } from '@tanstack/react-table';
-import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Controller, useForm, type UseFormReturn } from 'react-hook-form';
+import type { z } from 'zod';
 import { useTranslation } from 'react-i18next';
 import DataTable from '../components/data-table/DataTable';
 import RowActionsMenu from '../components/data-table/RowActionsMenu';
 import { useSnackbar } from '../components/SnackbarProvider';
 import { useSearch } from '../providers/SearchProvider';
+import { createZodResolver } from '../lib/zodResolver';
 
 type Fetcher<T> = (q: string, page?: number, pageSize?: number) => Promise<{ items: T[]; page: number; pageSize: number; total: number }>;
 
 type CriteriaState = { query: string; page: number; pageSize: number };
 
-type FormFieldConfig = {
-  name: string;
+type FormFieldConfig<TValues extends Record<string, any>> = {
+  name: keyof TValues & string;
   label: string;
   required?: boolean;
-  multiline?: boolean;
-  type?: 'text' | 'number' | 'textarea';
+  type?: 'text' | 'number' | 'textarea' | 'select';
+  helperText?: string;
+  options?: { label: string; value: string }[];
+  showIf?: (values: TValues) => boolean;
 };
 
-type CreateConfig = {
+type CreateConfig<TValues extends Record<string, any>> = {
   triggerLabel?: string;
   dialogTitle: string;
   submitLabel?: string;
-  defaultValues?: Record<string, string>;
-  fields: FormFieldConfig[];
-  mutation: (values: Record<string, string>) => Promise<unknown>;
+  defaultValues: TValues;
+  schema: z.ZodType<TValues>;
+  fields: FormFieldConfig<TValues>[];
+  onSubmit: (values: TValues) => Promise<unknown>;
   successMessage?: string;
   errorMessage?: string;
 };
 
-type EditConfig<T> = {
+type EditConfig<TItem, TValues extends Record<string, any>> = {
   dialogTitle: string;
   submitLabel?: string;
-  fields: FormFieldConfig[];
-  getInitialValues: (item: T) => Record<string, string>;
-  mutation: (item: T, values: Record<string, string>) => Promise<unknown>;
+  defaultValues?: TValues;
+  fields: FormFieldConfig<TValues>[];
+  schema: z.ZodType<TValues>;
+  getInitialValues: (item: TItem) => TValues;
+  onSubmit: (item: TItem, values: TValues) => Promise<unknown>;
   successMessage?: string;
   errorMessage?: string;
 };
@@ -62,23 +71,79 @@ type DeleteConfig<T> = {
   errorMessage?: string;
 };
 
-type ListPageProps<T> = {
+type ListPageProps<TItem, TValues extends Record<string, any>> = {
   title: string;
-  columns: ColumnDef<T, any>[];
-  fetcher: Fetcher<T>;
+  columns: ColumnDef<TItem, any>[];
+  fetcher: Fetcher<TItem>;
   queryKeyBase?: readonly unknown[];
   initialQuery?: string;
   initialPage?: number;
   initialPageSize?: number;
   autoloadOnMount?: boolean;
   onStateChange?: (state: CriteriaState) => void;
-  createConfig?: CreateConfig;
-  editConfig?: EditConfig<T>;
-  deleteConfig?: DeleteConfig<T>;
-  getItemLabel?: (item: T) => string;
+  createConfig?: CreateConfig<TValues>;
+  editConfig?: EditConfig<TItem, TValues>;
+  deleteConfig?: DeleteConfig<TItem>;
+  getItemLabel?: (item: TItem) => string;
 };
 
-export default function ListPage<T extends { id?: string }>({
+function renderFormFields<TValues extends Record<string, any>>({
+  form,
+  fields,
+  values,
+  disabled,
+  firstFieldName,
+}: {
+  form: UseFormReturn<TValues>;
+  fields: FormFieldConfig<TValues>[];
+  values: TValues;
+  disabled: boolean;
+  firstFieldName?: string;
+}) {
+  return fields
+    .filter((field) => (field.showIf ? field.showIf(values) : true))
+    .map((field) => (
+      <Controller
+        key={field.name}
+        name={field.name}
+        control={form.control}
+        render={({ field: controllerField, fieldState }) => {
+          const isTextarea = field.type === 'textarea';
+          const isSelect = field.type === 'select';
+          const inputType = isTextarea || isSelect ? undefined : field.type ?? 'text';
+          return (
+            <TextField
+              label={field.label}
+              value={controllerField.value ?? ''}
+              onChange={(event) => controllerField.onChange(event.target.value)}
+              onBlur={controllerField.onBlur}
+              name={controllerField.name}
+              inputRef={controllerField.ref}
+              fullWidth
+              required={field.required}
+              autoFocus={field.name === firstFieldName}
+              error={Boolean(fieldState.error)}
+              helperText={fieldState.error?.message ?? field.helperText}
+              multiline={isTextarea}
+              minRows={isTextarea ? 3 : undefined}
+              type={inputType}
+              disabled={disabled}
+              select={isSelect}
+            >
+              {isSelect &&
+                field.options?.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+            </TextField>
+          );
+        }}
+      />
+    ));
+}
+
+export default function ListPage<TItem extends { id?: string }, TValues extends Record<string, any> = Record<string, string>>({
   title,
   columns,
   fetcher,
@@ -92,19 +157,52 @@ export default function ListPage<T extends { id?: string }>({
   editConfig,
   deleteConfig,
   getItemLabel,
-}: ListPageProps<T>) {
+}: ListPageProps<TItem, TValues>) {
   const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
+  const queryClient = useQueryClient();
   const [criteria, setCriteria] = useState<CriteriaState>({ query: initialQuery, page: initialPage, pageSize: initialPageSize });
   const { query: searchValue, debouncedQuery, setQuery, commitQuery } = useSearch();
   const shouldFetchRef = useRef<boolean>(false);
   const [hasSearched, setHasSearched] = useState<boolean>(autoloadOnMount);
   const [createOpen, setCreateOpen] = useState(false);
-  const [createValues, setCreateValues] = useState<Record<string, string>>(createConfig?.defaultValues ?? {});
-  const [createErrors, setCreateErrors] = useState<Record<string, string>>({});
-  const [editDialog, setEditDialog] = useState<{ open: boolean; item: T | null; values: Record<string, string> }>({ open: false, item: null, values: {} });
-  const [editErrors, setEditErrors] = useState<Record<string, string>>({});
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: T | null }>({ open: false, item: null });
+  const [editDialog, setEditDialog] = useState<{ open: boolean; item: TItem | null }>({ open: false, item: null });
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: TItem | null }>({ open: false, item: null });
+
+  const createResolver = useMemo(
+    () => (createConfig ? createZodResolver(createConfig.schema) : undefined),
+    [createConfig?.schema],
+  );
+  const editResolver = useMemo(
+    () => (editConfig ? createZodResolver(editConfig.schema) : undefined),
+    [editConfig?.schema],
+  );
+
+  const createForm = useForm<TValues>({
+    defaultValues: (createConfig?.defaultValues ?? {}) as TValues,
+    resolver: createResolver,
+  });
+
+  const editForm = useForm<TValues>({
+    defaultValues: (editConfig?.defaultValues ?? createConfig?.defaultValues ?? {}) as TValues,
+    resolver: editResolver,
+  });
+
+  const createValues = createForm.watch();
+  const editValues = editForm.watch();
+
+  useEffect(() => {
+    if (!createConfig) return;
+    createForm.reset(createConfig.defaultValues);
+    createForm.clearErrors();
+  }, [createConfig?.defaultValues, createForm]);
+
+  useEffect(() => {
+    if (!editConfig) return;
+    const defaults = editConfig.defaultValues ?? createConfig?.defaultValues ?? ({} as TValues);
+    editForm.reset(defaults);
+    editForm.clearErrors();
+  }, [editConfig?.defaultValues, createConfig?.defaultValues, editForm]);
 
   const baseKey = useMemo(() => queryKeyBase ?? ['list', title.toLowerCase()], [queryKeyBase, title]);
   const queryKey = useMemo(
@@ -148,7 +246,7 @@ export default function ListPage<T extends { id?: string }>({
     if (!autoloadOnMount) return;
     if (debouncedQuery === criteria.query) return;
     triggerFetch((prev) => ({ ...prev, query: debouncedQuery, page: 0 }));
-  }, [autoloadOnMount, criteria.query, debouncedQuery, triggerFetch]);
+  }, [autoloadOnMount, criteria.query, debouncedQuery]);
 
   const triggerFetch = useCallback(
     (updater: CriteriaState | ((prev: CriteriaState) => CriteriaState), options?: { force?: boolean }) => {
@@ -168,9 +266,12 @@ export default function ListPage<T extends { id?: string }>({
     [autoloadOnMount],
   );
 
-  const handleInputChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    setQuery(event.target.value);
-  }, [setQuery]);
+  const handleInputChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setQuery(event.target.value);
+    },
+    [setQuery],
+  );
 
   const handleManualSearch = useCallback(() => {
     const nextQuery = commitQuery();
@@ -181,11 +282,14 @@ export default function ListPage<T extends { id?: string }>({
     );
   }, [commitQuery, criteria.query, triggerFetch]);
 
-  const handleKeyDown = useCallback((event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key !== 'Enter') return;
-    event.preventDefault();
-    handleManualSearch();
-  }, [handleManualSearch]);
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      handleManualSearch();
+    },
+    [handleManualSearch],
+  );
 
   const handlePaginationChange = useCallback(
     (updater: PaginationState | ((prev: PaginationState) => PaginationState)) => {
@@ -205,101 +309,40 @@ export default function ListPage<T extends { id?: string }>({
 
   const paginationState = useMemo<PaginationState>(() => ({ pageIndex: criteria.page, pageSize: criteria.pageSize }), [criteria.page, criteria.pageSize]);
 
-  const pagedData = data ?? { items: [] as T[], total: 0, page: criteria.page, pageSize: criteria.pageSize };
+  const pagedData = data ?? { items: [] as TItem[], total: 0, page: criteria.page, pageSize: criteria.pageSize };
   const items = pagedData.items ?? [];
   const showSkeleton = isFetching && !data;
   const crudEnabled = Boolean(createConfig || editConfig || deleteConfig);
 
-  const validateForm = useCallback(
-    (fields: FormFieldConfig[], values: Record<string, string>) => {
-      const errors: Record<string, string> = {};
-      fields.forEach((field) => {
-        if (field.required) {
-          const value = values[field.name];
-          if (!value || value.trim() === '') {
-            errors[field.name] = t('common:validation.required');
-          }
-        }
-      });
-      return errors;
-    },
-    [t],
-  );
-
-  useEffect(() => {
-    setCreateValues(createConfig?.defaultValues ?? {});
-  }, [createConfig]);
-
   const handleOpenCreate = useCallback(() => {
     if (!createConfig) return;
-    setCreateValues(createConfig.defaultValues ?? {});
-    setCreateErrors({});
+    createForm.reset(createConfig.defaultValues);
+    createForm.clearErrors();
     setCreateOpen(true);
-  }, [createConfig]);
+  }, [createConfig, createForm]);
 
-  const handleCloseCreate = useCallback(() => {
-    if (createMutation.isPending) return;
-    setCreateOpen(false);
-  }, [createMutation.isPending]);
+  const handleEdit = useCallback(
+    (item: TItem) => {
+      if (!editConfig) return;
+      const initialValues = editConfig.getInitialValues(item);
+      editForm.reset(initialValues);
+      editForm.clearErrors();
+      setEditDialog({ open: true, item });
+    },
+    [editConfig, editForm],
+  );
 
-  const handleCreateValueChange = useCallback((name: string, value: string) => {
-    setCreateValues((prev) => ({ ...prev, [name]: value }));
-  }, []);
+  const handleDelete = useCallback(
+    (item: TItem) => {
+      if (!deleteConfig) return;
+      setDeleteDialog({ open: true, item });
+    },
+    [deleteConfig],
+  );
 
-  const handleCreateSubmit = useCallback(() => {
-    if (!createConfig) return;
-    const errors = validateForm(createConfig.fields, createValues);
-    if (Object.keys(errors).length > 0) {
-      setCreateErrors(errors);
-      return;
-    }
-    setCreateErrors({});
-    createMutation.mutate({ values: createValues, config: createConfig });
-  }, [createConfig, createMutation, createValues, validateForm]);
-
-  const handleEdit = useCallback((item: T) => {
-    if (!editConfig) return;
-    setEditDialog({ open: true, item, values: editConfig.getInitialValues(item) });
-    setEditErrors({});
-  }, [editConfig]);
-
-  const handleCloseEdit = useCallback(() => {
-    if (editMutation.isPending) return;
-    setEditDialog({ open: false, item: null, values: {} });
-  }, [editMutation.isPending]);
-
-  const handleEditValueChange = useCallback((name: string, value: string) => {
-    setEditDialog((prev) => ({ ...prev, values: { ...prev.values, [name]: value } }));
-  }, []);
-
-  const handleEditSubmit = useCallback(() => {
-    if (!editConfig || !editDialog.item) return;
-    const errors = validateForm(editConfig.fields, editDialog.values);
-    if (Object.keys(errors).length > 0) {
-      setEditErrors(errors);
-      return;
-    }
-    setEditErrors({});
-    editMutation.mutate({ item: editDialog.item, values: editDialog.values, config: editConfig });
-  }, [editConfig, editDialog, editMutation, validateForm]);
-
-  const handleDelete = useCallback((item: T) => {
-    if (!deleteConfig) return;
-    setDeleteDialog({ open: true, item });
-  }, [deleteConfig]);
-
-  const handleCloseDelete = useCallback(() => {
-    if (deleteMutation.isPending) return;
-    setDeleteDialog({ open: false, item: null });
-  }, [deleteMutation.isPending]);
-
-  const handleConfirmDelete = useCallback(() => {
-    if (!deleteConfig || !deleteDialog.item) return;
-    deleteMutation.mutate({ item: deleteDialog.item, config: deleteConfig });
-  }, [deleteConfig, deleteDialog.item, deleteMutation]);
 
   const resolveItemLabel = useCallback(
-    (item: T | null) => {
+    (item: TItem | null) => {
       if (!item) return '';
       if (getItemLabel) return getItemLabel(item);
       const candidate =
@@ -316,59 +359,101 @@ export default function ListPage<T extends { id?: string }>({
   const refreshList = useCallback(async () => {
     setHasSearched(true);
     shouldFetchRef.current = false;
-    await refetch();
-  }, [refetch]);
+    await queryClient.invalidateQueries({ queryKey: baseKey, exact: false });
+  }, [baseKey, queryClient]);
 
-  const createMutation = useMutation<void, unknown, { values: Record<string, string>; config?: CreateConfig }>({
+  const createMutation = useMutation<void, unknown, { values: TValues; config: CreateConfig<TValues> }>({
     mutationFn: async ({ values, config }) => {
-      if (!config) throw new Error('Create non configurato');
-      await config.mutation(values);
+      await config.onSubmit(values);
     },
     onSuccess: async (_data, { config }) => {
       setCreateOpen(false);
-      setCreateValues(config?.defaultValues ?? {});
-      enqueueSnackbar(config?.successMessage ?? t('common:feedback.created'), { variant: 'success' });
+      createForm.reset(config.defaultValues);
+      createForm.clearErrors();
+      enqueueSnackbar(config.successMessage ?? t('common:feedback.created'), { variant: 'success' });
       await refreshList();
     },
     onError: (err, { config }) => {
       console.error('Create mutation error', err);
-      enqueueSnackbar(config?.errorMessage ?? t('common:feedback.saveError'), { variant: 'error' });
+      enqueueSnackbar(config.errorMessage ?? t('common:feedback.saveError'), { variant: 'error' });
     },
   });
 
-  const editMutation = useMutation<void, unknown, { item: T; values: Record<string, string>; config?: EditConfig<T> }>({
+  const editMutation = useMutation<void, unknown, { item: TItem; values: TValues; config: EditConfig<TItem, TValues> }>({
     mutationFn: async ({ item, values, config }) => {
-      if (!config) throw new Error('Edit non configurato');
-      await config.mutation(item, values);
+      await config.onSubmit(item, values);
     },
     onSuccess: async (_data, { config }) => {
-      setEditDialog({ open: false, item: null, values: {} });
-      enqueueSnackbar(config?.successMessage ?? t('common:feedback.updated'), { variant: 'success' });
+      setEditDialog({ open: false, item: null });
+      const defaults = config.defaultValues ?? createConfig?.defaultValues ?? ({} as TValues);
+      editForm.reset(defaults);
+      editForm.clearErrors();
+      enqueueSnackbar(config.successMessage ?? t('common:feedback.updated'), { variant: 'success' });
       await refreshList();
     },
     onError: (err, { config }) => {
       console.error('Edit mutation error', err);
-      enqueueSnackbar(config?.errorMessage ?? t('common:feedback.saveError'), { variant: 'error' });
+      enqueueSnackbar(config.errorMessage ?? t('common:feedback.saveError'), { variant: 'error' });
     },
   });
 
-  const deleteMutation = useMutation<void, unknown, { item: T; config?: DeleteConfig<T> }>({
+  const deleteMutation = useMutation<void, unknown, { item: TItem; config: DeleteConfig<TItem> }>({
     mutationFn: async ({ item, config }) => {
-      if (!config) throw new Error('Delete non configurato');
       await config.mutation(item);
     },
     onSuccess: async (_data, { config }) => {
       setDeleteDialog({ open: false, item: null });
-      enqueueSnackbar(config?.successMessage ?? t('common:feedback.deleted'), { variant: 'success' });
+      enqueueSnackbar(config.successMessage ?? t('common:feedback.deleted'), { variant: 'success' });
       await refreshList();
     },
     onError: (err, { config }) => {
       console.error('Delete mutation error', err);
-      enqueueSnackbar(config?.errorMessage ?? t('common:feedback.saveError'), { variant: 'error' });
+      enqueueSnackbar(config.errorMessage ?? t('common:feedback.saveError'), { variant: 'error' });
     },
   });
 
-  const actionColumn = useMemo<ColumnDef<T, any> | null>(() => {
+  const handleCloseCreate = useCallback(() => {
+    if (!createConfig) return;
+    if (createMutation.isPending) return;
+    setCreateOpen(false);
+    createForm.reset(createConfig.defaultValues);
+    createForm.clearErrors();
+  }, [createConfig?.defaultValues, createForm, createMutation.isPending]);
+
+  const handleCreateSubmit = useCallback(() => {
+    if (!createConfig) return;
+    createForm.handleSubmit((values) => {
+      createMutation.mutate({ values, config: createConfig });
+    }, () => undefined)();
+  }, [createConfig, createForm, createMutation]);
+
+  const handleCloseEdit = useCallback(() => {
+    if (!editConfig) return;
+    if (editMutation.isPending) return;
+    setEditDialog({ open: false, item: null });
+    const defaults = editConfig.defaultValues ?? createConfig?.defaultValues ?? ({} as TValues);
+    editForm.reset(defaults);
+    editForm.clearErrors();
+  }, [editConfig?.defaultValues, createConfig?.defaultValues, editForm, editMutation.isPending]);
+
+  const handleEditSubmit = useCallback(() => {
+    if (!editConfig || !editDialog.item) return;
+    editForm.handleSubmit((values) => {
+      editMutation.mutate({ item: editDialog.item as TItem, values, config: editConfig });
+    }, () => undefined)();
+  }, [editConfig, editDialog.item, editForm, editMutation]);
+
+  const handleCloseDelete = useCallback(() => {
+    if (deleteMutation.isPending) return;
+    setDeleteDialog({ open: false, item: null });
+  }, [deleteMutation.isPending]);
+
+  const handleConfirmDelete = useCallback(() => {
+    if (!deleteConfig || !deleteDialog.item) return;
+    deleteMutation.mutate({ item: deleteDialog.item, config: deleteConfig });
+  }, [deleteConfig, deleteDialog.item, deleteMutation]);
+
+  const actionColumn = useMemo<ColumnDef<TItem, any> | null>(() => {
     if (!crudEnabled) return null;
     return {
       id: '__actions',
@@ -390,8 +475,18 @@ export default function ListPage<T extends { id?: string }>({
     return [...columns, actionColumn];
   }, [actionColumn, columns]);
 
-  const createFirstField = createConfig?.fields[0]?.name;
-  const editFirstField = editConfig?.fields[0]?.name;
+  const createVisibleFields = useMemo(() => {
+    if (!createConfig) return [] as FormFieldConfig<TValues>[];
+    return createConfig.fields.filter((field) => (field.showIf ? field.showIf(createValues) : true));
+  }, [createConfig?.fields, createValues]);
+
+  const editVisibleFields = useMemo(() => {
+    if (!editConfig) return [] as FormFieldConfig<TValues>[];
+    return editConfig.fields.filter((field) => (field.showIf ? field.showIf(editValues) : true));
+  }, [editConfig?.fields, editValues]);
+
+  const createFirstField = createVisibleFields[0]?.name;
+  const editFirstField = editVisibleFields[0]?.name;
 
   const deleteDescription = deleteDialog.item
     ? deleteConfig?.description?.(deleteDialog.item) ?? t('common:feedback.deleteConfirm', { name: resolveItemLabel(deleteDialog.item) })
@@ -438,7 +533,7 @@ export default function ListPage<T extends { id?: string }>({
           {error instanceof Error ? error.message : t('common:feedback.loadError')}
         </Alert>
       )}
-      <DataTable<T>
+      <DataTable<TItem>
         data={items}
         columns={columnsWithActions}
         selectable={false}
@@ -456,28 +551,12 @@ export default function ListPage<T extends { id?: string }>({
           <DialogTitle>{createConfig.dialogTitle}</DialogTitle>
           <DialogContent>
             <Stack spacing={2} sx={{ mt: 1 }}>
-              {createConfig.fields.map((field) => {
-                const value = createValues[field.name] ?? '';
-                const errorMessage = createErrors[field.name];
-                const isTextarea = field.type === 'textarea' || field.multiline;
-                return (
-                  <TextField
-                    key={field.name}
-                    name={field.name}
-                    label={field.label}
-                    value={value}
-                    onChange={(event) => handleCreateValueChange(field.name, event.target.value)}
-                    fullWidth
-                    required={field.required}
-                    autoFocus={field.name === createFirstField}
-                    error={Boolean(errorMessage)}
-                    helperText={errorMessage}
-                    multiline={isTextarea}
-                    minRows={isTextarea ? 3 : undefined}
-                    type={isTextarea ? undefined : field.type ?? 'text'}
-                    disabled={isCreating}
-                  />
-                );
+              {renderFormFields({
+                form: createForm,
+                fields: createConfig.fields,
+                values: createValues,
+                disabled: isCreating,
+                firstFieldName: createFirstField,
               })}
             </Stack>
           </DialogContent>
@@ -496,28 +575,12 @@ export default function ListPage<T extends { id?: string }>({
           <DialogTitle>{editConfig.dialogTitle}</DialogTitle>
           <DialogContent>
             <Stack spacing={2} sx={{ mt: 1 }}>
-              {editConfig.fields.map((field) => {
-                const value = editDialog.values[field.name] ?? '';
-                const errorMessage = editErrors[field.name];
-                const isTextarea = field.type === 'textarea' || field.multiline;
-                return (
-                  <TextField
-                    key={field.name}
-                    name={field.name}
-                    label={field.label}
-                    value={value}
-                    onChange={(event) => handleEditValueChange(field.name, event.target.value)}
-                    fullWidth
-                    required={field.required}
-                    autoFocus={field.name === editFirstField}
-                    error={Boolean(errorMessage)}
-                    helperText={errorMessage}
-                    multiline={isTextarea}
-                    minRows={isTextarea ? 3 : undefined}
-                    type={isTextarea ? undefined : field.type ?? 'text'}
-                    disabled={isEditing}
-                  />
-                );
+              {renderFormFields({
+                form: editForm,
+                fields: editConfig.fields,
+                values: editValues,
+                disabled: isEditing,
+                firstFieldName: editFirstField,
               })}
             </Stack>
           </DialogContent>

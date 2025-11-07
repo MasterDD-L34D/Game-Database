@@ -6,10 +6,10 @@ import Records from './pages/Records';
 import RecordCreatePage from './pages/RecordCreatePage';
 import RecordDetailsPage from './features/records/pages/RecordDetailsPage';
 import RecordEditPage from './features/records/pages/RecordEditPage';
-import TraitListPage from './pages/TraitListPage';
-import BiomeListPage from './pages/BiomeListPage';
-import SpeciesListPage from './pages/SpeciesListPage';
-import EcosystemListPage from './pages/EcosystemListPage';
+import TraitListPage from './features/taxonomies/pages/TraitListPage';
+import BiomeListPage from './features/taxonomies/pages/BiomeListPage';
+import SpeciesListPage from './features/taxonomies/pages/SpeciesListPage';
+import EcosystemListPage from './features/taxonomies/pages/EcosystemListPage';
 
 export const router = createBrowserRouter([
   { path: '/', element: <App />, children: [

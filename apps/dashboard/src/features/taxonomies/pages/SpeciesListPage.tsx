@@ -2,9 +2,10 @@ import { useCallback, useMemo } from 'react';
 import { ColumnDef, createColumnHelper } from '@tanstack/react-table';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import ListPage from './ListPage';
-import type { Species } from '../lib/taxonomy';
-import { createSpecies, deleteSpecies, listSpecies, updateSpecies } from '../lib/taxonomy';
+import { z } from 'zod';
+import ListPage from '../../../pages/ListPage';
+import type { Species } from '../../../lib/taxonomy';
+import { createSpecies, deleteSpecies, listSpecies, updateSpecies } from '../../../lib/taxonomy';
 
 const DEFAULT_PAGE_SIZE = 25;
 
@@ -32,62 +33,102 @@ export default function SpeciesListPage() {
     [t],
   );
 
-  const formFields = useMemo(
-    () => [
-      { name: 'slug', label: t('species.form.slug'), required: true },
-      { name: 'scientificName', label: t('species.form.scientificName'), required: true },
-      { name: 'commonName', label: t('species.form.commonName') },
-      { name: 'family', label: t('species.form.family') },
-      { name: 'genus', label: t('species.form.genus') },
-      { name: 'status', label: t('species.form.status') },
-      { name: 'description', label: t('species.form.description'), type: 'textarea' },
-    ],
+  const speciesSchema = useMemo(
+    () =>
+      z.object({
+        slug: z.string().trim().min(1, t('common:validation.required')),
+        scientificName: z.string().trim().min(1, t('common:validation.required')),
+        commonName: z.string().trim().optional(),
+        kingdom: z.string().trim().optional(),
+        phylum: z.string().trim().optional(),
+        className: z.string().trim().optional(),
+        order: z.string().trim().optional(),
+        family: z.string().trim().optional(),
+        genus: z.string().trim().optional(),
+        epithet: z.string().trim().optional(),
+        status: z.string().trim().optional(),
+        description: z.string().trim().optional(),
+      }),
     [t],
   );
 
-  const defaultValues = useMemo(
+  type SpeciesFormValues = z.infer<typeof speciesSchema>;
+
+  const defaultValues = useMemo<SpeciesFormValues>(
     () => ({
       slug: '',
       scientificName: '',
       commonName: '',
+      kingdom: '',
+      phylum: '',
+      className: '',
+      order: '',
       family: '',
       genus: '',
+      epithet: '',
       status: '',
       description: '',
     }),
     [],
   );
 
-  const normalizeOptional = useCallback((value: string | undefined) => {
-    const trimmed = value?.trim() ?? '';
-    return trimmed ? trimmed : undefined;
-  }, []);
+  const formFields = useMemo(
+    () => [
+      { name: 'slug', label: t('species.form.slug'), required: true },
+      { name: 'scientificName', label: t('species.form.scientificName'), required: true },
+      { name: 'commonName', label: t('species.form.commonName') },
+      { name: 'kingdom', label: t('species.form.kingdom') },
+      { name: 'phylum', label: t('species.form.phylum') },
+      { name: 'className', label: t('species.form.class') },
+      { name: 'order', label: t('species.form.order') },
+      { name: 'family', label: t('species.form.family') },
+      { name: 'genus', label: t('species.form.genus') },
+      { name: 'epithet', label: t('species.form.epithet') },
+      { name: 'status', label: t('species.form.status') },
+      { name: 'description', label: t('species.form.description'), type: 'textarea' },
+    ],
+    [t],
+  );
 
   const mapToValues = useCallback(
-    (item: Species) => ({
+    (item: Species): SpeciesFormValues => ({
       slug: item.slug ?? '',
       scientificName: item.scientificName ?? '',
       commonName: item.commonName ?? '',
+      kingdom: item.kingdom ?? '',
+      phylum: item.phylum ?? '',
+      className: item.class ?? '',
+      order: item.order ?? '',
       family: item.family ?? '',
       genus: item.genus ?? '',
+      epithet: item.epithet ?? '',
       status: item.status ?? '',
       description: item.description ?? '',
     }),
     [],
   );
 
-  const mapToPayload = useCallback(
-    (values: Record<string, string>) => ({
+  const mapToPayload = useCallback((values: SpeciesFormValues) => {
+    const optional = (value?: string) => {
+      const trimmed = value?.trim() ?? '';
+      return trimmed ? trimmed : undefined;
+    };
+
+    return {
       slug: values.slug.trim(),
       scientificName: values.scientificName.trim(),
-      commonName: normalizeOptional(values.commonName),
-      family: normalizeOptional(values.family),
-      genus: normalizeOptional(values.genus),
-      status: normalizeOptional(values.status),
-      description: normalizeOptional(values.description),
-    }),
-    [normalizeOptional],
-  );
+      commonName: optional(values.commonName),
+      kingdom: optional(values.kingdom),
+      phylum: optional(values.phylum),
+      class: optional(values.className),
+      order: optional(values.order),
+      family: optional(values.family),
+      genus: optional(values.genus),
+      epithet: optional(values.epithet),
+      status: optional(values.status),
+      description: optional(values.description),
+    };
+  }, []);
 
   const handleStateChange = useCallback(
     (state: { query: string; page: number; pageSize: number }) => {
@@ -104,7 +145,7 @@ export default function SpeciesListPage() {
   );
 
   return (
-    <ListPage<Species>
+    <ListPage<Species, SpeciesFormValues>
       title={t('species.title')}
       columns={columns}
       fetcher={listSpecies}
@@ -119,8 +160,9 @@ export default function SpeciesListPage() {
         dialogTitle: t('species.dialogs.createTitle'),
         submitLabel: t('common:actions.save'),
         defaultValues,
+        schema: speciesSchema,
         fields: formFields,
-        mutation: async (values) => {
+        onSubmit: async (values) => {
           const payload = mapToPayload(values);
           await createSpecies(payload);
         },
@@ -131,8 +173,9 @@ export default function SpeciesListPage() {
         dialogTitle: t('species.dialogs.editTitle'),
         submitLabel: t('common:actions.saveChanges'),
         fields: formFields,
+        schema: speciesSchema,
         getInitialValues: mapToValues,
-        mutation: async (item, values) => {
+        onSubmit: async (item, values) => {
           if (!item.id) throw new Error('Missing id');
           const payload = mapToPayload(values);
           await updateSpecies(item.id, payload);
