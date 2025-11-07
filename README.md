@@ -22,7 +22,7 @@ docker compose up -d
 ### 2) Server API
 ```bash
 cd server
-cp .env.example .env
+cp .env.example .env  # compila DATABASE_URL, API_TOKEN (e opzionalmente PORT)
 npm i
 npx prisma generate
 npx prisma migrate dev -n init
