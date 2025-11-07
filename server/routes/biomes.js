@@ -1,6 +1,8 @@
 
 const express = require('express');
 const prisma = require('../db/prisma');
+const { requireTaxonomyWrite } = require('../middleware/permissions');
+const { logAudit } = require('../utils/audit');
 const router = express.Router();
 
 function parsePagination(req) {
@@ -31,10 +33,6 @@ function normalizeSlug(input) {
   return input.toString().trim().toLowerCase().replace(/\s+/g, '-');
 }
 
-function getUserEmail(req) {
-  return req.user?.email || req.user || null;
-}
-
 async function resolveParent(parentValue, currentId) {
   if (parentValue === null || parentValue === undefined || parentValue === '') return null;
   const parent = await prisma.biome.findFirst({ where: { OR: [{ id: parentValue }, { slug: parentValue }] } });
@@ -54,7 +52,7 @@ router.get('/:id', async (req, res) => {
   res.json(item);
 });
 
-router.post('/', async (req, res) => {
+router.post('/', requireTaxonomyWrite, async (req, res) => {
   try {
     const name = (req.body.name || '').trim();
     if (!name) return res.status(400).json({ error: 'Name is required' });
@@ -82,15 +80,7 @@ router.post('/', async (req, res) => {
       },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        entity: 'Biome',
-        entityId: created.id,
-        action: 'CREATE',
-        user: getUserEmail(req),
-        payload: created,
-      },
-    });
+    await logAudit(req, 'Biome', created.id, 'CREATE', created);
 
     const payload = await fetchPaginatedBiomes(req);
     res.status(201).json(payload);
@@ -100,7 +90,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireTaxonomyWrite, async (req, res) => {
   try {
     const existing = await prisma.biome.findFirst({ where: { OR: [{ id: req.params.id }, { slug: req.params.id }] } });
     if (!existing) return res.status(404).json({ error: 'Not found' });
@@ -136,15 +126,7 @@ router.put('/:id', async (req, res) => {
       },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        entity: 'Biome',
-        entityId: updated.id,
-        action: 'UPDATE',
-        user: getUserEmail(req),
-        payload: req.body,
-      },
-    });
+    await logAudit(req, 'Biome', updated.id, 'UPDATE', req.body);
 
     const payload = await fetchPaginatedBiomes(req);
     res.json(payload);
@@ -154,22 +136,14 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireTaxonomyWrite, async (req, res) => {
   try {
     const existing = await prisma.biome.findFirst({ where: { OR: [{ id: req.params.id }, { slug: req.params.id }] } });
     if (!existing) return res.status(404).json({ error: 'Not found' });
 
     await prisma.biome.delete({ where: { id: existing.id } });
 
-    await prisma.auditLog.create({
-      data: {
-        entity: 'Biome',
-        entityId: existing.id,
-        action: 'DELETE',
-        user: getUserEmail(req),
-        payload: existing,
-      },
-    });
+    await logAudit(req, 'Biome', existing.id, 'DELETE', existing);
 
     const payload = await fetchPaginatedBiomes(req);
     res.json(payload);
