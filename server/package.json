@@ -14,11 +14,15 @@
   "devDependencies": {
     "prisma": "^5"
   },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
   "scripts": {
     "dev": "node index.js",
+    "dev:setup": "prisma generate && prisma migrate deploy && prisma db seed",
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
-    "prisma:seed": "node prisma/seed.js",
+    "prisma:seed": "prisma db seed",
     "test": "node --test"
   }
 }

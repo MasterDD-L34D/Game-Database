@@ -14,5 +14,21 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+  server:
+    image: node:18-bullseye
+    working_dir: /app
+    entrypoint: ["/app/scripts/docker-entrypoint.sh"]
+    command: ["npm", "run", "dev"]
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/game?schema=public
+      API_TOKEN: dev-docker-token
+      PORT: 3333
+    volumes:
+      - ./server:/app
+    ports:
+      - "3333:3333"
+    depends_on:
+      db:
+        condition: service_healthy
 volumes:
   pgdata:
