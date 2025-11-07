@@ -1,5 +1,6 @@
 
-import { Alert, Button, Card, CardContent, Skeleton, Stack, Typography } from '@mui/material';
+import { Alert, Button, Card, CardContent, Grid, Skeleton, Stack, Typography } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDashboardStats } from '../features/dashboard/hooks';
@@ -29,10 +30,13 @@ export default function DashboardPage() {
   }, [data, metrics]);
 
   return (
-    <Stack spacing={3}>
+    <Stack sx={(theme) => ({ gap: theme.layout.sectionGap })}>
       {isError ? (
         <Alert
           severity="error"
+          sx={(theme) => ({
+            boxShadow: theme.customShadows.card,
+          })}
           action={
             <Button color="inherit" size="small" onClick={() => refetch()}>
               {t('common:actions.retry')}
@@ -43,34 +47,45 @@ export default function DashboardPage() {
         </Alert>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <Grid container spacing={3}>
         {stats.map((s) => (
-          <Card key={s.key} className="shadow-card">
-            <CardContent>
-              <Typography variant="body2" color="text.secondary">
-                {s.label}
-              </Typography>
-              {isLoading ? (
-                <Skeleton variant="text" width="60%" height={40} className="mt-1" />
-              ) : (
-                <Typography variant="h5" className="mt-1">
-                  {s.value != null ? s.value.toLocaleString('it-IT') : t('common:generic.notAvailable')}
+          <Grid item key={s.key} xs={12} md={6} lg={4}>
+            <Card
+              sx={(theme) => ({
+                height: '100%',
+                boxShadow: theme.customShadows.card,
+                background: `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.04)}, ${theme.palette.background.paper})`,
+              })}
+            >
+              <CardContent sx={(theme) => ({ display: 'flex', flexDirection: 'column', gap: theme.spacing(1.5) })}>
+                <Typography variant="body2" color="text.secondary">
+                  {s.label}
                 </Typography>
-              )}
-              {isLoading ? (
-                <Skeleton variant="text" width="40%" height={20} />
-              ) : s.trend ? (
-                <Typography
-                  variant="caption"
-                  color={s.trend.startsWith('-') ? 'error.main' : 'success.main'}
-                >
-                  {s.trend}
-                </Typography>
-              ) : null}
-            </CardContent>
-          </Card>
+                {isLoading ? (
+                  <Skeleton variant="text" width="60%" height={40} sx={{ mt: 0.5 }} />
+                ) : (
+                  <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                    {s.value != null ? s.value.toLocaleString('it-IT') : t('common:generic.notAvailable')}
+                  </Typography>
+                )}
+                {isLoading ? (
+                  <Skeleton variant="text" width="40%" height={20} />
+                ) : s.trend ? (
+                  <Typography
+                    variant="caption"
+                    sx={(theme) => ({
+                      color: s.trend.startsWith('-') ? theme.palette.error.main : theme.palette.success.main,
+                      fontWeight: 600,
+                    })}
+                  >
+                    {s.trend}
+                  </Typography>
+                ) : null}
+              </CardContent>
+            </Card>
+          </Grid>
         ))}
-      </div>
+      </Grid>
     </Stack>
   );
 }

@@ -27,3 +27,10 @@ I test e gli snapshot devono usare i testi tradotti, quindi evita di inserire st
 - Le azioni di riga sono esposte tramite il menù contestuale (`RowActionsMenu`) che appare automaticamente quando si passa almeno una configurazione CRUD; al termine di ogni operazione la lista viene aggiornata con un `refetch` automatico.
 - Gli esiti sono notificati tramite `SnackbarProvider`: personalizza `successMessage`/`errorMessage` nelle configurazioni se vuoi messaggi specifici, altrimenti verranno usate le stringhe di fallback in `common.feedback`.
 - Per i moduli taxonomy (`traits`, `biomes`, `species`, `ecosystems`) sono stati introdotti dialog preconfigurati con relative traduzioni in `taxonomy.json` e test di integrazione (`ListPageCrud.test.tsx`) che verificano il flusso completo.
+
+## Tema UI e palette condivisa
+
+- Il tema MUI vive in `apps/dashboard/src/theme/index.ts` ed estende `Theme` con i namespace `layout`, `gradients` e `customShadows`. Usa `theme.layout.cardPadding` e `theme.customShadows.card` quando serve replicare il padding/pattern delle card nelle nuove viste (`sx={(theme) => ({ padding: theme.layout.cardPadding })}`).
+- La palette principale è stata allineata a Tailwind: `primary` (blu 600) per le call-to-action, `secondary` (emerald 500) per gli accenti, `info/success/warning/error` coerenti con le tonalità delle notifiche. Lo sfondo base è `surface[50]`/`theme.palette.background.default`.
+- Tailwind (`apps/dashboard/tailwind.config.js`) esporta le stesse tonalità e la tipografia del tema: classi come `bg-gradient-primary`, `shadow-card`, `text-neutral-600`, `px-card` assicurano coerenza anche nei componenti non-MUI.
+- Per componenti dimostrativi/QA avvia `npm run dev` in `apps/dashboard`: la dashboard mostra le nuove card di sintesi e le viste `Records`/`Create` aggiornate con spacing e gradienti del tema.
