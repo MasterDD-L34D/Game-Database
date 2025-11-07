@@ -1,0 +1,52 @@
+name: Verify Prisma seed
+
+on:
+  push:
+    paths:
+      - 'server/**'
+      - 'docker-compose.yml'
+      - '.github/workflows/prisma-seed.yml'
+  pull_request:
+    paths:
+      - 'server/**'
+      - 'docker-compose.yml'
+      - '.github/workflows/prisma-seed.yml'
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: game
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d game" \
+          --health-interval 5s \
+          --health-timeout 5s \
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/game?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - name: Install dependencies
+        working-directory: server
+        run: npm ci
+      - name: Generate Prisma client
+        working-directory: server
+        run: npx prisma generate
+      - name: Apply migrations
+        working-directory: server
+        run: npx prisma migrate deploy
+      - name: Run database seed
+        working-directory: server
+        run: npx prisma db seed

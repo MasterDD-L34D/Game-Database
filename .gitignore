@@ -15,6 +15,7 @@ build
 apps/**/.env*
 !apps/**/.env*.example
 server/.env
+server/.docker-prisma-bootstrapped
 
 # Editor
 .vscode

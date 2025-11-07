@@ -28,11 +28,12 @@ docker compose up -d
 cd server
 cp .env.example .env  # compila DATABASE_URL, API_TOKEN (e opzionalmente PORT)
 npm i
-npx prisma generate
-npx prisma migrate dev -n init
-npm run prisma:seed   # opzionale: record demo + tassonomia base
-node index.js         # http://localhost:3333
+npm run dev:setup     # migrate deploy + seed (idempotente)
+npm run dev           # http://localhost:3333
 ```
+
+> Lo script `npm run dev:setup` esegue `prisma generate`, applica le migrazioni con `prisma migrate deploy` e lancia `prisma db seed`.
+> Per creare nuove migrazioni durante lo sviluppo continua a usare `npm run prisma:migrate`.
 
 #### Ruoli e permessi API
 
@@ -62,6 +63,10 @@ cd ../server
 node scripts/ingest/import-taxonomy.js --repo /percorso/al/tuo/repo --dry-run --verbose
 node scripts/ingest/import-taxonomy.js --repo /percorso/al/tuo/repo --verbose
 ```
+
+### Ripopolamento database
+
+Vedi [docs/database-bootstrap.md](docs/database-bootstrap.md) per una guida dettagliata su come ripristinare le tabelle sia in locale sia negli ambienti Docker/staging.
 
 ### Dati caricati dal seed Prisma
 
