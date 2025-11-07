@@ -3,6 +3,7 @@ import { Alert, Paper, Stack, TextField, Typography } from '@mui/material';
 import { ColumnDef, type PaginationState } from '@tanstack/react-table';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import DataTable from '../components/data-table/DataTable';
+import { useSearch } from '../providers/SearchProvider';
 
 type Fetcher<T> = (q: string, page?: number, pageSize?: number) => Promise<{ items: T[]; page: number; pageSize: number; total: number }>;
 
@@ -20,15 +21,6 @@ type ListPageProps<T> = {
   onStateChange?: (state: CriteriaState) => void;
 };
 
-function useDebouncedValue<T>(value: T, delay: number) {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const handle = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(handle);
-  }, [value, delay]);
-  return debounced;
-}
-
 export default function ListPage<T extends { id?: string }>({
   title,
   columns,
@@ -42,8 +34,7 @@ export default function ListPage<T extends { id?: string }>({
 }: ListPageProps<T>) {
   const queryClient = useQueryClient();
   const [criteria, setCriteria] = useState<CriteriaState>({ query: initialQuery, page: initialPage, pageSize: initialPageSize });
-  const [searchValue, setSearchValue] = useState(initialQuery);
-  const debouncedSearch = useDebouncedValue(searchValue, 350);
+  const { query: searchValue, debouncedQuery, setQuery, commitQuery } = useSearch();
   const shouldFetchRef = useRef<boolean>(autoloadOnMount);
   const [hasSearched, setHasSearched] = useState<boolean>(autoloadOnMount);
 
@@ -62,7 +53,7 @@ export default function ListPage<T extends { id?: string }>({
 
   useEffect(() => {
     const next = { query: initialQuery, page: initialPage, pageSize: initialPageSize };
-    setSearchValue(next.query);
+    commitQuery(next.query);
     setCriteria((prev) => {
       if (prev.query === next.query && prev.page === next.page && prev.pageSize === next.pageSize) {
         return prev;
@@ -70,8 +61,7 @@ export default function ListPage<T extends { id?: string }>({
       shouldFetchRef.current = true;
       return next;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialQuery, initialPage, initialPageSize]);
+  }, [initialQuery, initialPage, initialPageSize, commitQuery]);
 
   useEffect(() => {
     onStateChange?.(criteria);
@@ -105,23 +95,22 @@ export default function ListPage<T extends { id?: string }>({
 
   useEffect(() => {
     if (!autoloadOnMount) return;
-    if (debouncedSearch === criteria.query) return;
-    triggerFetch((prev) => ({ ...prev, query: debouncedSearch, page: 0 }));
-  }, [autoloadOnMount, criteria.query, debouncedSearch, triggerFetch]);
+    if (debouncedQuery === criteria.query) return;
+    triggerFetch((prev) => ({ ...prev, query: debouncedQuery, page: 0 }));
+  }, [autoloadOnMount, criteria.query, debouncedQuery, triggerFetch]);
 
   const handleInputChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    setSearchValue(event.target.value);
-  }, []);
+    setQuery(event.target.value);
+  }, [setQuery]);
 
   const handleManualSearch = useCallback(() => {
-    const nextQuery = searchValue.trim();
-    setSearchValue(nextQuery);
+    const nextQuery = commitQuery();
     const force = nextQuery === criteria.query;
     triggerFetch(
       (prev) => ({ ...prev, query: nextQuery, page: force ? prev.page : 0 }),
       { force },
     );
-  }, [criteria.query, searchValue, triggerFetch]);
+  }, [commitQuery, criteria.query, triggerFetch]);
 
   const handleKeyDown = useCallback((event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key !== 'Enter') return;

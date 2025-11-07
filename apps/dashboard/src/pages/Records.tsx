@@ -1,5 +1,5 @@
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type KeyboardEvent } from 'react';
 import { Paper, Typography, Box, Stack, TextField, Button } from '@mui/material';
 import ExportMenu from '../components/ExportMenu';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -9,6 +9,7 @@ import { listRecords } from '../lib/records';
 import FilterChips from '../components/FilterChips';
 import FilterSidebar from '../components/FilterSidebar';
 import RecordTable from '../features/records/components/RecordTable';
+import { useSearch } from '../providers/SearchProvider';
 
 const FILTERS_KEY = 'records-filters-v1';
 
@@ -16,8 +17,7 @@ export default function Records() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [openFilters, setOpenFilters] = useState(false);
-
-  const [query, setQuery] = useState('');
+  const { query, setQuery, commitQuery, debouncedQuery } = useSearch();
   const [filters, setFilters] = useState<{ stile?: Stile; pattern?: Pattern; peso?: Peso; curvatura?: Curvatura }>({});
 
   useEffect(() => {
@@ -30,23 +30,23 @@ export default function Records() {
     };
     const savedFilters = localStorage.getItem(FILTERS_KEY);
     const fStore = savedFilters ? JSON.parse(savedFilters) : {};
-    setQuery(fromUrl.q ?? fStore.q ?? '');
+    commitQuery(fromUrl.q ?? fStore.q ?? '');
     setFilters({ stile: fromUrl.stile ?? fStore.stile, pattern: fromUrl.pattern ?? fStore.pattern, peso: fromUrl.peso ?? fStore.peso, curvatura: fromUrl.curvatura ?? fStore.curvatura });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [commitQuery]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (query) params.set('q', query); else params.delete('q');
+    if (debouncedQuery) params.set('q', debouncedQuery); else params.delete('q');
     (['stile','pattern','peso','curvatura'] as const).forEach((k) => {
       const v = (filters as any)[k];
       if (v) params.set(k, v); else params.delete(k);
     });
     setSearchParams(params, { replace: true });
-    localStorage.setItem(FILTERS_KEY, JSON.stringify({ q: query, ...filters }));
-  }, [query, filters, setSearchParams]);
+    localStorage.setItem(FILTERS_KEY, JSON.stringify({ q: debouncedQuery, ...filters }));
+  }, [debouncedQuery, filters, setSearchParams]);
 
-  const { data, isLoading } = useQuery({ queryKey: ['records', query, filters], queryFn: () => listRecords({ q: query, page: 0, pageSize: 25, ...filters }) });
+  const { data, isLoading } = useQuery({ queryKey: ['records', debouncedQuery, filters], queryFn: () => listRecords({ q: debouncedQuery, page: 0, pageSize: 25, ...filters }) });
   const items = data?.items ?? [];
   const total = data?.total ?? items.length;
 
@@ -61,17 +61,31 @@ export default function Records() {
 
   function buildServerQuery() {
     const usp = new URLSearchParams();
-    if (query) usp.set('q', query);
+    if (debouncedQuery) usp.set('q', debouncedQuery);
     (['stile','pattern','peso','curvatura'] as const).forEach((k) => { const v = (filters as any)[k]; if (v) usp.set(k, v); });
     return usp.toString();
   }
+
+  const handleInputChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setQuery(event.target.value);
+  }, [setQuery]);
+
+  const handleInputKeyDown = useCallback((event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    commitQuery();
+  }, [commitQuery]);
+
+  const handleInputBlur = useCallback(() => {
+    commitQuery();
+  }, [commitQuery]);
 
   return (
     <Paper className="p-4">
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }} className="mb-2">
         <Typography variant="h6">Record</Typography>
         <Box flex={1} />
-        <TextField size="small" placeholder="Cerca" value={query} onChange={(e)=>setQuery(e.target.value)} />
+        <TextField size="small" placeholder="Cerca" value={query} onChange={handleInputChange} onKeyDown={handleInputKeyDown} onBlur={handleInputBlur} />
         <Button variant="outlined" onClick={()=>setOpenFilters(true)}>Filtri</Button>
         <ExportMenu filename="record" rows={items} serverQuery={buildServerQuery()} fields={[{ key: 'id', label: 'ID' }, { key: 'nome', label: 'Nome' }, { key: 'stile', label: 'Stile' }, { key: 'pattern', label: 'Pattern' }, { key: 'peso', label: 'Peso' }, { key: 'curvatura', label: 'Curvatura' }, { key: 'stato', label: 'Stato' }, { key: 'createdBy', label: 'Creato da' }, { key: 'updatedAt', label: 'Aggiornato il' }]} />
         <Button variant="contained" onClick={()=>navigate('/records/new')}>Aggiungi</Button>
