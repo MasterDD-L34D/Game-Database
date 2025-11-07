@@ -4,19 +4,19 @@ import App from './App';
 import DashboardPage from './pages/DashboardPage';
 import Records from './pages/Records';
 import RecordCreatePage from './pages/RecordCreatePage';
-import Traits from './pages/Traits';
-import Biomes from './pages/Biomes';
-import SpeciesList from './pages/Species';
-import Ecosystems from './pages/Ecosystems';
+import TraitListPage from './pages/TraitListPage';
+import BiomeListPage from './pages/BiomeListPage';
+import SpeciesListPage from './pages/SpeciesListPage';
+import EcosystemListPage from './pages/EcosystemListPage';
 
 export const router = createBrowserRouter([
   { path: '/', element: <App />, children: [
     { index: true, element: <DashboardPage /> },
     { path: 'records', element: <Records /> },
     { path: 'records/new', element: <RecordCreatePage /> },
-    { path: 'traits', element: <Traits /> },
-    { path: 'biomes', element: <Biomes /> },
-    { path: 'species', element: <SpeciesList /> },
-    { path: 'ecosystems', element: <Ecosystems /> },
+    { path: 'traits', element: <TraitListPage /> },
+    { path: 'biomes', element: <BiomeListPage /> },
+    { path: 'species', element: <SpeciesListPage /> },
+    { path: 'ecosystems', element: <EcosystemListPage /> },
   ]},
 ]);

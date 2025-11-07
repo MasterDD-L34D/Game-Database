@@ -15,6 +15,7 @@ type Props<TData extends { id?: string }> = {
   columnSizing?: ColumnSizingState; onColumnSizingChange?: any;
   columnPinning?: ColumnPinningState; onColumnPinningChange?: any;
   getRowId?: (originalRow: TData, index: number) => string;
+  pagination?: PaginationState; onPaginationChange?: (updater: PaginationState | ((prev: PaginationState) => PaginationState)) => void;
 };
 
 export default function DataTable<TData extends { id?: string }>({
@@ -23,10 +24,12 @@ export default function DataTable<TData extends { id?: string }>({
   columnVisibility: extColVis, onColumnVisibilityChange: setExtColVis,
   columnSizing: extColSize, onColumnSizingChange: setExtColSize,
   columnPinning: extColPin, onColumnPinningChange: setExtColPin,
+  pagination: extPagination, onPaginationChange: setExtPagination,
   getRowId,
 }: Props<TData>) {
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: pageSizeOptions[0] });
+  const [intPagination, setIntPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: pageSizeOptions[0] });
+  const pagination = extPagination ?? intPagination; const setPagination = setExtPagination ?? setIntPagination;
   const [intRowSel, setIntRowSel] = useState<RowSelectionState>({}); const rowSelection = extRowSel ?? intRowSel; const setRowSelection = setExtRowSel ?? setIntRowSel;
   const [intColVis, setIntColVis] = useState<VisibilityState>({}); const columnVisibility = extColVis ?? intColVis; const setColumnVisibility = setExtColVis ?? setIntColVis;
   const [intColSize, setIntColSize] = useState<ColumnSizingState>({}); const columnSizing = extColSize ?? intColSize; const setColumnSizing = setExtColSize ?? setIntColSize;
