@@ -1,0 +1,1 @@
+import { Skeleton, Stack } from '@mui/material'; export default function LoadingTableSkeleton(){ return (<Stack spacing={1}>{[...Array(8)].map((_,i)=>(<Skeleton key={i} variant="rectangular" height={40}/>))}</Stack>);}

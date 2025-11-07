@@ -1,0 +1,23 @@
+{
+  "name": "game-server",
+  "private": true,
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^4",
+    "cors": "^2",
+    "@prisma/client": "^5",
+    "fast-glob": "^3",
+    "gray-matter": "^4",
+    "js-yaml": "^4",
+    "csv-parse": "^5"
+  },
+  "devDependencies": {
+    "prisma": "^5"
+  },
+  "scripts": {
+    "dev": "node index.js",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:generate": "prisma generate",
+    "prisma:seed": "node prisma/seed.js"
+  }
+}

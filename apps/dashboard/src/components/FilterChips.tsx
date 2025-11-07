@@ -1,0 +1,1 @@
+import { Chip, Stack } from '@mui/material'; export default function FilterChips({ filters, onRemove }:{filters:{label:string;value:string}[];onRemove:(v:string)=>void;}){ if(!filters.length) return null; return (<Stack direction="row" spacing={1} className="mt-2">{filters.map(f=>(<Chip key={f.value} label={f.label} onDelete={()=>onRemove(f.value)} size="small" />))}</Stack>);}

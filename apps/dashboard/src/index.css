@@ -1,0 +1,6 @@
+@import "@fontsource-variable/inter";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+html, body, #root { height: 100%; }
+body { @apply font-sans bg-gray-50 text-gray-900; }

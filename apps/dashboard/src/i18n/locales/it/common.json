@@ -1,0 +1,20 @@
+{
+  "actions": {
+    "add": "Aggiungi",
+    "search": "Cerca",
+    "export": "Esporta",
+    "clearFilters": "Pulisci filtri"
+  },
+  "labels": {
+    "records": "Record",
+    "status": "Stato",
+    "name": "Nome",
+    "style": "Stile",
+    "pattern": "Pattern",
+    "weight": "Peso",
+    "curvature": "Curvatura"
+  },
+  "empty": {
+    "noData": "Nessun dato disponibile"
+  }
+}

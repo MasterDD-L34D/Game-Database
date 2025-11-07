@@ -1,0 +1,189 @@
+﻿generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RecordStato { Attivo Bozza Archiviato }
+enum Stile { Monolinea Tratteggiato Puntinato Brush Calligrafico Geometrico Organico DoppioTratto Ombreggiato Tecnico Neon Sfumato Angolare Spezzato Contour Ink }
+enum Pattern { Pieno Tratteggio Puntinato Gradiente Hachure Contorno Spezzato Inchiostro }
+enum Peso { Sottile Medio Spesso Variabile }
+enum Curvatura { Lineare Curvo Organico Angolare }
+enum AuditAction { CREATE UPDATE DELETE }
+
+enum TraitDataType { BOOLEAN NUMERIC CATEGORICAL TEXT }
+enum Presence { resident migrant introduced endemic unknown }
+enum Role { keystone dominant engineer common invasive other }
+
+model Record {
+  id          String   @id @default(cuid())
+  nome        String
+  stato       RecordStato
+  descrizione String?
+  data        DateTime? @db.Date
+  stile       Stile?
+  pattern     Pattern?
+  peso        Peso?
+  curvatura   Curvatura?
+  createdBy   String?
+  updatedBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([nome])
+  @@index([stato])
+  @@index([stile])
+  @@index([pattern])
+  @@index([peso])
+  @@index([curvatura])
+}
+
+model AuditLog {
+  id        String      @id @default(cuid())
+  entity    String
+  entityId  String
+  action    AuditAction
+  user      String?
+  payload   Json?
+  createdAt DateTime    @default(now())
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+model Trait {
+  id            String        @id @default(cuid())
+  slug          String        @unique
+  name          String
+  description   String?
+  category      String?
+  unit          String?
+  dataType      TraitDataType
+  allowedValues Json?
+  rangeMin      Float?
+  rangeMax      Float?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  speciesValues SpeciesTrait[]
+}
+
+model Biome {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  climate     String?
+  parentId    String?
+  parent      Biome?   @relation("BiomeChildren", fields: [parentId], references: [id])
+  children    Biome[]  @relation("BiomeChildren")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  species     SpeciesBiome[]
+  ecosystems  EcosystemBiome[]
+}
+
+model Species {
+  id             String        @id @default(cuid())
+  slug           String        @unique
+  scientificName String
+  commonName     String?
+  kingdom        String?
+  phylum         String?
+  class          String?
+  order          String?
+  family         String?
+  genus          String?
+  epithet        String?
+  status         String?
+  description    String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  traits         SpeciesTrait[]
+  biomes         SpeciesBiome[]
+  ecosystems     EcosystemSpecies[]
+
+  @@index([scientificName])
+  @@index([commonName])
+}
+
+model SpeciesTrait {
+  id         String   @id @default(cuid())
+  speciesId  String
+  traitId    String
+  value      Json?
+  num        Float?
+  bool       Boolean?
+  text       String?
+  category   String?
+  unit       String?
+  source     String?
+  confidence Float?
+
+  species   Species  @relation(fields: [speciesId], references: [id])
+  trait     Trait    @relation(fields: [traitId], references: [id])
+
+  @@unique([speciesId, traitId, category])
+  @@index([traitId])
+}
+
+model SpeciesBiome {
+  id        String   @id @default(cuid())
+  speciesId String
+  biomeId   String
+  presence  Presence
+  abundance Float?
+  notes     String?
+
+  species   Species  @relation(fields: [speciesId], references: [id])
+  biome     Biome    @relation(fields: [biomeId], references: [id])
+
+  @@unique([speciesId, biomeId])
+  @@index([biomeId])
+}
+
+model Ecosystem {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  region      String?
+  climate     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  biomes      EcosystemBiome[]
+  species     EcosystemSpecies[]
+}
+
+model EcosystemBiome {
+  id          String   @id @default(cuid())
+  ecosystemId String
+  biomeId     String
+  proportion  Float?
+  notes       String?
+
+  ecosystem   Ecosystem @relation(fields: [ecosystemId], references: [id])
+  biome       Biome     @relation(fields: [biomeId], references: [id])
+
+  @@unique([ecosystemId, biomeId])
+}
+
+model EcosystemSpecies {
+  id          String   @id @default(cuid())
+  ecosystemId String
+  speciesId   String
+  role        Role
+  abundance   Float?
+  notes       String?
+
+  ecosystem   Ecosystem @relation(fields: [ecosystemId], references: [id])
+  species     Species   @relation(fields: [speciesId], references: [id])
+
+  @@unique([ecosystemId, speciesId, role])
+}
