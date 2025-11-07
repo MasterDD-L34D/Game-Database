@@ -42,7 +42,10 @@ npm i
 npm run dev           # http://localhost:5174
 ```
 
-> In `.env.local` imposta `VITE_API_BASE_URL` al server (default: `http://localhost:3333/api`) e `VITE_API_TOKEN` se usi il token.
+> Copia `.env.local.example` in `.env.local` e aggiorna i valori necessari:
+> - `VITE_API_BASE_URL` per puntare al server (default: `http://localhost:3333/api`).
+> - `VITE_API_TOKEN` se usi endpoint protetti da token.
+> - `VITE_API_USER` per indicare l'identità delle operazioni registrate.
 
 ### 4) Import taxonomy (opzionale)
 ```bash
