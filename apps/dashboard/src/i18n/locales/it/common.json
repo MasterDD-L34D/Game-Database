@@ -30,10 +30,15 @@
     "saveError": "Errore durante il salvataggio.",
     "exportError": "Errore export: {{message}}",
     "created": "Creato con successo",
-    "updated": "Record aggiornato con successo."
+    "updated": "Record aggiornato con successo.",
+    "deleted": "Eliminato con successo.",
+    "deleteConfirm": "Sei sicuro di voler eliminare {{name}}?"
   },
   "status": {
     "loading": "Caricamento…"
+  },
+  "validation": {
+    "required": "Campo obbligatorio"
   },
   "generic": {
     "total": "Totale",
