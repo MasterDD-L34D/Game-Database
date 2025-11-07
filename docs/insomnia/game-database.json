@@ -1,0 +1,297 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2024-05-29T00:00:00.000Z",
+  "__export_source": "insomnia.desktop.app:generated",
+  "resources": [
+    {
+      "_id": "wrk_game_database",
+      "parentId": null,
+      "_type": "workspace",
+      "name": "Game Database API",
+      "scope": "collection"
+    },
+    {
+      "_id": "env_game_database_base",
+      "parentId": "wrk_game_database",
+      "_type": "environment",
+      "name": "Base Environment",
+      "data": {
+        "base_url": "http://localhost:3333/api",
+        "api_token": ""
+      }
+    },
+    {
+      "_id": "jar_game_database",
+      "parentId": "wrk_game_database",
+      "_type": "cookie_jar",
+      "name": "Default Jar",
+      "cookies": []
+    },
+    {
+      "_id": "fld_traits",
+      "parentId": "wrk_game_database",
+      "_type": "request_group",
+      "name": "Traits"
+    },
+    {
+      "_id": "req_trait_create",
+      "parentId": "fld_traits",
+      "_type": "request",
+      "name": "Create trait",
+      "method": "POST",
+      "url": "{{ _.base_url }}/traits",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Body Size\",\n  \"dataType\": \"NUMERIC\",\n  \"rangeMin\": 0,\n  \"rangeMax\": 100\n}"
+      },
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "Authorization", "value": "Bearer {{ _.api_token }}", "disabled": true }
+      ],
+      "settingStore": {
+        "request": {
+          "test": {
+            "code": "const payload = JSON.parse(response.body);\nexpect(response.status).to.equal(201);\nexpect(payload).to.have.keys(['items','page','pageSize','total']);"
+          }
+        }
+      }
+    },
+    {
+      "_id": "req_trait_update",
+      "parentId": "fld_traits",
+      "_type": "request",
+      "name": "Update trait",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/traits/{{ response 'req_trait_create' 'body' 'items.0.id' }}",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Body Size\",\n  \"dataType\": \"NUMERIC\",\n  \"rangeMin\": 0,\n  \"rangeMax\": 120\n}"
+      },
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "settingStore": {
+        "request": {
+          "test": {
+            "code": "const payload = JSON.parse(response.body);\nexpect(response.status).to.equal(200);\nexpect(payload.items).to.be.an('array');"
+          }
+        }
+      }
+    },
+    {
+      "_id": "req_trait_delete",
+      "parentId": "fld_traits",
+      "_type": "request",
+      "name": "Delete trait",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/traits/{{ response 'req_trait_create' 'body' 'items.0.id' }}",
+      "headers": [],
+      "settingStore": {
+        "request": {
+          "test": {
+            "code": "expect(response.status).to.equal(200);"
+          }
+        }
+      }
+    },
+    {
+      "_id": "fld_biomes",
+      "parentId": "wrk_game_database",
+      "_type": "request_group",
+      "name": "Biomes"
+    },
+    {
+      "_id": "req_biome_create",
+      "parentId": "fld_biomes",
+      "_type": "request",
+      "name": "Create biome",
+      "method": "POST",
+      "url": "{{ _.base_url }}/biomes",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Temperate Forest\"\n}"
+      },
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "settingStore": {
+        "request": {
+          "test": {
+            "code": "const payload = JSON.parse(response.body);\nexpect(response.status).to.equal(201);\nexpect(payload.total).to.be.a('number');"
+          }
+        }
+      }
+    },
+    {
+      "_id": "req_biome_update",
+      "parentId": "fld_biomes",
+      "_type": "request",
+      "name": "Update biome",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/biomes/{{ response 'req_biome_create' 'body' 'items.0.id' }}",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Temperate Forest\",\n  \"climate\": \"Temperate\"\n}"
+      },
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "settingStore": {
+        "request": {
+          "test": {
+            "code": "const payload = JSON.parse(response.body);\nexpect(response.status).to.equal(200);\nexpect(payload.page).to.be.a('number');"
+          }
+        }
+      }
+    },
+    {
+      "_id": "req_biome_delete",
+      "parentId": "fld_biomes",
+      "_type": "request",
+      "name": "Delete biome",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/biomes/{{ response 'req_biome_create' 'body' 'items.0.id' }}",
+      "headers": [],
+      "settingStore": {
+        "request": {
+          "test": {
+            "code": "expect(response.status).to.equal(200);"
+          }
+        }
+      }
+    },
+    {
+      "_id": "fld_species",
+      "parentId": "wrk_game_database",
+      "_type": "request_group",
+      "name": "Species"
+    },
+    {
+      "_id": "req_species_create",
+      "parentId": "fld_species",
+      "_type": "request",
+      "name": "Create species",
+      "method": "POST",
+      "url": "{{ _.base_url }}/species",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"scientificName\": \"Canis lupus\",\n  \"commonName\": \"Wolf\"\n}"
+      },
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "settingStore": {
+        "request": {
+          "test": {
+            "code": "const payload = JSON.parse(response.body);\nexpect(response.status).to.equal(201);\nexpect(payload.items).to.be.an('array');"
+          }
+        }
+      }
+    },
+    {
+      "_id": "req_species_update",
+      "parentId": "fld_species",
+      "_type": "request",
+      "name": "Update species",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/species/{{ response 'req_species_create' 'body' 'items.0.id' }}",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"scientificName\": \"Canis lupus\",\n  \"commonName\": \"Grey Wolf\"\n}"
+      },
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "settingStore": {
+        "request": {
+          "test": {
+            "code": "const payload = JSON.parse(response.body);\nexpect(response.status).to.equal(200);\nexpect(payload.total).to.be.a('number');"
+          }
+        }
+      }
+    },
+    {
+      "_id": "req_species_delete",
+      "parentId": "fld_species",
+      "_type": "request",
+      "name": "Delete species",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/species/{{ response 'req_species_create' 'body' 'items.0.id' }}",
+      "headers": [],
+      "settingStore": {
+        "request": {
+          "test": {
+            "code": "expect(response.status).to.equal(200);"
+          }
+        }
+      }
+    },
+    {
+      "_id": "fld_ecosystems",
+      "parentId": "wrk_game_database",
+      "_type": "request_group",
+      "name": "Ecosystems"
+    },
+    {
+      "_id": "req_ecosystem_create",
+      "parentId": "fld_ecosystems",
+      "_type": "request",
+      "name": "Create ecosystem",
+      "method": "POST",
+      "url": "{{ _.base_url }}/ecosystems",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Yellowstone\"\n}"
+      },
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "settingStore": {
+        "request": {
+          "test": {
+            "code": "const payload = JSON.parse(response.body);\nexpect(response.status).to.equal(201);\nexpect(payload.items).to.be.an('array');"
+          }
+        }
+      }
+    },
+    {
+      "_id": "req_ecosystem_update",
+      "parentId": "fld_ecosystems",
+      "_type": "request",
+      "name": "Update ecosystem",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/ecosystems/{{ response 'req_ecosystem_create' 'body' 'items.0.id' }}",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Yellowstone\",\n  \"climate\": \"Cold\"\n}"
+      },
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "settingStore": {
+        "request": {
+          "test": {
+            "code": "const payload = JSON.parse(response.body);\nexpect(response.status).to.equal(200);\nexpect(payload.pageSize).to.be.a('number');"
+          }
+        }
+      }
+    },
+    {
+      "_id": "req_ecosystem_delete",
+      "parentId": "fld_ecosystems",
+      "_type": "request",
+      "name": "Delete ecosystem",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/ecosystems/{{ response 'req_ecosystem_create' 'body' 'items.0.id' }}",
+      "headers": [],
+      "settingStore": {
+        "request": {
+          "test": {
+            "code": "expect(response.status).to.equal(200);"
+          }
+        }
+      }
+    }
+  ]
+}
