@@ -30,7 +30,7 @@ cp .env.example .env  # compila DATABASE_URL, API_TOKEN (e opzionalmente PORT)
 npm i
 npx prisma generate
 npx prisma migrate dev -n init
-npm run prisma:seed   # opzionale: 200 record demo
+npm run prisma:seed   # opzionale: record demo + tassonomia base
 node index.js         # http://localhost:3333
 ```
 
@@ -53,6 +53,16 @@ cd ../server
 node scripts/ingest/import-taxonomy.js --repo /percorso/al/tuo/repo --dry-run --verbose
 node scripts/ingest/import-taxonomy.js --repo /percorso/al/tuo/repo --verbose
 ```
+
+### Dati caricati dal seed Prisma
+
+`npm run prisma:seed` popola il database con:
+
+- 200 record di esempio per testare rapidamente la dashboard.
+- Tassonomia minima condivisa (trait, biomi, specie ed ecosistemi) con slug coerenti e descrizioni climatiche realistiche.
+- Valori associati (trait per specie, associazioni specie ↔ biomi ed ecosistemi ↔ biomi) utili alla UI per mostrare relazioni già pronte.
+
+Lo script utilizza `upsert` per rendere l'operazione idempotente: puoi rilanciarlo in sicurezza per ripristinare l'ambiente di sviluppo.
 
 ### Senza Docker (Postgres installato manualmente)
 
