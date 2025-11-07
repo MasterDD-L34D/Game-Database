@@ -1,6 +1,7 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { ColumnDef, createColumnHelper } from '@tanstack/react-table';
 import { useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import ListPage from './ListPage';
 import type { Species } from '../lib/taxonomy';
 import { listSpecies } from '../lib/taxonomy';
@@ -8,14 +9,6 @@ import { listSpecies } from '../lib/taxonomy';
 const DEFAULT_PAGE_SIZE = 25;
 
 const h = createColumnHelper<Species>();
-const columns: ColumnDef<Species, any>[] = [
-  h.accessor('scientificName', { header: 'Nome scientifico', cell: (i) => i.getValue() }),
-  h.accessor('commonName', { header: 'Nome comune', cell: (i) => i.getValue() ?? '' }),
-  h.accessor('family', { header: 'Famiglia', cell: (i) => i.getValue() ?? '' }),
-  h.accessor('genus', { header: 'Genere', cell: (i) => i.getValue() ?? '' }),
-  h.accessor('status', { header: 'Stato', cell: (i) => i.getValue() ?? '' }),
-];
-
 function parseNumber(value: string | null, fallback: number) {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
@@ -23,9 +16,21 @@ function parseNumber(value: string | null, fallback: number) {
 
 export default function SpeciesListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { t } = useTranslation('taxonomy');
   const initialQuery = searchParams.get('q') ?? '';
   const initialPage = parseNumber(searchParams.get('page'), 0);
   const initialPageSize = parseNumber(searchParams.get('pageSize'), DEFAULT_PAGE_SIZE);
+
+  const columns = useMemo<ColumnDef<Species, any>[]>(
+    () => [
+      h.accessor('scientificName', { header: t('species.columns.scientificName'), cell: (i) => i.getValue() }),
+      h.accessor('commonName', { header: t('species.columns.commonName'), cell: (i) => i.getValue() ?? '' }),
+      h.accessor('family', { header: t('species.columns.family'), cell: (i) => i.getValue() ?? '' }),
+      h.accessor('genus', { header: t('species.columns.genus'), cell: (i) => i.getValue() ?? '' }),
+      h.accessor('status', { header: t('species.columns.status'), cell: (i) => i.getValue() ?? '' }),
+    ],
+    [t],
+  );
 
   const handleStateChange = useCallback(
     (state: { query: string; page: number; pageSize: number }) => {
@@ -43,7 +48,7 @@ export default function SpeciesListPage() {
 
   return (
     <ListPage<Species>
-      title="Specie"
+      title={t('species.title')}
       columns={columns}
       fetcher={listSpecies}
       queryKeyBase={['species']}

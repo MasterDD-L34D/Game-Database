@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { getRecord } from '../../../lib/records';
 import type { RecordRow } from '../../../types/record';
 import { df } from '../../../lib/formatters';
@@ -33,6 +34,7 @@ type DetailItem = { label: string; value: string };
 export default function RecordDetailsPage() {
   const navigate = useNavigate();
   const { recordId } = useParams<{ recordId: string }>();
+  const { t } = useTranslation(['records', 'common', 'navigation']);
 
   const {
     data,
@@ -52,30 +54,30 @@ export default function RecordDetailsPage() {
   const infoItems = useMemo<DetailItem[]>(() => {
     if (!record) return [];
     return [
-      { label: 'Stato', value: formatText(record.stato) },
-      { label: 'Descrizione', value: formatText(record.descrizione) },
-      { label: 'Data', value: formatDate(record.data) },
-      { label: 'Stile', value: formatText(record.stile) },
-      { label: 'Pattern', value: formatText(record.pattern) },
-      { label: 'Peso', value: formatText(record.peso) },
-      { label: 'Curvatura', value: formatText(record.curvatura) },
-      { label: 'Creato da', value: formatText(record.createdBy) },
-      { label: 'Aggiornato da', value: formatText(record.updatedBy) },
-      { label: 'Creato il', value: formatDate(record.createdAt) },
-      { label: 'Aggiornato il', value: formatDate(record.updatedAt) },
+      { label: t('records:common.fields.status'), value: formatText(record.stato) },
+      { label: t('records:common.fields.description'), value: formatText(record.descrizione) },
+      { label: t('records:common.fields.date'), value: formatDate(record.data) },
+      { label: t('records:common.fields.style'), value: formatText(record.stile) },
+      { label: t('records:common.fields.pattern'), value: formatText(record.pattern) },
+      { label: t('records:common.fields.weight'), value: formatText(record.peso) },
+      { label: t('records:common.fields.curvature'), value: formatText(record.curvatura) },
+      { label: t('records:common.fields.createdBy'), value: formatText(record.createdBy) },
+      { label: t('records:common.fields.updatedBy'), value: formatText(record.updatedBy) },
+      { label: t('records:common.fields.createdAt'), value: formatDate(record.createdAt) },
+      { label: t('records:common.fields.updatedAt'), value: formatDate(record.updatedAt) },
     ];
-  }, [record]);
+  }, [record, t]);
 
-  const breadcrumbLabel = record?.nome ?? (isLoading ? 'Caricamento…' : 'Dettagli');
+  const breadcrumbLabel = record?.nome ?? (isLoading ? t('common:status.loading') : t('records:details.breadcrumbFallback'));
 
   return (
     <Stack spacing={3}>
       <Breadcrumbs aria-label="breadcrumb">
         <MuiLink component={RouterLink} color="inherit" to="/">
-          Dashboard
+          {t('navigation:dashboard')}
         </MuiLink>
         <MuiLink component={RouterLink} color="inherit" to="/records">
-          Record
+          {t('records:common.records')}
         </MuiLink>
         <Typography color="text.primary">{breadcrumbLabel}</Typography>
       </Breadcrumbs>
@@ -83,10 +85,10 @@ export default function RecordDetailsPage() {
       {!recordId ? (
         <Paper className="p-4">
           <Stack spacing={2}>
-            <Alert severity="error">Identificativo record non valido.</Alert>
+            <Alert severity="error">{t('records:details.invalidId')}</Alert>
             <div>
               <Button variant="contained" onClick={() => navigate('/records')}>
-                Torna all'elenco
+                {t('common:actions.backToList')}
               </Button>
             </div>
           </Stack>
@@ -101,40 +103,40 @@ export default function RecordDetailsPage() {
             >
               <div className="flex-1">
                 <Typography variant="h5" component="h1">
-                  {record?.nome ?? 'Dettagli record'}
+                  {record?.nome ?? t('records:details.titleFallback')}
                 </Typography>
                 {record?.updatedAt ? (
                   <Typography variant="body2" color="text.secondary">
-                    Aggiornato il {formatDate(record.updatedAt)}
+                    {t('records:details.updatedAt', { date: formatDate(record.updatedAt) })}
                   </Typography>
                 ) : null}
               </div>
               <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
                 <Button variant="outlined" onClick={() => navigate('/records')}>
-                  Torna all'elenco
+                  {t('common:actions.backToList')}
                 </Button>
                 <Button
                   variant="contained"
                   onClick={() => navigate(`/records/${recordId}/edit`)}
                   disabled={isLoading || isFetching || isError}
                 >
-                  Modifica
+                  {t('common:actions.edit')}
                 </Button>
               </Stack>
             </Stack>
 
-            {(isLoading || isFetching) && <LinearProgress aria-label="Caricamento record" />}
+            {(isLoading || isFetching) && <LinearProgress aria-label={t('records:details.loading')} />}
 
             {isError ? (
               <Alert
                 severity="error"
                 action={
                   <Button color="inherit" size="small" onClick={() => refetch()}>
-                    Riprova
+                    {t('common:actions.retry')}
                   </Button>
                 }
               >
-                {error instanceof Error ? error.message : 'Impossibile caricare il record.'}
+                {error instanceof Error ? error.message : t('common:feedback.recordLoadError')}
               </Alert>
             ) : null}
 

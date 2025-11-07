@@ -1,6 +1,7 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { ColumnDef, createColumnHelper } from '@tanstack/react-table';
 import { useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import ListPage from './ListPage';
 import type { Ecosystem } from '../lib/taxonomy';
 import { listEcosystems } from '../lib/taxonomy';
@@ -8,13 +9,6 @@ import { listEcosystems } from '../lib/taxonomy';
 const DEFAULT_PAGE_SIZE = 25;
 
 const h = createColumnHelper<Ecosystem>();
-const columns: ColumnDef<Ecosystem, any>[] = [
-  h.accessor('name', { header: 'Nome', cell: (i) => i.getValue() }),
-  h.accessor('region', { header: 'Regione', cell: (i) => i.getValue() ?? '' }),
-  h.accessor('climate', { header: 'Clima', cell: (i) => i.getValue() ?? '' }),
-  h.accessor('description', { header: 'Descrizione', cell: (i) => i.getValue() ?? '' }),
-];
-
 function parseNumber(value: string | null, fallback: number) {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
@@ -22,9 +16,20 @@ function parseNumber(value: string | null, fallback: number) {
 
 export default function EcosystemListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { t } = useTranslation('taxonomy');
   const initialQuery = searchParams.get('q') ?? '';
   const initialPage = parseNumber(searchParams.get('page'), 0);
   const initialPageSize = parseNumber(searchParams.get('pageSize'), DEFAULT_PAGE_SIZE);
+
+  const columns = useMemo<ColumnDef<Ecosystem, any>[]>(
+    () => [
+      h.accessor('name', { header: t('ecosystems.columns.name'), cell: (i) => i.getValue() }),
+      h.accessor('region', { header: t('ecosystems.columns.region'), cell: (i) => i.getValue() ?? '' }),
+      h.accessor('climate', { header: t('ecosystems.columns.climate'), cell: (i) => i.getValue() ?? '' }),
+      h.accessor('description', { header: t('ecosystems.columns.description'), cell: (i) => i.getValue() ?? '' }),
+    ],
+    [t],
+  );
 
   const handleStateChange = useCallback(
     (state: { query: string; page: number; pageSize: number }) => {
@@ -42,7 +47,7 @@ export default function EcosystemListPage() {
 
   return (
     <ListPage<Ecosystem>
-      title="Ecosistemi"
+      title={t('ecosystems.title')}
       columns={columns}
       fetcher={listEcosystems}
       queryKeyBase={['ecosystems']}

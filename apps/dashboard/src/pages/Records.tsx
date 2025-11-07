@@ -5,6 +5,7 @@ import ExportMenu from '../components/ExportMenu';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { Stile, Pattern, Peso, Curvatura } from '../types/record';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { listRecords } from '../lib/records';
 import FilterChips from '../components/FilterChips';
 import FilterSidebar from '../components/FilterSidebar';
@@ -19,6 +20,7 @@ export default function Records() {
   const [openFilters, setOpenFilters] = useState(false);
   const { query, setQuery, commitQuery, debouncedQuery } = useSearch();
   const [filters, setFilters] = useState<{ stile?: Stile; pattern?: Pattern; peso?: Peso; curvatura?: Curvatura }>({});
+  const { t } = useTranslation(['records', 'common']);
 
   useEffect(() => {
     const fromUrl: any = {
@@ -52,12 +54,12 @@ export default function Records() {
 
   const chips = useMemo(() => {
     const map: { label: string; value: string }[] = [];
-    if (filters.stile) map.push({ label: `Stile: ${filters.stile}`, value: 'stile' });
-    if (filters.pattern) map.push({ label: `Pattern: ${filters.pattern}`, value: 'pattern' });
-    if (filters.peso) map.push({ label: `Peso: ${filters.peso}`, value: 'peso' });
-    if (filters.curvatura) map.push({ label: `Curvatura: ${filters.curvatura}`, value: 'curvatura' });
+    if (filters.stile) map.push({ label: t('records:list.chips.stile', { value: filters.stile }), value: 'stile' });
+    if (filters.pattern) map.push({ label: t('records:list.chips.pattern', { value: filters.pattern }), value: 'pattern' });
+    if (filters.peso) map.push({ label: t('records:list.chips.peso', { value: filters.peso }), value: 'peso' });
+    if (filters.curvatura) map.push({ label: t('records:list.chips.curvatura', { value: filters.curvatura }), value: 'curvatura' });
     return map;
-  }, [filters]);
+  }, [filters, t]);
 
   function buildServerQuery() {
     const usp = new URLSearchParams();
@@ -83,12 +85,27 @@ export default function Records() {
   return (
     <Paper className="p-4">
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }} className="mb-2">
-        <Typography variant="h6">Record</Typography>
+        <Typography variant="h6">{t('records:list.title')}</Typography>
         <Box flex={1} />
-        <TextField size="small" placeholder="Cerca" value={query} onChange={handleInputChange} onKeyDown={handleInputKeyDown} onBlur={handleInputBlur} />
-        <Button variant="outlined" onClick={()=>setOpenFilters(true)}>Filtri</Button>
-        <ExportMenu filename="record" rows={items} serverQuery={buildServerQuery()} fields={[{ key: 'id', label: 'ID' }, { key: 'nome', label: 'Nome' }, { key: 'stile', label: 'Stile' }, { key: 'pattern', label: 'Pattern' }, { key: 'peso', label: 'Peso' }, { key: 'curvatura', label: 'Curvatura' }, { key: 'stato', label: 'Stato' }, { key: 'createdBy', label: 'Creato da' }, { key: 'updatedAt', label: 'Aggiornato il' }]} />
-        <Button variant="contained" onClick={()=>navigate('/records/new')}>Aggiungi</Button>
+        <TextField size="small" placeholder={t('common:search.placeholder')} value={query} onChange={handleInputChange} onKeyDown={handleInputKeyDown} onBlur={handleInputBlur} />
+        <Button variant="outlined" onClick={()=>setOpenFilters(true)}>{t('records:list.filtersButton')}</Button>
+        <ExportMenu
+          filename={t('records:list.exportFilename')}
+          rows={items}
+          serverQuery={buildServerQuery()}
+          fields={[
+            { key: 'id', label: t('records:common.fields.id') },
+            { key: 'nome', label: t('records:common.fields.name') },
+            { key: 'stile', label: t('records:common.fields.style') },
+            { key: 'pattern', label: t('records:common.fields.pattern') },
+            { key: 'peso', label: t('records:common.fields.weight') },
+            { key: 'curvatura', label: t('records:common.fields.curvature') },
+            { key: 'stato', label: t('records:common.fields.status') },
+            { key: 'createdBy', label: t('records:common.fields.createdBy') },
+            { key: 'updatedAt', label: t('records:common.fields.updatedAt') },
+          ]}
+        />
+        <Button variant="contained" onClick={()=>navigate('/records/new')}>{t('common:actions.add')}</Button>
       </Stack>
       <FilterChips filters={chips} onRemove={(key)=>setFilters((f)=>({ ...f, [key]: undefined }))} />
       <FilterSidebar open={openFilters} value={filters} onChange={setFilters} onClear={()=>setFilters({})} onClose={()=>setOpenFilters(false)} />

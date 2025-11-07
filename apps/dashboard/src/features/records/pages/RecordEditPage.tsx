@@ -16,6 +16,7 @@ import {
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { getRecord, updateRecord } from '../../../lib/records';
 import type { RecordRow, Curvatura, Pattern, Peso, Stile } from '../../../types/record';
 
@@ -55,6 +56,7 @@ export default function RecordEditPage() {
   const queryClient = useQueryClient();
   const [successOpen, setSuccessOpen] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const { t } = useTranslation(['records', 'common', 'navigation']);
 
   const {
     data,
@@ -117,7 +119,7 @@ export default function RecordEditPage() {
       setSuccessOpen(true);
     },
     onError: (err: unknown) => {
-      setSubmitError(err instanceof Error ? err.message : 'Errore durante il salvataggio.');
+      setSubmitError(err instanceof Error ? err.message : t('records:edit.error'));
     },
   });
 
@@ -127,30 +129,30 @@ export default function RecordEditPage() {
     mutation.mutate(normalizePatch(values));
   });
 
-  const breadcrumbLabel = record?.nome ?? (isLoading ? 'Caricamento…' : 'Modifica');
+  const breadcrumbLabel = record?.nome ?? (isLoading ? t('common:status.loading') : t('records:edit.breadcrumb'));
 
   return (
     <Stack spacing={3} component="section" aria-live="polite">
       <Breadcrumbs aria-label="breadcrumb">
         <MuiLink component={RouterLink} color="inherit" to="/">
-          Dashboard
+          {t('navigation:dashboard')}
         </MuiLink>
         <MuiLink component={RouterLink} color="inherit" to="/records">
-          Record
+          {t('records:common.records')}
         </MuiLink>
         <MuiLink component={RouterLink} color="inherit" to={recordId ? `/records/${recordId}` : '/records'}>
           {breadcrumbLabel}
         </MuiLink>
-        <Typography color="text.primary">Modifica</Typography>
+        <Typography color="text.primary">{t('records:edit.breadcrumb')}</Typography>
       </Breadcrumbs>
 
       {!recordId ? (
         <Paper className="p-4">
           <Stack spacing={2}>
-            <Alert severity="error">Identificativo record non valido.</Alert>
+            <Alert severity="error">{t('records:edit.invalidId')}</Alert>
             <div>
               <Button variant="contained" onClick={() => navigate('/records')}>
-                Torna all'elenco
+                {t('common:actions.backToList')}
               </Button>
             </div>
           </Stack>
@@ -165,15 +167,15 @@ export default function RecordEditPage() {
             >
               <div className="flex-1">
                 <Typography variant="h5" component="h1">
-                  Modifica record
+                  {t('records:edit.title')}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Aggiorna le informazioni del record esistente.
+                  {t('records:edit.subtitle')}
                 </Typography>
               </div>
               <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
                 <Button variant="outlined" onClick={() => navigate(recordId ? `/records/${recordId}` : '/records')}>
-                  Annulla
+                  {t('common:actions.cancel')}
                 </Button>
                 <Button
                   type="submit"
@@ -181,23 +183,23 @@ export default function RecordEditPage() {
                   variant="contained"
                   disabled={mutation.isPending || isLoading || isFetching}
                 >
-                  Salva modifiche
+                  {t('common:actions.saveChanges')}
                 </Button>
               </Stack>
             </Stack>
 
-            {(isLoading || isFetching) && <LinearProgress aria-label="Caricamento record" />}
+            {(isLoading || isFetching) && <LinearProgress aria-label={t('records:edit.loading')} />}
 
             {isError ? (
               <Alert
                 severity="error"
                 action={
                   <Button color="inherit" size="small" onClick={() => refetch()}>
-                    Riprova
+                    {t('common:actions.retry')}
                   </Button>
                 }
               >
-                {error instanceof Error ? error.message : 'Impossibile caricare il record.'}
+                {error instanceof Error ? error.message : t('common:feedback.recordLoadError')}
               </Alert>
             ) : null}
 
@@ -208,8 +210,8 @@ export default function RecordEditPage() {
                   <Grid container spacing={2}>
                     <Grid item xs={12} md={6}>
                       <TextField
-                        label="Nome"
-                        placeholder="Inserisci il nome"
+                        label={t('records:edit.fields.name.label')}
+                        placeholder={t('records:edit.fields.name.placeholder')}
                         fullWidth
                         required
                         disabled={mutation.isPending}
@@ -218,7 +220,7 @@ export default function RecordEditPage() {
                     </Grid>
                     <Grid item xs={12} md={6}>
                       <TextField
-                        label="Stato"
+                        label={t('records:edit.fields.status')}
                         select
                         fullWidth
                         disabled={mutation.isPending}
@@ -233,8 +235,8 @@ export default function RecordEditPage() {
                     </Grid>
                     <Grid item xs={12}>
                       <TextField
-                        label="Descrizione"
-                        placeholder="Aggiungi una descrizione"
+                        label={t('records:edit.fields.description.label')}
+                        placeholder={t('records:edit.fields.description.placeholder')}
                         fullWidth
                         multiline
                         minRows={3}
@@ -244,7 +246,7 @@ export default function RecordEditPage() {
                     </Grid>
                     <Grid item xs={12} md={6}>
                       <TextField
-                        label="Data"
+                        label={t('records:edit.fields.date')}
                         type="date"
                         fullWidth
                         InputLabelProps={{ shrink: true }}
@@ -254,7 +256,7 @@ export default function RecordEditPage() {
                     </Grid>
                     <Grid item xs={12} md={6}>
                       <TextField
-                        label="Stile"
+                        label={t('records:edit.fields.style')}
                         select
                         fullWidth
                         disabled={mutation.isPending}
@@ -262,14 +264,14 @@ export default function RecordEditPage() {
                       >
                         {stileOptions.map((option) => (
                           <MenuItem key={option || 'none'} value={option}>
-                            {option || '—'}
+                            {option || t('records:edit.emptyOption')}
                           </MenuItem>
                         ))}
                       </TextField>
                     </Grid>
                     <Grid item xs={12} md={6}>
                       <TextField
-                        label="Pattern"
+                        label={t('records:edit.fields.pattern')}
                         select
                         fullWidth
                         disabled={mutation.isPending}
@@ -277,14 +279,14 @@ export default function RecordEditPage() {
                       >
                         {patternOptions.map((option) => (
                           <MenuItem key={option || 'none'} value={option}>
-                            {option || '—'}
+                            {option || t('records:edit.emptyOption')}
                           </MenuItem>
                         ))}
                       </TextField>
                     </Grid>
                     <Grid item xs={12} md={6}>
                       <TextField
-                        label="Peso"
+                        label={t('records:edit.fields.weight')}
                         select
                         fullWidth
                         disabled={mutation.isPending}
@@ -292,14 +294,14 @@ export default function RecordEditPage() {
                       >
                         {pesoOptions.map((option) => (
                           <MenuItem key={option || 'none'} value={option}>
-                            {option || '—'}
+                            {option || t('records:edit.emptyOption')}
                           </MenuItem>
                         ))}
                       </TextField>
                     </Grid>
                     <Grid item xs={12} md={6}>
                       <TextField
-                        label="Curvatura"
+                        label={t('records:edit.fields.curvature')}
                         select
                         fullWidth
                         disabled={mutation.isPending}
@@ -307,7 +309,7 @@ export default function RecordEditPage() {
                       >
                         {curvaturaOptions.map((option) => (
                           <MenuItem key={option || 'none'} value={option}>
-                            {option || '—'}
+                            {option || t('records:edit.emptyOption')}
                           </MenuItem>
                         ))}
                       </TextField>
@@ -327,7 +329,7 @@ export default function RecordEditPage() {
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
         <Alert onClose={() => setSuccessOpen(false)} severity="success" variant="filled" sx={{ width: '100%' }}>
-          Record aggiornato con successo.
+          {t('records:edit.success')}
         </Alert>
       </Snackbar>
     </Stack>

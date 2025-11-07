@@ -1,6 +1,7 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { ColumnDef, createColumnHelper } from '@tanstack/react-table';
 import { useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import ListPage from './ListPage';
 import type { Trait } from '../lib/taxonomy';
 import { listTraits } from '../lib/taxonomy';
@@ -8,14 +9,6 @@ import { listTraits } from '../lib/taxonomy';
 const DEFAULT_PAGE_SIZE = 25;
 
 const h = createColumnHelper<Trait>();
-const columns: ColumnDef<Trait, any>[] = [
-  h.accessor('name', { header: 'Nome', cell: (i) => i.getValue() }),
-  h.accessor('slug', { header: 'Slug', cell: (i) => i.getValue() }),
-  h.accessor('category', { header: 'Categoria', cell: (i) => i.getValue() ?? '' }),
-  h.accessor('dataType', { header: 'Tipo dato', cell: (i) => i.getValue() }),
-  h.accessor('unit', { header: 'Unità', cell: (i) => i.getValue() ?? '' }),
-];
-
 function parseNumber(value: string | null, fallback: number) {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
@@ -23,9 +16,21 @@ function parseNumber(value: string | null, fallback: number) {
 
 export default function TraitListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { t } = useTranslation('taxonomy');
   const initialQuery = searchParams.get('q') ?? '';
   const initialPage = parseNumber(searchParams.get('page'), 0);
   const initialPageSize = parseNumber(searchParams.get('pageSize'), DEFAULT_PAGE_SIZE);
+
+  const columns = useMemo<ColumnDef<Trait, any>[]>(
+    () => [
+      h.accessor('name', { header: t('traits.columns.name'), cell: (i) => i.getValue() }),
+      h.accessor('slug', { header: t('traits.columns.slug'), cell: (i) => i.getValue() }),
+      h.accessor('category', { header: t('traits.columns.category'), cell: (i) => i.getValue() ?? '' }),
+      h.accessor('dataType', { header: t('traits.columns.dataType'), cell: (i) => i.getValue() }),
+      h.accessor('unit', { header: t('traits.columns.unit'), cell: (i) => i.getValue() ?? '' }),
+    ],
+    [t],
+  );
 
   const handleStateChange = useCallback(
     (state: { query: string; page: number; pageSize: number }) => {
@@ -43,7 +48,7 @@ export default function TraitListPage() {
 
   return (
     <ListPage<Trait>
-      title="Trait"
+      title={t('traits.title')}
       columns={columns}
       fetcher={listTraits}
       queryKeyBase={['traits']}

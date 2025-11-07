@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, ty
 import { Alert, Paper, Stack, TextField, Typography } from '@mui/material';
 import { ColumnDef, type PaginationState } from '@tanstack/react-table';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import DataTable from '../components/data-table/DataTable';
 import { useSearch } from '../providers/SearchProvider';
 
@@ -33,6 +34,7 @@ export default function ListPage<T extends { id?: string }>({
   onStateChange,
 }: ListPageProps<T>) {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   const [criteria, setCriteria] = useState<CriteriaState>({ query: initialQuery, page: initialPage, pageSize: initialPageSize });
   const { query: searchValue, debouncedQuery, setQuery, commitQuery } = useSearch();
   const shouldFetchRef = useRef<boolean>(autoloadOnMount);
@@ -147,7 +149,7 @@ export default function ListPage<T extends { id?: string }>({
         <div className="flex-1" />
         <TextField
           size="small"
-          placeholder="Cerca"
+          placeholder={t('common:search.placeholder')}
           value={searchValue}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
@@ -155,7 +157,7 @@ export default function ListPage<T extends { id?: string }>({
       </Stack>
       {isError && !isFetching && (
         <Alert severity="error" className="mb-3">
-          {error instanceof Error ? error.message : 'Impossibile caricare i dati.'}
+          {error instanceof Error ? error.message : t('common:feedback.loadError')}
         </Alert>
       )}
       <DataTable<T>
@@ -167,7 +169,7 @@ export default function ListPage<T extends { id?: string }>({
         onPaginationChange={handlePaginationChange}
       />
       {!autoloadOnMount && !hasSearched && !isFetching && (
-        <div className="text-sm text-gray-500 mt-2">Premi Invio per cercare.</div>
+        <div className="text-sm text-gray-500 mt-2">{t('common:search.pressEnter')}</div>
       )}
     </Paper>
   );

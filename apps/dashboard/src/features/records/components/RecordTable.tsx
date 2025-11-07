@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Box } from '@mui/material';
 import { ColumnDef, ColumnPinningState, ColumnSizingState, RowSelectionState, VisibilityState, createColumnHelper } from '@tanstack/react-table';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import DataTable from '../../../components/data-table/DataTable';
 import RecordToolbar from '../../../components/RecordToolbar';
 import type { RecordRow } from '../../../types/record';
@@ -23,6 +24,7 @@ const columnHelper = createColumnHelper<RecordRow>();
 export default function RecordTable({ data, total, loading }: Props) {
   const queryClient = useQueryClient();
   const deleteMutation = useDeleteRecordsMutation();
+  const { t } = useTranslation('records');
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -63,21 +65,21 @@ export default function RecordTable({ data, total, loading }: Props) {
   }, [selectedRows]);
 
   const columns = useMemo<ColumnDef<RecordRow, any>[]>(() => [
-    columnHelper.accessor('nome', { header: 'Nome', cell: (info) => info.getValue(), enableSorting: true }),
-    columnHelper.accessor('stile', { header: 'Stile', cell: (info) => info.getValue() ?? '', enableSorting: true }),
-    columnHelper.accessor('pattern', { header: 'Pattern', cell: (info) => info.getValue() ?? '', enableSorting: true }),
-    columnHelper.accessor('peso', { header: 'Peso', cell: (info) => info.getValue() ?? '', enableSorting: true }),
-    columnHelper.accessor('curvatura', { header: 'Curvatura', cell: (info) => info.getValue() ?? '', enableSorting: true }),
-    columnHelper.accessor('stato', { header: 'Stato', cell: (info) => info.getValue(), enableSorting: true }),
-    columnHelper.accessor('createdBy', { header: 'Creato da', cell: (info) => info.getValue() ?? '', enableSorting: true }),
+    columnHelper.accessor('nome', { header: t('table.columns.nome'), cell: (info) => info.getValue(), enableSorting: true }),
+    columnHelper.accessor('stile', { header: t('table.columns.stile'), cell: (info) => info.getValue() ?? '', enableSorting: true }),
+    columnHelper.accessor('pattern', { header: t('table.columns.pattern'), cell: (info) => info.getValue() ?? '', enableSorting: true }),
+    columnHelper.accessor('peso', { header: t('table.columns.peso'), cell: (info) => info.getValue() ?? '', enableSorting: true }),
+    columnHelper.accessor('curvatura', { header: t('table.columns.curvatura'), cell: (info) => info.getValue() ?? '', enableSorting: true }),
+    columnHelper.accessor('stato', { header: t('table.columns.stato'), cell: (info) => info.getValue(), enableSorting: true }),
+    columnHelper.accessor('createdBy', { header: t('table.columns.createdBy'), cell: (info) => info.getValue() ?? '', enableSorting: true }),
     columnHelper.accessor('updatedAt', {
-      header: 'Aggiornato il',
+      header: t('table.columns.updatedAt'),
       cell: (info) => (info.getValue() ? df.format(new Date(info.getValue() as string)) : ''),
       enableSorting: true,
     }),
     columnHelper.display({
       id: 'actions',
-      header: () => <Box textAlign="right">Azioni</Box>,
+      header: () => <Box textAlign="right">{t('table.columns.actions')}</Box>,
       cell: ({ row }) => (
         <Box textAlign="right">
           <RecordRowActions record={row.original} onDelete={handleDeleteRecord} />
@@ -85,25 +87,25 @@ export default function RecordTable({ data, total, loading }: Props) {
       ),
       enableSorting: false,
     }),
-  ], [handleDeleteRecord]);
+  ], [handleDeleteRecord, t]);
 
   const pinnedLeft = columnPinning.left ?? [];
   const pinnedRight = columnPinning.right ?? [];
   const columnsMeta = useMemo(() => [
-    { id: 'nome', label: 'Nome' },
-    { id: 'stile', label: 'Stile' },
-    { id: 'pattern', label: 'Pattern' },
-    { id: 'peso', label: 'Peso' },
-    { id: 'curvatura', label: 'Curvatura' },
-    { id: 'stato', label: 'Stato' },
-    { id: 'createdBy', label: 'Creato da' },
-    { id: 'updatedAt', label: 'Aggiornato il' },
-    { id: 'actions', label: 'Azioni' },
+    { id: 'nome', label: t('table.columns.nome') },
+    { id: 'stile', label: t('table.columns.stile') },
+    { id: 'pattern', label: t('table.columns.pattern') },
+    { id: 'peso', label: t('table.columns.peso') },
+    { id: 'curvatura', label: t('table.columns.curvatura') },
+    { id: 'stato', label: t('table.columns.stato') },
+    { id: 'createdBy', label: t('table.columns.createdBy') },
+    { id: 'updatedAt', label: t('table.columns.updatedAt') },
+    { id: 'actions', label: t('table.columns.actions') },
   ].map((column) => ({
     ...column,
     visible: columnVisibility[column.id] !== false,
     pinned: pinnedLeft.includes(column.id) ? 'left' : pinnedRight.includes(column.id) ? 'right' : false,
-  })), [columnVisibility, pinnedLeft, pinnedRight]);
+  })), [columnVisibility, pinnedLeft, pinnedRight, t]);
 
   const handleBulkStatusChange = useCallback(async (next: 'Attivo' | 'Bozza' | 'Archiviato') => {
     if (!selectedRows.length) return;

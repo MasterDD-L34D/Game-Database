@@ -1,19 +1,24 @@
 
 import { Alert, Button, Card, CardContent, Skeleton, Stack, Typography } from '@mui/material';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useDashboardStats } from '../features/dashboard/hooks';
-
-const METRICS = [
-  { key: 'totalRecords', label: 'Record totali' },
-  { key: 'newRecords', label: 'Novità' },
-  { key: 'errorRecords', label: 'Errori' },
-] as const;
 
 export default function DashboardPage() {
   const { data, isLoading, isError, error, refetch } = useDashboardStats();
+  const { t } = useTranslation(['dashboard', 'common']);
+
+  const metrics = useMemo(
+    () => [
+      { key: 'totalRecords', label: t('dashboard:metrics.totalRecords') },
+      { key: 'newRecords', label: t('dashboard:metrics.newRecords') },
+      { key: 'errorRecords', label: t('dashboard:metrics.errorRecords') },
+    ] as const,
+    [t],
+  );
 
   const stats = useMemo(() => {
-    return METRICS.map((metric) => {
+    return metrics.map((metric) => {
       const raw = data?.[metric.key];
       return {
         ...metric,
@@ -21,7 +26,7 @@ export default function DashboardPage() {
         trend: raw?.trend ?? undefined,
       };
     });
-  }, [data]);
+  }, [data, metrics]);
 
   return (
     <Stack spacing={3}>
@@ -30,11 +35,11 @@ export default function DashboardPage() {
           severity="error"
           action={
             <Button color="inherit" size="small" onClick={() => refetch()}>
-              Riprova
+              {t('common:actions.retry')}
             </Button>
           }
         >
-          {error?.message || 'Caricamento statistiche non riuscito.'}
+          {error?.message || t('dashboard:errors.loadFailed')}
         </Alert>
       ) : null}
 
@@ -49,7 +54,7 @@ export default function DashboardPage() {
                 <Skeleton variant="text" width="60%" height={40} className="mt-1" />
               ) : (
                 <Typography variant="h5" className="mt-1">
-                  {s.value != null ? s.value.toLocaleString('it-IT') : '—'}
+                  {s.value != null ? s.value.toLocaleString('it-IT') : t('common:generic.notAvailable')}
                 </Typography>
               )}
               {isLoading ? (
