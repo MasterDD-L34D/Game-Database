@@ -15,6 +15,9 @@ export function listRecords(params: { q?: string; page?: number; pageSize?: numb
   return fetchJSON<ListResponse<RecordRow>>(`/records?${usp.toString()}`);
 }
 export function createRecord(body: Omit<RecordRow, 'id'|'createdAt'|'updatedAt'>) { return postJSON<typeof body, RecordRow>('/records', body); }
+export function getRecord(id: string) {
+  return fetchJSON<RecordRow>(`/records/${id}`);
+}
 export async function updateRecord(id: string, patch: Partial<RecordRow>) {
   return fetchJSON<RecordRow>(`/records/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
 }
