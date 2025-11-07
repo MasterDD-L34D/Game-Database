@@ -1,7 +1,7 @@
 
 import { Paper, Stack, Typography, Button, Menu, MenuItem, ListItemIcon, ListItemText, Checkbox, Divider } from '@mui/material';
 import { useState } from 'react';
-import { AdjustmentsHorizontalIcon, ViewColumnsIcon } from 'lucide-react';
+import { Columns3Icon, SlidersHorizontalIcon } from 'lucide-react';
 import ExportMenu from './ExportMenu';
 
 export type ColumnToggle = { id: string; label: string; visible: boolean; pinned?: 'left'|'right'|false };
@@ -35,7 +35,7 @@ export default function RecordToolbar<T>({ total, selectedCount, density, onDens
         <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ xs: 'stretch', md: 'center' }} spacing={2}>
           <Typography variant="body2">Totale: <strong>{total}</strong></Typography>
           <div>
-            <Button size="small" variant="outlined" startIcon={<ViewColumnsIcon className="h-4 w-4" />} onClick={(e)=>setAnchorCols(e.currentTarget)}>Colonne / Pin</Button>
+            <Button size="small" variant="outlined" startIcon={<Columns3Icon className="h-4 w-4" />} onClick={(e)=>setAnchorCols(e.currentTarget)}>Colonne / Pin</Button>
             <Menu anchorEl={anchorCols} open={colsOpen} onClose={()=>setAnchorCols(null)}>
               {columns.map(c => (
                 <MenuItem key={c.id} onClick={()=>onToggleColumn(c.id, !c.visible)}>
@@ -56,7 +56,7 @@ export default function RecordToolbar<T>({ total, selectedCount, density, onDens
               ))}
             </Menu>
           </div>
-          <Button size="small" variant="outlined" startIcon={<AdjustmentsHorizontalIcon className="h-4 w-4" />} onClick={()=>onDensityChange(density === 'compact' ? 'normal' : 'compact')}>Densità: {density === 'compact' ? 'Compatta' : 'Normale'}</Button>
+          <Button size="small" variant="outlined" startIcon={<SlidersHorizontalIcon className="h-4 w-4" />} onClick={()=>onDensityChange(density === 'compact' ? 'normal' : 'compact')}>Densità: {density === 'compact' ? 'Compatta' : 'Normale'}</Button>
         </Stack>
       )}
     </Paper>
