@@ -7,6 +7,7 @@ import { RouterProvider } from 'react-router-dom';
 import './index.css';
 import { theme } from './theme';
 import { router } from './routes';
+import { SnackbarProvider } from './components/SnackbarProvider';
 import './i18n';
 
 const qc = new QueryClient();
@@ -15,7 +16,9 @@ createRoot(document.getElementById('root')!).render(
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <QueryClientProvider client={qc}>
-        <RouterProvider router={router} />
+        <SnackbarProvider>
+          <RouterProvider router={router} />
+        </SnackbarProvider>
       </QueryClientProvider>
     </ThemeProvider>
   </StrictMode>
