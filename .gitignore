@@ -12,6 +12,7 @@ build
 .env
 .env.*
 apps/**/.env*
+!apps/**/.env*.example
 server/.env
 
 # Editor
