@@ -7,7 +7,6 @@ Queste istruzioni descrivono come applicare le migrazioni Prisma e rilanciare il
 | Nome | Descrizione |
 | --- | --- |
 | `DATABASE_URL` | Connessione PostgreSQL che Prisma utilizza (es. `postgresql://postgres:postgres@localhost:5432/game?schema=public`). |
-| `API_TOKEN` | Token API che il backend richiede per le mutazioni (può essere un valore di test in locale). |
 | `PORT` | Porta esposta da Express. Facoltativa (default `3333`). |
 
 > Copia `server/.env.example` in `server/.env` e compila le variabili con valori validi. In Docker puoi sovrascriverle tramite `environment:` nel `docker-compose.yml`.

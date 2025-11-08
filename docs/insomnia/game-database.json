@@ -17,8 +17,7 @@
       "_type": "environment",
       "name": "Base Environment",
       "data": {
-        "base_url": "http://localhost:3333/api",
-        "api_token": ""
+        "base_url": "http://localhost:3333/api"
       }
     },
     {
@@ -46,8 +45,7 @@
         "text": "{\n  \"name\": \"Body Size\",\n  \"dataType\": \"NUMERIC\",\n  \"rangeMin\": 0,\n  \"rangeMax\": 100\n}"
       },
       "headers": [
-        { "name": "Content-Type", "value": "application/json" },
-        { "name": "Authorization", "value": "Bearer {{ _.api_token }}", "disabled": true }
+        { "name": "Content-Type", "value": "application/json" }
       ],
       "settingStore": {
         "request": {
