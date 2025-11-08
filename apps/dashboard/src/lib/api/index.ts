@@ -1,4 +1,6 @@
 
+import { NetworkError } from './errors';
+
 const BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 const USER = import.meta.env.VITE_API_USER as string | undefined;
 
@@ -8,8 +10,19 @@ function authHeaders() {
   } as Record<string, string>;
 }
 
+async function executeFetch(path: string, init?: RequestInit) {
+  try {
+    return await fetch(`${BASE}${path}`, init);
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new NetworkError('Unable to reach the API server.', { cause: error });
+    }
+    throw error;
+  }
+}
+
 export async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await executeFetch(path, {
     headers: { 'Content-Type': 'application/json', ...authHeaders(), ...(init?.headers || {}) },
     ...init,
   });
@@ -19,7 +32,7 @@ export async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T>
 
 export async function postJSON<TReq, TRes = unknown>(path: string, body: TReq, init?: RequestInit): Promise<TRes> {
   const method = init?.method ?? 'POST';
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await executeFetch(path, {
     ...init,
     method,
     headers: { 'Content-Type': 'application/json', ...authHeaders(), ...(init?.headers || {}) },
@@ -31,7 +44,7 @@ export async function postJSON<TReq, TRes = unknown>(path: string, body: TReq, i
 }
 
 export async function deleteJSON(path: string, init?: RequestInit): Promise<void> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await executeFetch(path, {
     ...init,
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json', ...authHeaders(), ...(init?.headers || {}) },
