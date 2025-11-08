@@ -8,6 +8,7 @@ const traitsRouter = require('./routes/traits');
 const biomesRouter = require('./routes/biomes');
 const speciesRouter = require('./routes/species');
 const ecosystemsRouter = require('./routes/ecosystems');
+const dashboardRouter = require('./routes/dashboard');
 
 function createApp() {
   const app = express();
@@ -26,6 +27,7 @@ function createApp() {
   app.use(express.json());
 
   app.use('/api', auth, user);
+  app.use('/api/dashboard', dashboardRouter);
   app.use('/api/records', recordsRouter);
   app.use('/api/traits', traitsRouter);
   app.use('/api/biomes', biomesRouter);
