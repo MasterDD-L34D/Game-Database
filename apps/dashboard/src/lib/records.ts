@@ -1,5 +1,5 @@
 
-import { fetchJSON, postJSON } from './api';
+import { deleteJSON, fetchJSON, postJSON } from './api';
 import type { RecordRow, Stile, Pattern, Peso, Curvatura } from '../types/record';
 export type ListResponse<T> = { items: T[]; page: number; pageSize: number; total: number };
 export function listRecords(params: { q?: string; page?: number; pageSize?: number; sort?: string; stile?: Stile; pattern?: Pattern; peso?: Peso; curvatura?: Curvatura; }) {
@@ -18,10 +18,12 @@ export function createRecord(body: Omit<RecordRow, 'id'|'createdAt'|'updatedAt'>
 export function getRecord(id: string) {
   return fetchJSON<RecordRow>(`/records/${id}`);
 }
-export async function updateRecord(id: string, patch: Partial<RecordRow>) {
-  return fetchJSON<RecordRow>(`/records/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
+export function updateRecord(id: string, patch: Partial<RecordRow>) {
+  return fetchJSON<RecordRow>(`/records/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
 }
-export async function deleteRecord(id: string): Promise<void> {
-  const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/api'}/records/${id}`, { method: 'DELETE', headers: {} });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+export function deleteRecord(id: string): Promise<void> {
+  return deleteJSON(`/records/${id}`);
 }
