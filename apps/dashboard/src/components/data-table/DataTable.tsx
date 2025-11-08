@@ -67,6 +67,7 @@ export default function DataTable<TData extends { id?: string }>({
                     const sortable = header.column.getCanSort(); const isSorted = header.column.getIsSorted(); const pin = header.column.getIsPinned(); const width = header.column.getSize();
                     const stickyStyles = pin === 'left' ? { position: 'sticky', left: leftOffsetFor(header.column.id), zIndex: 2 }
                       : pin === 'right' ? { position: 'sticky', right: rightOffsetFor(header.column.id), zIndex: 2 } : {};
+                    const resizeHandler = header.getResizeHandler();
                     return (
                       <TableCell key={header.id} onClick={sortable ? header.column.getToggleSortingHandler() : undefined}
                         sx={{ top: 0, position: 'sticky', backgroundColor: 'background.paper', cursor: sortable ? 'pointer' : 'default', ...stickyStyles, width, minWidth: width }}
@@ -74,7 +75,7 @@ export default function DataTable<TData extends { id?: string }>({
                         <div className={clsx('flex items-center gap-1 select-none relative')}>
                           {flexRender(header.column.columnDef.header, header.getContext())}
                           {sortable && (isSorted === 'asc' ? <ArrowUpIcon className="h-4 w-4" /> : isSorted === 'desc' ? <ArrowDownIcon className="h-4 w-4" /> : <ChevronUpDownIcon className="h-4 w-4 text-gray-400" />)}
-                          <Box component="span" onMouseDown={header.getResizeHandler()} onTouchStart={header.getResizeHandler()} sx={{ position: 'absolute', right: -3, top: 0, height: '100%', width: 6, cursor: 'col-resize', userSelect: 'none' }} />
+                          <Box component="span" onMouseDown={resizeHandler} onTouchStart={resizeHandler} sx={{ position: 'absolute', right: -3, top: 0, height: '100%', width: 6, cursor: 'col-resize', userSelect: 'none' }} />
                         </div>
                       </TableCell>
                     );
