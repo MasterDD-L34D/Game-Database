@@ -74,7 +74,7 @@ export default function DataTable<TData extends { id?: string }>({
                         <div className={clsx('flex items-center gap-1 select-none relative')}>
                           {flexRender(header.column.columnDef.header, header.getContext())}
                           {sortable && (isSorted === 'asc' ? <ArrowUpIcon className="h-4 w-4" /> : isSorted === 'desc' ? <ArrowDownIcon className="h-4 w-4" /> : <ChevronUpDownIcon className="h-4 w-4 text-gray-400" />)}
-                          <Box component="span" onMouseDown={header.column.getResizeHandler()} onTouchStart={header.column.getResizeHandler()} sx={{ position: 'absolute', right: -3, top: 0, height: '100%', width: 6, cursor: 'col-resize', userSelect: 'none' }} />
+                          <Box component="span" onMouseDown={header.getResizeHandler()} onTouchStart={header.getResizeHandler()} sx={{ position: 'absolute', right: -3, top: 0, height: '100%', width: 6, cursor: 'col-resize', userSelect: 'none' }} />
                         </div>
                       </TableCell>
                     );
