@@ -21,7 +21,6 @@ services:
     command: ["npm", "run", "dev"]
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/game?schema=public
-      API_TOKEN: dev-docker-token
       PORT: 3333
     volumes:
       - ./server:/app

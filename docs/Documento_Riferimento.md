@@ -4,7 +4,7 @@
 **Frontend:** React + TypeScript + Tailwind + MUI + TanStack Table  
 **Backend:** Express + Prisma + PostgreSQL  
 **Dati:** Record + (Trait, Biome, Species, Ecosystem)  
-**Feature chiave:** Filtri, top bar contestuale, resize/pin colonne, export server streaming, auth token, audit, import taxonomy.
+**Feature chiave:** Filtri, top bar contestuale, resize/pin colonne, export server streaming, audit, import taxonomy.
 
 Per setup e flussi vedi README alla radice.
 

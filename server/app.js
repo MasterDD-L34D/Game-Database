@@ -1,6 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const auth = require('./middleware/auth');
 const user = require('./middleware/user');
 
 const recordsRouter = require('./routes/records');
@@ -12,21 +11,23 @@ const dashboardRouter = require('./routes/dashboard');
 
 function createApp() {
   const app = express();
-  app.use(cors({
-    origin: true,
-    credentials: false,
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'X-User',
-      'X-User-Email',
-      'X-Roles',
-      'X-User-Roles',
-    ],
-  }));
+  app.use(
+    cors({
+      origin: true,
+      credentials: false,
+      allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'X-User',
+        'X-User-Email',
+        'X-Roles',
+        'X-User-Roles',
+      ],
+    }),
+  );
   app.use(express.json());
 
-  app.use('/api', auth, user);
+  app.use('/api', user);
   app.use('/api/dashboard', dashboardRouter);
   app.use('/api/records', recordsRouter);
   app.use('/api/traits', traitsRouter);

@@ -6,7 +6,7 @@ Repository pronto per l'uso che unisce:
 - **API** Express + Prisma (PostgreSQL)
 - **Modelli taxonomy**: Trait, Biome, Species, Ecosystem
 - **Import tool**: script per importare dati taxonomy (JSON/YAML/Markdown/CSV)
-- **Autenticazione** a token + Audit (createdBy/updatedBy)
+- **Audit** (createdBy/updatedBy) tracciato tramite header opzionale
 
 ## Avvio rapido
 
@@ -26,7 +26,7 @@ docker compose up -d
 ### 2) Server API
 ```bash
 cd server
-cp .env.example .env  # compila DATABASE_URL, API_TOKEN (e opzionalmente PORT)
+cp .env.example .env  # compila DATABASE_URL (e opzionalmente PORT)
 npm i
 npm run dev:setup     # migrate deploy + seed (idempotente)
 npm run dev           # http://localhost:3333
@@ -35,13 +35,10 @@ npm run dev           # http://localhost:3333
 > Lo script `npm run dev:setup` esegue `prisma generate`, applica le migrazioni con `prisma migrate deploy` e lancia `prisma db seed`.
 > Per creare nuove migrazioni durante lo sviluppo continua a usare `npm run prisma:migrate`.
 
-#### Ruoli e permessi API
+#### Audit opzionale
 
-- Imposta `API_TOKEN` in `.env` e invia l'header `Authorization: Bearer <token>` (o `X-API-Key`) per qualsiasi mutazione.
-- Le richieste devono includere anche l'identità dell'operatore (`X-User`) per tracciare `createdBy`/`updatedBy` e i log di audit.
-- Le mutazioni di tassonomia (`/api/traits`, `/api/biomes`, `/api/species`, `/api/ecosystems`) richiedono almeno uno dei ruoli `admin`, `taxonomy:manage` o `taxonomy:write` nell'header `X-Roles` (valori separati da virgola).
-  - In sviluppo puoi configurare il frontend impostando `VITE_API_ROLES` (es. `taxonomy:manage,admin`) nel file `.env.local`.
-  - Richieste prive di tali ruoli ricevono `403 Forbidden` prima di raggiungere il database.
+- Se desideri tracciare chi esegue le mutazioni, invia l'header `X-User` con un identificativo (es. email).
+- L'header viene propagato su `createdBy`/`updatedBy` e nei log di audit, ma non è obbligatorio.
 
 ### 3) Dashboard
 ```bash
@@ -53,9 +50,7 @@ npm run dev           # http://localhost:5174
 
 > Copia `.env.local.example` in `.env.local` e aggiorna i valori necessari:
 > - `VITE_API_BASE_URL` per puntare al server (default: `http://localhost:3333/api`).
-> - `VITE_API_TOKEN` se usi endpoint protetti da token.
-> - `VITE_API_USER` per indicare l'identità delle operazioni registrate.
-> - `VITE_API_ROLES` per aggiungere i ruoli necessari alle mutazioni protette (`admin`, `taxonomy:manage`, `taxonomy:write`, ...).
+> - `VITE_API_USER` per indicare l'identità delle operazioni registrate (facoltativo).
 
 ### 4) Import taxonomy (opzionale)
 ```bash

@@ -9,7 +9,6 @@ export default function ExportMenu<T>({ filename, rows, fields, serverQuery }: {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [busy, setBusy] = useState(false);
   const open = Boolean(anchorEl);
-  const token = import.meta.env.VITE_API_TOKEN as string | undefined;
   const { t } = useTranslation(['export', 'common']);
 
   function downloadText(name: string, mime: string, text: string){
@@ -25,7 +24,7 @@ export default function ExportMenu<T>({ filename, rows, fields, serverQuery }: {
     const url = `${base}/records/export?${qs.toString()}`;
     setBusy(true);
     try {
-      const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const cd = res.headers.get('content-disposition'); const fallback = `${filename}.${fmt}`;
       const match = cd && /filename="([^"]+)"/i.exec(cd); const name = match?.[1] || fallback;
