@@ -11,12 +11,13 @@ Repository pronto per l'uso che unisce:
 ## Avvio rapido
 
 ### 0) Requisiti
-- Node 18+
-- Docker Desktop (Windows/macOS) oppure Docker Engine + Docker Compose plugin (Linux)
-- In alternativa a Docker: un'istanza PostgreSQL 15 raggiungibile localmente
+- **Windows 10/11** con [PowerShell 7+](https://learn.microsoft.com/powershell/scripting/install/installing-powershell) (le istruzioni riportano i comandi PowerShell)
+- [Node.js 18+](https://nodejs.org/en/download)
+- [Docker Desktop per Windows](https://www.docker.com/products/docker-desktop/)
+- In alternativa a Docker Desktop: un'istanza PostgreSQL 15 raggiungibile localmente
 
 ### 1) Database (Postgres in dev)
-```bash
+```powershell
 docker compose up -d
 ```
 
@@ -24,12 +25,12 @@ docker compose up -d
 > Se non puoi usare Docker/Docker Desktop, segui la procedura "Senza Docker" più in basso.
 
 ### 2) Server API
-```bash
-cd server
-cp .env.example .env  # compila DATABASE_URL (e opzionalmente PORT)
-npm i
-npm run dev:setup     # migrate deploy + seed (idempotente)
-npm run dev           # http://localhost:3333
+```powershell
+Set-Location server
+Copy-Item .env.example .env    # compila DATABASE_URL (e opzionalmente PORT)
+npm install
+npm run dev:setup              # migrate deploy + seed (idempotente)
+npm run dev                    # http://localhost:3333
 ```
 
 > Lo script `npm run dev:setup` esegue `prisma generate`, applica le migrazioni con `prisma migrate deploy` e lancia `prisma db seed`.
@@ -41,11 +42,11 @@ npm run dev           # http://localhost:3333
 - L'header viene propagato su `createdBy`/`updatedBy` e nei log di audit, ma non è obbligatorio.
 
 ### 3) Dashboard
-```bash
-cd ../apps/dashboard
-cp .env.local.example .env.local
-npm i
-npm run dev           # http://localhost:5174
+```powershell
+Set-Location ..\apps\dashboard
+Copy-Item .env.local.example .env.local
+npm install
+npm run dev                    # http://localhost:5174
 ```
 
 > Copia `.env.local.example` in `.env.local` e aggiorna i valori necessari:
@@ -53,10 +54,10 @@ npm run dev           # http://localhost:5174
 > - `VITE_API_USER` per indicare l'identità delle operazioni registrate (facoltativo).
 
 ### 4) Import taxonomy (opzionale)
-```bash
-cd ../server
-node scripts/ingest/import-taxonomy.js --repo /percorso/al/tuo/repo --dry-run --verbose
-node scripts/ingest/import-taxonomy.js --repo /percorso/al/tuo/repo --verbose
+```powershell
+Set-Location ..\server
+node scripts/ingest/import-taxonomy.js --repo C:\percorso\al\tuo\repo --dry-run --verbose
+node scripts/ingest/import-taxonomy.js --repo C:\percorso\al\tuo\repo --verbose
 ```
 
 ### Ripopolamento database
@@ -76,8 +77,8 @@ Lo script utilizza `upsert` per rendere l'operazione idempotente: puoi rilanciar
 ### Senza Docker (Postgres installato manualmente)
 
 1. Installa PostgreSQL 15 (o compatibile) e assicurati che il server sia in esecuzione.
-2. Crea un database, ad esempio `game_db`, e un utente con privilegi completi:
-   ```bash
+2. Apri **SQL Shell (psql)** o una PowerShell con gli strumenti di PostgreSQL nella variabile d'ambiente `PATH`, quindi crea un database e un utente con privilegi completi:
+   ```powershell
    createuser --interactive --pwprompt game_admin
    createdb --owner=game_admin game_db
    ```
@@ -86,12 +87,12 @@ Lo script utilizza `upsert` per rendere l'operazione idempotente: puoi rilanciar
    DATABASE_URL="postgresql://game_admin:<password>@localhost:5432/game_db?schema=public"
    ```
 4. Procedi con la sezione "Server API" più sopra (generate/migrate/seed). Se usi un'altra porta/host, sincronizza la variabile `VITE_API_BASE_URL` nel file `apps/dashboard/.env.local`.
-5. Se desideri arrestare il server PostgreSQL, utilizza i comandi standard del sistema operativo (`pg_ctl`, `systemctl stop postgresql`, ecc.).
+5. Se desideri arrestare il server PostgreSQL, utilizza gli strumenti Windows dedicati (es. **Services.msc**, `Stop-Service postgresql-x64-15`, oppure `pg_ctl stop`).
 
 > Se intendi lavorare in team, documenta nel tuo `.env` le eventuali variazioni di porta o credenziali.
 
 ## Pubblicazione su un nuovo repo
-```bash
+```powershell
 git init
 git add .
 git commit -m "feat: initial standalone dashboard + api + taxonomy"
