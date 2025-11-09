@@ -6,6 +6,7 @@ const recordsRouter = require('./routes/records');
 const traitsRouter = require('./routes/traits');
 const biomesRouter = require('./routes/biomes');
 const speciesRouter = require('./routes/species');
+const speciesTraitsRouter = require('./routes/speciesTraits');
 const ecosystemsRouter = require('./routes/ecosystems');
 const dashboardRouter = require('./routes/dashboard');
 
@@ -33,6 +34,7 @@ function createApp() {
   app.use('/api/traits', traitsRouter);
   app.use('/api/biomes', biomesRouter);
   app.use('/api/species', speciesRouter);
+  app.use('/api/species-traits', speciesTraitsRouter);
   app.use('/api/ecosystems', ecosystemsRouter);
 
   return app;
