@@ -11,6 +11,7 @@ import * as recordsApi from '../../lib/records';
 import { theme } from '../../theme';
 
 const recordTableMock = vi.fn();
+const exportMenuMock = vi.fn();
 
 vi.mock('../../lib/records', async () => {
   const actual = await vi.importActual<typeof import('../../lib/records')>('../../lib/records');
@@ -44,12 +45,21 @@ vi.mock('../../features/records/components/RecordTable', () => ({
   },
 }));
 
+vi.mock('../../components/ExportMenu', () => ({
+  __esModule: true,
+  default: (props: any) => {
+    exportMenuMock(props);
+    return <div data-testid="export-menu-mock" />;
+  },
+}));
+
 const listRecordsMock = recordsApi.listRecords as unknown as Mock;
 
 describe('Records page', () => {
   beforeEach(() => {
     listRecordsMock.mockReset();
     recordTableMock.mockClear();
+    exportMenuMock.mockClear();
     listRecordsMock.mockImplementation(async (params: { page: number; pageSize: number }) => ({
       items: [
         { id: '1', nome: `Record pagina ${params.page + 1}`, stato: 'Attivo' } satisfies RecordRow,
@@ -119,6 +129,13 @@ describe('Records page', () => {
     });
 
     expect(listRecordsMock.mock.calls.at(-1)?.[0]).toMatchObject({ page: 0, sort: 'nome:asc' });
+
+    await waitFor(() => {
+      expect(exportMenuMock).toHaveBeenCalled();
+    });
+    const serverQuery = exportMenuMock.mock.calls.at(-1)?.[0]?.serverQuery as string | undefined;
+    expect(serverQuery).toBeDefined();
+    expect(serverQuery).toContain('sort=nome%3Aasc');
   });
 
   it('resets the current page when search changes', async () => {

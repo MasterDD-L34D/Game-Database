@@ -99,4 +99,15 @@ describe('records API helpers', () => {
       },
     });
   });
+
+  it('serializes the sort parameter when building server queries', async () => {
+    vi.resetModules();
+
+    const { buildServerQuery } = await import('./records');
+
+    const qs = buildServerQuery({ sort: 'nome:desc', pattern: 'Monolinea' });
+
+    expect(qs).toContain('sort=nome%3Adesc');
+    expect(qs).toContain('pattern=Monolinea');
+  });
 });
