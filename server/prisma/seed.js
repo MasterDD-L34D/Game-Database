@@ -1,4 +1,4 @@
-const { PrismaClient, Presence } = require('@prisma/client');
+const { PrismaClient, Presence, Role } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
@@ -478,6 +478,37 @@ const ECOSYSTEM_BIOMES = [
   },
 ];
 
+const ECOSYSTEM_SPECIES = [
+  {
+    ecosystemSlug: SLUGS.ECOSYSTEMS.BOREAL_PARK,
+    speciesSlug: SLUGS.SPECIES.EURASIAN_LYNX,
+    role: Role.keystone,
+    abundance: 0.45,
+    notes: 'Predatore apicale che regola le popolazioni di ungulati.',
+  },
+  {
+    ecosystemSlug: SLUGS.ECOSYSTEMS.BOREAL_PARK,
+    speciesSlug: SLUGS.SPECIES.PEREGRINE_FALCON,
+    role: Role.dominant,
+    abundance: 0.2,
+    notes: 'Rapace notato lungo le pareti rocciose e le zone riparie.',
+  },
+  {
+    ecosystemSlug: SLUGS.ECOSYSTEMS.DELTA_WETLAND,
+    speciesSlug: SLUGS.SPECIES.EUROPEAN_POND_TURTLE,
+    role: Role.engineer,
+    abundance: 0.6,
+    notes: 'Specie ingegnere che crea tane e microhabitat nelle aree umide.',
+  },
+  {
+    ecosystemSlug: SLUGS.ECOSYSTEMS.ALPINE_CHAIN,
+    speciesSlug: SLUGS.SPECIES.PEREGRINE_FALCON,
+    role: Role.common,
+    abundance: 0.35,
+    notes: 'Presenza regolare sulle creste alpine e nelle vallate aperte.',
+  },
+];
+
 async function seedRecords() {
   await prisma.record.deleteMany({});
   const data = Array.from({ length: 200 }).map((_, i) => {
@@ -587,6 +618,31 @@ async function upsertEcosystemBiomes(ecosystemMap, biomeMap) {
   }
 }
 
+async function upsertEcosystemSpecies(ecosystemMap, speciesMap) {
+  for (const entry of ECOSYSTEM_SPECIES) {
+    const ecosystem = ensureEntity(ecosystemMap, entry.ecosystemSlug, 'Ecosistema');
+    const species = ensureEntity(speciesMap, entry.speciesSlug, 'Specie');
+    const data = cleanData({ ...entry });
+    delete data.ecosystemSlug;
+    delete data.speciesSlug;
+    await prisma.ecosystemSpecies.upsert({
+      where: {
+        ecosystemId_speciesId_role: {
+          ecosystemId: ecosystem.id,
+          speciesId: species.id,
+          role: data.role,
+        },
+      },
+      update: data,
+      create: {
+        ecosystemId: ecosystem.id,
+        speciesId: species.id,
+        ...data,
+      },
+    });
+  }
+}
+
 async function main() {
   const recordsCount = await seedRecords();
   const traitMap = await upsertBySlug(prisma.trait, TRAITS_DATA);
@@ -596,15 +652,22 @@ async function main() {
   await upsertSpeciesTraits(speciesMap, traitMap);
   await upsertSpeciesBiomes(speciesMap, biomeMap);
   await upsertEcosystemBiomes(ecosystemMap, biomeMap);
+  await upsertEcosystemSpecies(ecosystemMap, speciesMap);
   const summary = {
     records: recordsCount,
     traits: Object.keys(traitMap).length,
     biomes: Object.keys(biomeMap).length,
     species: Object.keys(speciesMap).length,
     ecosystems: Object.keys(ecosystemMap).length,
+    speciesBiomes: SPECIES_BIOMES.length,
+    ecosystemBiomes: ECOSYSTEM_BIOMES.length,
+    ecosystemSpecies: ECOSYSTEM_SPECIES.length,
   };
   console.log(
     `Seed completato: ${summary.records} record, ${summary.traits} trait, ${summary.biomes} biomi, ${summary.species} specie e ${summary.ecosystems} ecosistemi.`,
+  );
+  console.log(
+    `Relazioni: ${summary.speciesBiomes} specie↔biomi, ${summary.ecosystemBiomes} ecosistemi↔biomi, ${summary.ecosystemSpecies} ecosistemi↔specie.`,
   );
 }
 
