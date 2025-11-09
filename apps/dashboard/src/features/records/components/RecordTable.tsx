@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Box } from '@mui/material';
-import { ColumnDef, ColumnPinningState, ColumnSizingState, RowSelectionState, VisibilityState, createColumnHelper } from '@tanstack/react-table';
+import { ColumnDef, ColumnPinningState, ColumnSizingState, PaginationState, RowSelectionState, SortingState, VisibilityState, createColumnHelper } from '@tanstack/react-table';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import DataTable from '../../../components/data-table/DataTable';
@@ -16,12 +16,15 @@ type Props = {
   data: RecordRow[];
   total: number;
   loading?: boolean;
+  pagination?: PaginationState;
+  onPaginationChange?: (updater: PaginationState | ((prev: PaginationState) => PaginationState)) => void;
+  onSortChange?: (sorting: SortingState) => void;
 };
 
 const TABLE_KEY = 'records-table-v1';
 const columnHelper = createColumnHelper<RecordRow>();
 
-export default function RecordTable({ data, total, loading }: Props) {
+export default function RecordTable({ data, total, loading, pagination, onPaginationChange, onSortChange }: Props) {
   const queryClient = useQueryClient();
   const deleteMutation = useDeleteRecordsMutation();
   const { t } = useTranslation('records');
@@ -157,6 +160,10 @@ export default function RecordTable({ data, total, loading }: Props) {
           columns={columns}
           loading={loading}
           density={density}
+          pagination={pagination}
+          onPaginationChange={onPaginationChange}
+          total={total}
+          onSortChange={onSortChange}
           rowSelection={rowSelection}
           onRowSelectionChange={setRowSelection}
           columnVisibility={columnVisibility}

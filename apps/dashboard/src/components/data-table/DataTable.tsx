@@ -17,6 +17,7 @@ type Props<TData extends { id?: string }> = {
   columnPinning?: ColumnPinningState; onColumnPinningChange?: any;
   getRowId?: (originalRow: TData, index: number) => string;
   pagination?: PaginationState; onPaginationChange?: (updater: PaginationState | ((prev: PaginationState) => PaginationState)) => void;
+  total?: number; onSortChange?: (sorting: SortingState) => void;
 };
 
 export default function DataTable<TData extends { id?: string }>({
@@ -26,10 +27,12 @@ export default function DataTable<TData extends { id?: string }>({
   columnSizing: extColSize, onColumnSizingChange: setExtColSize,
   columnPinning: extColPin, onColumnPinningChange: setExtColPin,
   pagination: extPagination, onPaginationChange: setExtPagination,
+  total,
+  onSortChange,
   getRowId,
 }: Props<TData>) {
   const { t } = useTranslation('table');
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSortingState] = useState<SortingState>([]);
   const [intPagination, setIntPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: pageSizeOptions[0] });
   const pagination = extPagination ?? intPagination; const setPagination = setExtPagination ?? setIntPagination;
   const [intRowSel, setIntRowSel] = useState<RowSelectionState>({}); const rowSelection = extRowSel ?? intRowSel; const setRowSelection = setExtRowSel ?? setIntRowSel;
@@ -37,15 +40,23 @@ export default function DataTable<TData extends { id?: string }>({
   const [intColSize, setIntColSize] = useState<ColumnSizingState>({}); const columnSizing = extColSize ?? intColSize; const setColumnSizing = setExtColSize ?? setIntColSize;
   const [intColPin, setIntColPin] = useState<ColumnPinningState>({ left: [], right: [] }); const columnPinning = extColPin ?? intColPin; const setColumnPinning = setExtColPin ?? setIntColPin;
 
+  const handleSortingChange = (updater: SortingState | ((prev: SortingState) => SortingState)) => {
+    setSortingState((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      onSortChange?.(next);
+      return next;
+    });
+  };
+
   const table = useReactTable({
     data, columns, state: { sorting, pagination, rowSelection, columnVisibility, columnSizing, columnPinning },
-    onSortingChange: setSorting, onPaginationChange: setPagination, onRowSelectionChange: setRowSelection,
+    onSortingChange: handleSortingChange, onPaginationChange: setPagination, onRowSelectionChange: setRowSelection,
     onColumnVisibilityChange: setColumnVisibility, onColumnSizingChange: setColumnSizing, onColumnPinningChange: setColumnPinning,
     getCoreRowModel: getCoreRowModel(), getSortedRowModel: getSortedRowModel(), getPaginationRowModel: getPaginationRowModel(),
     enableRowSelection: selectable, getRowId: getRowId ?? ((row: any, i) => row.id ?? String(i)), columnResizeMode: 'onChange',
   });
 
-  const rows = table.getRowModel().rows; const count = data.length; const tableSize = density === 'compact' ? 'small' : 'medium';
+  const rows = table.getRowModel().rows; const count = total ?? data.length; const tableSize = density === 'compact' ? 'small' : 'medium';
   const baseLeftOffset = selectable ? 48 : 0;
   function leftOffsetFor(id: string){ const left = table.getState().columnPinning.left ?? []; let offset = baseLeftOffset; for (const colId of left){ if (colId===id) break; const col = table.getColumn(colId); offset += col.getSize(); } return offset; }
   function rightOffsetFor(id: string){ const right = table.getState().columnPinning.right ?? []; let offset = 0; for (const colId of right){ if (colId===id) break; const col = table.getColumn(colId); offset += col.getSize(); } return offset; }
