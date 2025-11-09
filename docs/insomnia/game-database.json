@@ -290,6 +290,252 @@
           }
         }
       }
+    },
+    {
+      "_id": "fld_species_biomes",
+      "parentId": "wrk_game_database",
+      "_type": "request_group",
+      "name": "Species ↔ Biomes"
+    },
+    {
+      "_id": "fld_ecosystem_biomes",
+      "parentId": "wrk_game_database",
+      "_type": "request_group",
+      "name": "Ecosystems ↔ Biomes"
+    },
+    {
+      "_id": "fld_ecosystem_species",
+      "parentId": "wrk_game_database",
+      "_type": "request_group",
+      "name": "Ecosystems ↔ Species"
+    },
+    {
+      "_id": "req_species_biome_list",
+      "parentId": "fld_species_biomes",
+      "_type": "request",
+      "name": "List species↔biomes",
+      "method": "GET",
+      "url": "{{ _.base_url }}/species-biomes",
+      "headers": [],
+      "settingStore": {
+        "request": {
+          "test": {
+            "code": "const payload = JSON.parse(response.body);\nexpect(response.status).to.equal(200);\nexpect(payload).to.be.an('array');"
+          }
+        }
+      }
+    },
+    {
+      "_id": "req_ecosystem_biome_list",
+      "parentId": "fld_ecosystem_biomes",
+      "_type": "request",
+      "name": "List ecosystem↔biomes",
+      "method": "GET",
+      "url": "{{ _.base_url }}/ecosystem-biomes",
+      "headers": [],
+      "settingStore": {
+        "request": {
+          "test": {
+            "code": "const payload = JSON.parse(response.body);\nexpect(response.status).to.equal(200);\nexpect(payload).to.be.an('array');"
+          }
+        }
+      }
+    },
+    {
+      "_id": "req_ecosystem_species_list",
+      "parentId": "fld_ecosystem_species",
+      "_type": "request",
+      "name": "List ecosystem↔species",
+      "method": "GET",
+      "url": "{{ _.base_url }}/ecosystem-species",
+      "headers": [],
+      "settingStore": {
+        "request": {
+          "test": {
+            "code": "const payload = JSON.parse(response.body);\nexpect(response.status).to.equal(200);\nexpect(payload).to.be.an('array');"
+          }
+        }
+      }
+    },
+    {
+      "_id": "req_species_biome_create",
+      "parentId": "fld_species_biomes",
+      "_type": "request",
+      "name": "Create species↔biome",
+      "method": "POST",
+      "url": "{{ _.base_url }}/species-biomes",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"speciesId\": \"{{ response 'req_species_create' 'body' 'items.0.id' }}\",\n  \"biomeId\": \"{{ response 'req_biome_create' 'body' 'items.0.id' }}\",\n  \"presence\": \"resident\",\n  \"abundance\": 0.6,\n  \"notes\": \"Osservazioni stabili nel parco.\"\n}"
+      },
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "settingStore": {
+        "request": {
+          "test": {
+            "code": "const payload = JSON.parse(response.body);\nexpect(response.status).to.equal(201);\nexpect(payload).to.have.property('id');"
+          }
+        }
+      }
+    },
+    {
+      "_id": "req_ecosystem_biome_create",
+      "parentId": "fld_ecosystem_biomes",
+      "_type": "request",
+      "name": "Create ecosystem↔biome",
+      "method": "POST",
+      "url": "{{ _.base_url }}/ecosystem-biomes",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"ecosystemId\": \"{{ response 'req_ecosystem_create' 'body' 'items.0.id' }}\",\n  \"biomeId\": \"{{ response 'req_biome_create' 'body' 'items.0.id' }}\",\n  \"proportion\": 0.45,\n  \"notes\": \"Copertura stimata nel territorio di riferimento.\"\n}"
+      },
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "settingStore": {
+        "request": {
+          "test": {
+            "code": "const payload = JSON.parse(response.body);\nexpect(response.status).to.equal(201);\nexpect(payload).to.have.property('id');"
+          }
+        }
+      }
+    },
+    {
+      "_id": "req_ecosystem_species_create",
+      "parentId": "fld_ecosystem_species",
+      "_type": "request",
+      "name": "Create ecosystem↔species",
+      "method": "POST",
+      "url": "{{ _.base_url }}/ecosystem-species",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"ecosystemId\": \"{{ response 'req_ecosystem_create' 'body' 'items.0.id' }}\",\n  \"speciesId\": \"{{ response 'req_species_create' 'body' 'items.0.id' }}\",\n  \"role\": \"keystone\",\n  \"abundance\": 0.3,\n  \"notes\": \"Specie chiave con ruolo predatorio.\"\n}"
+      },
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "settingStore": {
+        "request": {
+          "test": {
+            "code": "const payload = JSON.parse(response.body);\nexpect(response.status).to.equal(201);\nexpect(payload).to.have.property('id');"
+          }
+        }
+      }
+    },
+    {
+      "_id": "req_species_biome_update",
+      "parentId": "fld_species_biomes",
+      "_type": "request",
+      "name": "Update species↔biome",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/species-biomes/{{ response 'req_species_biome_create' 'body' 'id' }}",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"presence\": \"migrant\",\n  \"abundance\": 0.4,\n  \"notes\": \"Migrazione stagionale verso il bioma adiacente.\"\n}"
+      },
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "settingStore": {
+        "request": {
+          "test": {
+            "code": "const payload = JSON.parse(response.body);\nexpect(response.status).to.equal(200);\nexpect(payload).to.include.keys('id', 'presence');"
+          }
+        }
+      }
+    },
+    {
+      "_id": "req_ecosystem_biome_update",
+      "parentId": "fld_ecosystem_biomes",
+      "_type": "request",
+      "name": "Update ecosystem↔biome",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/ecosystem-biomes/{{ response 'req_ecosystem_biome_create' 'body' 'id' }}",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"proportion\": 0.5,\n  \"notes\": \"Aggiornamento della proporzione rilevata sul campo.\"\n}"
+      },
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "settingStore": {
+        "request": {
+          "test": {
+            "code": "const payload = JSON.parse(response.body);\nexpect(response.status).to.equal(200);\nexpect(payload).to.include.keys('id', 'ecosystemId');"
+          }
+        }
+      }
+    },
+    {
+      "_id": "req_ecosystem_species_update",
+      "parentId": "fld_ecosystem_species",
+      "_type": "request",
+      "name": "Update ecosystem↔species",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/ecosystem-species/{{ response 'req_ecosystem_species_create' 'body' 'id' }}",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"role\": \"dominant\",\n  \"abundance\": 0.45,\n  \"notes\": \"Ruolo aggiornato dopo il monitoraggio annuale.\"\n}"
+      },
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "settingStore": {
+        "request": {
+          "test": {
+            "code": "const payload = JSON.parse(response.body);\nexpect(response.status).to.equal(200);\nexpect(payload).to.include.keys('id', 'role');"
+          }
+        }
+      }
+    },
+    {
+      "_id": "req_species_biome_delete",
+      "parentId": "fld_species_biomes",
+      "_type": "request",
+      "name": "Delete species↔biome",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/species-biomes/{{ response 'req_species_biome_create' 'body' 'id' }}",
+      "headers": [],
+      "settingStore": {
+        "request": {
+          "test": {
+            "code": "expect(response.status).to.equal(204);"
+          }
+        }
+      }
+    },
+    {
+      "_id": "req_ecosystem_biome_delete",
+      "parentId": "fld_ecosystem_biomes",
+      "_type": "request",
+      "name": "Delete ecosystem↔biome",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/ecosystem-biomes/{{ response 'req_ecosystem_biome_create' 'body' 'id' }}",
+      "headers": [],
+      "settingStore": {
+        "request": {
+          "test": {
+            "code": "expect(response.status).to.equal(204);"
+          }
+        }
+      }
+    },
+    {
+      "_id": "req_ecosystem_species_delete",
+      "parentId": "fld_ecosystem_species",
+      "_type": "request",
+      "name": "Delete ecosystem↔species",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/ecosystem-species/{{ response 'req_ecosystem_species_create' 'body' 'id' }}",
+      "headers": [],
+      "settingStore": {
+        "request": {
+          "test": {
+            "code": "expect(response.status).to.equal(204);"
+          }
+        }
+      }
     }
   ]
 }

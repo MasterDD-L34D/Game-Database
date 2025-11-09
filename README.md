@@ -64,6 +64,15 @@ node scripts/ingest/import-taxonomy.js --repo C:\percorso\al\tuo\repo --verbose
 
 Vedi [docs/database-bootstrap.md](docs/database-bootstrap.md) per una guida dettagliata su come ripristinare le tabelle sia in locale sia negli ambienti Docker/staging.
 
+#### Nuovi endpoint relazionali
+
+Per utilizzare gli endpoint `/api/species-biomes`, `/api/ecosystem-biomes` e `/api/ecosystem-species` esegui nuovamente le migrazioni prima del seed:
+
+1. `npm run prisma:migrate deploy`
+2. `npm run prisma:seed` (oppure `npm run dev:setup` per generare client, applicare le migrazioni ed eseguire il seed in un solo passaggio)
+
+Il seed aggiorna le relazioni specie↔biomi ed ecosistemi↔biomi, e ora crea anche associazioni ecosistemi↔specie con dati consistenti per testare subito i nuovi endpoint.
+
 ### Dati caricati dal seed Prisma
 
 `npm run prisma:seed` popola il database con:
