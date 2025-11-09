@@ -7,7 +7,7 @@ import type { Stile, Pattern, Peso, Curvatura } from '../types/record';
 import { useQuery } from '@tanstack/react-query';
 import type { PaginationState, SortingState } from '@tanstack/react-table';
 import { useTranslation } from 'react-i18next';
-import { listRecords, recordsListQueryKey } from '../lib/records';
+import { buildServerQuery, listRecords, recordsListQueryKey } from '../lib/records';
 import FilterChips from '../components/FilterChips';
 import FilterSidebar from '../components/FilterSidebar';
 import RecordTable from '../features/records/components/RecordTable';
@@ -90,12 +90,18 @@ export default function Records() {
     return map;
   }, [filters, t]);
 
-  function buildServerQuery() {
-    const usp = new URLSearchParams();
-    if (debouncedQuery) usp.set('q', debouncedQuery);
-    (['stile','pattern','peso','curvatura'] as const).forEach((k) => { const v = (filters as any)[k]; if (v) usp.set(k, v); });
-    return usp.toString();
-  }
+  const serverQuery = useMemo(
+    () =>
+      buildServerQuery({
+        q: debouncedQuery,
+        sort,
+        stile: filters.stile,
+        pattern: filters.pattern,
+        peso: filters.peso,
+        curvatura: filters.curvatura,
+      }),
+    [debouncedQuery, filters.curvatura, filters.pattern, filters.peso, filters.stile, sort],
+  );
 
   const handleInputChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     setQuery(event.target.value);
@@ -147,7 +153,7 @@ export default function Records() {
         <ExportMenu
           filename={t('records:list.exportFilename')}
           rows={items}
-          serverQuery={buildServerQuery()}
+          serverQuery={serverQuery}
           fields={[
             { key: 'id', label: t('records:common.fields.id') },
             { key: 'nome', label: t('records:common.fields.name') },

@@ -15,23 +15,30 @@ export type ListRecordsParams = {
   curvatura?: Curvatura;
 };
 
+type QueryParamKeys = 'q' | 'page' | 'pageSize' | 'sort' | 'stile' | 'pattern' | 'peso' | 'curvatura';
+type ServerQueryParams = Partial<Pick<ListRecordsParams, QueryParamKeys>>;
+
 export const recordsListBaseKey = ['records', 'list'] as const;
 
 export function recordsListQueryKey(params: ListRecordsParams) {
   return [...recordsListBaseKey, params] as const;
 }
 
-export function listRecords(params: ListRecordsParams) {
+export function buildServerQuery(params: ServerQueryParams) {
   const usp = new URLSearchParams();
   if (params.q) usp.set('q', params.q);
-  usp.set('page', String(params.page));
-  usp.set('pageSize', String(params.pageSize));
+  if (params.page !== undefined) usp.set('page', String(params.page));
+  if (params.pageSize !== undefined) usp.set('pageSize', String(params.pageSize));
   if (params.sort) usp.set('sort', params.sort);
-  if (params.stile) usp.set('stile', params.stile);
-  if (params.pattern) usp.set('pattern', params.pattern);
-  if (params.peso) usp.set('peso', params.peso);
-  if (params.curvatura) usp.set('curvatura', params.curvatura);
-  return fetchJSON<ListResponse<RecordRow>>(`/records?${usp.toString()}`);
+  (['stile', 'pattern', 'peso', 'curvatura'] as const).forEach((key) => {
+    const value = params[key];
+    if (value) usp.set(key, value);
+  });
+  return usp.toString();
+}
+
+export function listRecords(params: ListRecordsParams) {
+  return fetchJSON<ListResponse<RecordRow>>(`/records?${buildServerQuery(params)}`);
 }
 export function createRecord(body: Omit<RecordRow, 'id'|'createdAt'|'updatedAt'>) { return postJSON<typeof body, RecordRow>('/records', body); }
 export function getRecord(id: string) {
