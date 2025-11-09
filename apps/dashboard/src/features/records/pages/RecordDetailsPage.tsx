@@ -16,6 +16,30 @@ import { useTranslation } from 'react-i18next';
 import { getRecord } from '../../../lib/records';
 import type { RecordRow } from '../../../types/record';
 import { df } from '../../../lib/formatters';
+import type { AppTheme } from '../../../theme';
+
+function resolveCardPadding(theme: Partial<AppTheme>): string | number {
+  const spacing = theme.spacing;
+  if (theme.layout?.cardPadding) {
+    return theme.layout.cardPadding;
+  }
+  if (typeof spacing === 'function') {
+    return spacing(3);
+  }
+  return '24px';
+}
+
+function resolveCardShadow(theme: Partial<AppTheme>): string {
+  const customShadow = theme.customShadows?.card;
+  if (customShadow) {
+    return customShadow;
+  }
+  const shadows = theme.shadows;
+  if (Array.isArray(shadows) && typeof shadows[1] === 'string') {
+    return shadows[1];
+  }
+  return 'none';
+}
 
 function formatDate(value?: string | null) {
   if (!value) return '—';
@@ -83,7 +107,13 @@ export default function RecordDetailsPage() {
       </Breadcrumbs>
 
       {!recordId ? (
-        <Paper className="p-4">
+        <Paper
+          sx={(theme) => ({
+            padding: resolveCardPadding(theme as Partial<AppTheme>),
+            boxShadow: resolveCardShadow(theme as Partial<AppTheme>),
+            backgroundColor: theme.palette.background.paper,
+          })}
+        >
           <Stack spacing={2}>
             <Alert severity="error">{t('records:details.invalidId')}</Alert>
             <div>
@@ -94,7 +124,15 @@ export default function RecordDetailsPage() {
           </Stack>
         </Paper>
       ) : (
-        <Paper className="p-4" role="region" aria-live="polite">
+        <Paper
+          role="region"
+          aria-live="polite"
+          sx={(theme) => ({
+            padding: resolveCardPadding(theme as Partial<AppTheme>),
+            boxShadow: resolveCardShadow(theme as Partial<AppTheme>),
+            backgroundColor: theme.palette.background.paper,
+          })}
+        >
           <Stack spacing={3}>
             <Stack
               direction={{ xs: 'column', md: 'row' }}
