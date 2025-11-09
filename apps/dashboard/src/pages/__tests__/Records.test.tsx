@@ -165,6 +165,30 @@ describe('Records page', () => {
     expect(listRecordsMock.mock.calls.at(-1)?.[0]).toMatchObject({ page: 0, q: 'nuovo filtro' });
   });
 
+  it('falls back to default filters when stored filters are invalid JSON', async () => {
+    localStorage.setItem('records-filters-v1', 'not json');
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      renderPage();
+
+      const searchInput = await screen.findByPlaceholderText(/cerca/i);
+      expect(searchInput).toHaveValue('');
+
+      await waitFor(() => {
+        expect(listRecordsMock).toHaveBeenCalledWith(
+          expect.objectContaining({ page: 0, pageSize: 25 }),
+        );
+      });
+
+      await waitFor(() => {
+        expect(warnSpy).toHaveBeenCalled();
+      });
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
   it('shows an error message and allows retrying the fetch', async () => {
     listRecordsMock.mockImplementationOnce(async () => {
       throw new Error('Errore di rete');

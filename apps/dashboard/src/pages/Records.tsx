@@ -38,7 +38,15 @@ export default function Records() {
       curvatura: (searchParams.get('curvatura') as Curvatura) || undefined,
     };
     const savedFilters = localStorage.getItem(FILTERS_KEY);
-    const fStore = savedFilters ? JSON.parse(savedFilters) : {};
+    let fStore: { q?: string; stile?: Stile; pattern?: Pattern; peso?: Peso; curvatura?: Curvatura } = {};
+    if (savedFilters) {
+      try {
+        fStore = JSON.parse(savedFilters) as typeof fStore;
+      } catch (error) {
+        console.warn('Failed to parse saved filters from localStorage', error);
+        fStore = {};
+      }
+    }
     commitQuery(fromUrl.q ?? fStore.q ?? '');
     setFilters({ stile: fromUrl.stile ?? fStore.stile, pattern: fromUrl.pattern ?? fStore.pattern, peso: fromUrl.peso ?? fStore.peso, curvatura: fromUrl.curvatura ?? fStore.curvatura });
     // eslint-disable-next-line react-hooks/exhaustive-deps
