@@ -48,7 +48,7 @@ describe('RecordTable', () => {
             loading={false}
             pagination={pagination}
             onPaginationChange={handlePaginationChange}
-            onSortChange={handleSortChange}
+            onSortingChange={handleSortChange}
           />
         </SnackbarProvider>
       </QueryClientProvider>,
@@ -58,12 +58,12 @@ describe('RecordTable', () => {
     const props = dataTableMock.mock.calls.at(-1)?.[0] as {
       pagination?: PaginationState;
       onPaginationChange?: typeof handlePaginationChange;
-      total?: number;
-      onSortChange?: typeof handleSortChange;
+      totalCount?: number;
+      onSortingChange?: typeof handleSortChange;
     };
     expect(props.pagination).toBe(pagination);
     expect(props.onPaginationChange).toBe(handlePaginationChange);
-    expect(props.total).toBe(100);
-    expect(props.onSortChange).toBe(handleSortChange);
+    expect(props.totalCount).toBe(100);
+    expect(props.onSortingChange).toBe(handleSortChange);
   });
 });

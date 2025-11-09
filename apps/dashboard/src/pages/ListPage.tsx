@@ -292,9 +292,7 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
   );
 
   const handlePaginationChange = useCallback(
-    (updater: PaginationState | ((prev: PaginationState) => PaginationState)) => {
-      const current = { pageIndex: criteria.page, pageSize: criteria.pageSize };
-      const next = typeof updater === 'function' ? (updater as (prev: PaginationState) => PaginationState)(current) : updater;
+    (next: PaginationState) => {
       triggerFetch((prev) => {
         const nextSize = next.pageSize;
         const nextPage = next.pageIndex;
@@ -304,7 +302,7 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
         return { ...prev, page: nextPage };
       });
     },
-    [criteria.page, criteria.pageSize, triggerFetch],
+    [triggerFetch],
   );
 
   const paginationState = useMemo<PaginationState>(() => ({ pageIndex: criteria.page, pageSize: criteria.pageSize }), [criteria.page, criteria.pageSize]);

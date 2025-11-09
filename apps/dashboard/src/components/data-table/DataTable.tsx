@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ColumnDef, flexRender, getCoreRowModel, getSortedRowModel, getPaginationRowModel, SortingState, PaginationState, RowSelectionState, VisibilityState, ColumnSizingState, ColumnPinningState, useReactTable } from '@tanstack/react-table';
 import { Table, TableHead, TableRow, TableCell, TableBody, Box, Checkbox } from '@mui/material';
 import PaginationBar from '../PaginationBar';
@@ -16,8 +16,8 @@ type Props<TData extends { id?: string }> = {
   columnSizing?: ColumnSizingState; onColumnSizingChange?: any;
   columnPinning?: ColumnPinningState; onColumnPinningChange?: any;
   getRowId?: (originalRow: TData, index: number) => string;
-  pagination?: PaginationState; onPaginationChange?: (updater: PaginationState | ((prev: PaginationState) => PaginationState)) => void;
-  total?: number; onSortChange?: (sorting: SortingState) => void;
+  pagination?: PaginationState; onPaginationChange?: (pagination: PaginationState) => void;
+  totalCount?: number; onSortingChange?: (sorting: SortingState) => void;
 };
 
 export default function DataTable<TData extends { id?: string }>({
@@ -26,15 +26,15 @@ export default function DataTable<TData extends { id?: string }>({
   columnVisibility: extColVis, onColumnVisibilityChange: setExtColVis,
   columnSizing: extColSize, onColumnSizingChange: setExtColSize,
   columnPinning: extColPin, onColumnPinningChange: setExtColPin,
-  pagination: extPagination, onPaginationChange: setExtPagination,
-  total,
-  onSortChange,
+  pagination: extPagination, onPaginationChange,
+  totalCount,
+  onSortingChange,
   getRowId,
 }: Props<TData>) {
   const { t } = useTranslation('table');
   const [sorting, setSortingState] = useState<SortingState>([]);
   const [intPagination, setIntPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: pageSizeOptions[0] });
-  const pagination = extPagination ?? intPagination; const setPagination = setExtPagination ?? setIntPagination;
+  const pagination = extPagination ?? intPagination;
   const [intRowSel, setIntRowSel] = useState<RowSelectionState>({}); const rowSelection = extRowSel ?? intRowSel; const setRowSelection = setExtRowSel ?? setIntRowSel;
   const [intColVis, setIntColVis] = useState<VisibilityState>({}); const columnVisibility = extColVis ?? intColVis; const setColumnVisibility = setExtColVis ?? setIntColVis;
   const [intColSize, setIntColSize] = useState<ColumnSizingState>({}); const columnSizing = extColSize ?? intColSize; const setColumnSizing = setExtColSize ?? setIntColSize;
@@ -43,20 +43,35 @@ export default function DataTable<TData extends { id?: string }>({
   const handleSortingChange = (updater: SortingState | ((prev: SortingState) => SortingState)) => {
     setSortingState((prev) => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
-      onSortChange?.(next);
+      onSortingChange?.(next);
       return next;
+    });
+  };
+
+  useEffect(() => {
+    if (extPagination) {
+      setIntPagination(extPagination);
+    }
+  }, [extPagination]);
+
+  const handlePaginationChange = (updater: PaginationState | ((prev: PaginationState) => PaginationState)) => {
+    setIntPagination((prevInt) => {
+      const prev = extPagination ?? prevInt;
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      onPaginationChange?.(next);
+      return extPagination ? prevInt : next;
     });
   };
 
   const table = useReactTable({
     data, columns, state: { sorting, pagination, rowSelection, columnVisibility, columnSizing, columnPinning },
-    onSortingChange: handleSortingChange, onPaginationChange: setPagination, onRowSelectionChange: setRowSelection,
+    onSortingChange: handleSortingChange, onPaginationChange: handlePaginationChange, onRowSelectionChange: setRowSelection,
     onColumnVisibilityChange: setColumnVisibility, onColumnSizingChange: setColumnSizing, onColumnPinningChange: setColumnPinning,
     getCoreRowModel: getCoreRowModel(), getSortedRowModel: getSortedRowModel(), getPaginationRowModel: getPaginationRowModel(),
     enableRowSelection: selectable, getRowId: getRowId ?? ((row: any, i) => row.id ?? String(i)), columnResizeMode: 'onChange',
   });
 
-  const rows = table.getRowModel().rows; const count = total ?? data.length; const tableSize = density === 'compact' ? 'small' : 'medium';
+  const rows = table.getRowModel().rows; const count = totalCount ?? data.length; const tableSize = density === 'compact' ? 'small' : 'medium';
   const baseLeftOffset = selectable ? 48 : 0;
   function leftOffsetFor(id: string){ const left = table.getState().columnPinning.left ?? []; let offset = baseLeftOffset; for (const colId of left){ if (colId===id) break; const col = table.getColumn(colId); offset += col.getSize(); } return offset; }
   function rightOffsetFor(id: string){ const right = table.getState().columnPinning.right ?? []; let offset = 0; for (const colId of right){ if (colId===id) break; const col = table.getColumn(colId); offset += col.getSize(); } return offset; }
