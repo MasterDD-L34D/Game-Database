@@ -26,6 +26,10 @@ export default function Records() {
   const { t } = useTranslation(['records', 'common']);
 
   useEffect(() => {
+    setPagination((prev) => (prev.pageIndex === 0 ? prev : { ...prev, pageIndex: 0 }));
+  }, [debouncedQuery, filters, sorting, pagination.pageSize]);
+
+  useEffect(() => {
     const fromUrl: any = {
       q: searchParams.get('q') || undefined,
       stile: (searchParams.get('stile') as Stile) || undefined,
