@@ -1,4 +1,4 @@
-import { ReactElement } from 'react';
+import { ReactElement, isValidElement } from 'react';
 import { ThemeProvider } from '@mui/material';
 import { render, type RenderOptions, type RenderResult } from '@testing-library/react';
 import { QueryClient, QueryClientProvider, type QueryClientConfig } from '@tanstack/react-query';
@@ -111,7 +111,7 @@ type ListPageProps = Parameters<typeof ListPage>[0];
 export type RenderListPageOptions = RenderWithProvidersOptions;
 
 export function renderListPage(
-  props: ListPageProps,
+  propsOrElement: ListPageProps | ReactElement,
   { queryClientOptions, ...options }: RenderListPageOptions = {},
 ): RenderWithProvidersResult {
   const mergedQueryClientOptions = mergeQueryClientConfig(
@@ -126,7 +126,14 @@ export function renderListPage(
     queryClientOptions,
   );
 
-  return renderWithProviders(<ListPage {...props} />, {
+  if (isValidElement(propsOrElement)) {
+    return renderWithProviders(propsOrElement, {
+      ...options,
+      queryClientOptions: mergedQueryClientOptions,
+    });
+  }
+
+  return renderWithProviders(<ListPage {...propsOrElement} />, {
     ...options,
     queryClientOptions: mergedQueryClientOptions,
   });

@@ -11,6 +11,9 @@ const DEFAULT_PAGE_SIZE = 25;
 
 const h = createColumnHelper<Trait>();
 function parseNumber(value: string | null, fallback: number) {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
