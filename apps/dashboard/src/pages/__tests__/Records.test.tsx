@@ -1,14 +1,10 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { ThemeProvider } from '@mui/material/styles';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { createMemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import Records from '../Records';
-import { SearchProvider } from '../../providers/SearchProvider';
-import { SnackbarProvider } from '../../components/SnackbarProvider';
 import type { RecordRow } from '../../types/record';
 import * as recordsApi from '../../lib/records';
-import { theme } from '../../theme';
+import { renderWithProviders } from '../../testUtils/renderWithProviders';
 
 const recordTableMock = vi.fn();
 const exportMenuMock = vi.fn();
@@ -72,31 +68,16 @@ describe('Records page', () => {
   });
 
   function renderPage() {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-          refetchOnWindowFocus: false,
-          refetchOnReconnect: false,
-        },
+    const router = createMemoryRouter([
+      {
+        path: '/records',
+        element: <Records />,
       },
+    ], {
+      initialEntries: ['/records'],
     });
 
-    return render(
-      <QueryClientProvider client={queryClient}>
-        <SnackbarProvider>
-          <SearchProvider>
-            <ThemeProvider theme={theme}>
-              <MemoryRouter initialEntries={[{ pathname: '/records' }]}> 
-                <Routes>
-                  <Route path="/records" element={<Records />} />
-                </Routes>
-              </MemoryRouter>
-            </ThemeProvider>
-          </SearchProvider>
-        </SnackbarProvider>
-      </QueryClientProvider>,
-    );
+    return renderWithProviders(<Records />, { router });
   }
 
   it('fetches data on init and refetches on pagination and sorting changes', async () => {
