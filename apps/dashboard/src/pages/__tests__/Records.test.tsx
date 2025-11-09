@@ -164,4 +164,28 @@ describe('Records page', () => {
 
     expect(listRecordsMock.mock.calls.at(-1)?.[0]).toMatchObject({ page: 0, q: 'nuovo filtro' });
   });
+
+  it('shows an error message and allows retrying the fetch', async () => {
+    listRecordsMock.mockImplementationOnce(async () => {
+      throw new Error('Errore di rete');
+    });
+
+    renderPage();
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Errore di rete');
+
+    const retryButton = screen.getByRole('button', { name: /riprova/i });
+    fireEvent.click(retryButton);
+
+    await waitFor(() => {
+      expect(listRecordsMock).toHaveBeenCalledTimes(2);
+    });
+
+    await waitFor(() => {
+      expect(recordTableMock).toHaveBeenCalledWith(
+        expect.objectContaining({ loading: false, data: expect.any(Array) }),
+      );
+    });
+  });
 });
