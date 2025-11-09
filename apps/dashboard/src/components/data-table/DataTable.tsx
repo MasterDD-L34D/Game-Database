@@ -128,7 +128,7 @@ export default function DataTable<TData extends { id?: string }>({
           </Table>
         )}
       </Box>
-      <Box className="mt-2"><PaginationBar count={count} page={table.getState().pagination.pageIndex} rowsPerPage={table.getState().pagination.pageSize} onPageChange={(p)=>table.setPageIndex(p)} onRowsPerPageChange={(s)=>table.setPageSize(s)} /></Box>
+      <Box className="mt-2"><PaginationBar count={count} page={table.getState().pagination.pageIndex} rowsPerPage={table.getState().pagination.pageSize} onPageChange={(p)=>table.setPageIndex(p)} onRowsPerPageChange={(s)=>table.setPageSize(s)} pageSizeOptions={pageSizeOptions} /></Box>
     </Box>
   );
 }

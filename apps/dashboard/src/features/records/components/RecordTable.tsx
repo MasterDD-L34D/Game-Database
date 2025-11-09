@@ -22,6 +22,7 @@ type Props = {
 };
 
 const TABLE_KEY = 'records-table-v1';
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const columnHelper = createColumnHelper<RecordRow>();
 
 export default function RecordTable({ data, total, loading, pagination, onPaginationChange, onSortingChange }: Props) {
@@ -160,6 +161,7 @@ export default function RecordTable({ data, total, loading, pagination, onPagina
           columns={columns}
           loading={loading}
           density={density}
+          pageSizeOptions={PAGE_SIZE_OPTIONS}
           pagination={pagination}
           onPaginationChange={onPaginationChange}
           totalCount={total}

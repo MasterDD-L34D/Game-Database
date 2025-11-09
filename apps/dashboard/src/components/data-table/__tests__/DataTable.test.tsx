@@ -76,17 +76,18 @@ describe('DataTable', () => {
         columns={columns}
         onPaginationChange={onPaginationChange}
         totalCount={20}
+        pageSizeOptions={[5, 10]}
       />,
     );
 
     const user = userEvent.setup();
     const rowsPerPageSelect = screen.getByRole('combobox', { name: /righe per pagina/i });
     await user.click(rowsPerPageSelect);
-    const option = await screen.findByRole('option', { name: '25' });
+    const option = await screen.findByRole('option', { name: '10' });
     await user.click(option);
 
     await waitFor(() => {
-      expect(onPaginationChange).toHaveBeenCalledWith({ pageIndex: 0, pageSize: 25 });
+      expect(onPaginationChange).toHaveBeenCalledWith({ pageIndex: 0, pageSize: 10 });
     });
   });
 });
