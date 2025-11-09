@@ -3,6 +3,7 @@ const express = require('express');
 const prisma = require('../db/prisma');
 const { requireTaxonomyWrite } = require('../middleware/permissions');
 const { logAudit } = require('../utils/audit');
+const { findByIdOrSlug, findExistingByIdOrSlug } = require('../utils/taxonomyValidation');
 const router = express.Router();
 
 function parsePagination(req) {
@@ -35,7 +36,7 @@ function normalizeSlug(input) {
 
 async function resolveParent(parentValue, currentId) {
   if (parentValue === null || parentValue === undefined || parentValue === '') return null;
-  const parent = await prisma.biome.findFirst({ where: { OR: [{ id: parentValue }, { slug: parentValue }] } });
+  const parent = await findByIdOrSlug(prisma.biome, parentValue);
   if (!parent) throw new Error('Invalid parent biome');
   if (parent.id === currentId) throw new Error('A biome cannot be its own parent');
   return parent.id;
@@ -47,8 +48,8 @@ router.get('/', async (req, res) => {
 });
 
 router.get('/:id', async (req, res) => {
-  const item = await prisma.biome.findFirst({ where: { OR: [{ id: req.params.id }, { slug: req.params.id }] } });
-  if (!item) return res.status(404).json({ error: 'Not found' });
+  const item = await findExistingByIdOrSlug(prisma.biome, req.params.id, res);
+  if (!item) return;
   res.json(item);
 });
 
@@ -92,8 +93,8 @@ router.post('/', requireTaxonomyWrite, async (req, res) => {
 
 router.put('/:id', requireTaxonomyWrite, async (req, res) => {
   try {
-    const existing = await prisma.biome.findFirst({ where: { OR: [{ id: req.params.id }, { slug: req.params.id }] } });
-    if (!existing) return res.status(404).json({ error: 'Not found' });
+    const existing = await findExistingByIdOrSlug(prisma.biome, req.params.id, res);
+    if (!existing) return;
 
     const name = (req.body.name || '').trim();
     if (!name) return res.status(400).json({ error: 'Name is required' });
@@ -138,8 +139,8 @@ router.put('/:id', requireTaxonomyWrite, async (req, res) => {
 
 router.delete('/:id', requireTaxonomyWrite, async (req, res) => {
   try {
-    const existing = await prisma.biome.findFirst({ where: { OR: [{ id: req.params.id }, { slug: req.params.id }] } });
-    if (!existing) return res.status(404).json({ error: 'Not found' });
+    const existing = await findExistingByIdOrSlug(prisma.biome, req.params.id, res);
+    if (!existing) return;
 
     await prisma.biome.delete({ where: { id: existing.id } });
 
