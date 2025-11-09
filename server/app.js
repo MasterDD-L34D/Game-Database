@@ -9,6 +9,7 @@ const speciesRouter = require('./routes/species');
 const speciesTraitsRouter = require('./routes/speciesTraits');
 const speciesBiomesRouter = require('./routes/speciesBiomes');
 const ecosystemBiomesRouter = require('./routes/ecosystemBiomes');
+const ecosystemSpeciesRouter = require('./routes/ecosystemSpecies');
 const ecosystemsRouter = require('./routes/ecosystems');
 const dashboardRouter = require('./routes/dashboard');
 
@@ -39,6 +40,7 @@ function createApp() {
   app.use('/api/species-traits', speciesTraitsRouter);
   app.use('/api/species-biomes', speciesBiomesRouter);
   app.use('/api/ecosystem-biomes', ecosystemBiomesRouter);
+  app.use('/api/ecosystem-species', ecosystemSpeciesRouter);
   app.use('/api/ecosystems', ecosystemsRouter);
 
   return app;
