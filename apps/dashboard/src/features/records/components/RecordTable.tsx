@@ -7,7 +7,7 @@ import DataTable from '../../../components/data-table/DataTable';
 import RecordToolbar from '../../../components/RecordToolbar';
 import type { RecordRow } from '../../../types/record';
 import { df } from '../../../lib/formatters';
-import { updateRecord } from '../../../lib/records';
+import { recordsListBaseKey, updateRecord } from '../../../lib/records';
 import RecordRowActions from './RecordRowActions';
 import RecordDeleteDialog from './RecordDeleteDialog';
 import { useDeleteRecordsMutation } from '../api/useDeleteRecordsMutation';
@@ -114,7 +114,7 @@ export default function RecordTable({ data, total, loading, pagination, onPagina
     if (!selectedRows.length) return;
     await Promise.all(selectedRows.map((record) => record.id ? updateRecord(record.id, { stato: next }) : null));
     setRowSelection({});
-    queryClient.invalidateQueries({ queryKey: ['records'] });
+    queryClient.invalidateQueries({ queryKey: recordsListBaseKey, exact: false });
   }, [queryClient, selectedRows]);
 
   const handleCloseDialog = useCallback(() => {
@@ -124,7 +124,7 @@ export default function RecordTable({ data, total, loading, pagination, onPagina
 
   const handleDeleted = useCallback(async () => {
     setRowSelection({});
-    await queryClient.invalidateQueries({ queryKey: ['records'] });
+    await queryClient.invalidateQueries({ queryKey: recordsListBaseKey, exact: false });
   }, [queryClient]);
 
   const pinColumn = useCallback((id: string, side: 'left' | 'right' | false) => {

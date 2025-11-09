@@ -5,8 +5,9 @@ import ExportMenu from '../components/ExportMenu';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { Stile, Pattern, Peso, Curvatura } from '../types/record';
 import { useQuery } from '@tanstack/react-query';
+import type { PaginationState, SortingState } from '@tanstack/react-table';
 import { useTranslation } from 'react-i18next';
-import { listRecords } from '../lib/records';
+import { listRecords, recordsListQueryKey } from '../lib/records';
 import FilterChips from '../components/FilterChips';
 import FilterSidebar from '../components/FilterSidebar';
 import RecordTable from '../features/records/components/RecordTable';
@@ -20,9 +21,8 @@ export default function Records() {
   const [openFilters, setOpenFilters] = useState(false);
   const { query, setQuery, commitQuery, debouncedQuery } = useSearch();
   const [filters, setFilters] = useState<{ stile?: Stile; pattern?: Pattern; peso?: Peso; curvatura?: Curvatura }>({});
-  const [page] = useState(0);
-  const [pageSize] = useState(25);
-  const [sort] = useState<string | undefined>(undefined);
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 25 });
+  const [sorting, setSorting] = useState<SortingState>([]);
   const { t } = useTranslation(['records', 'common']);
 
   useEffect(() => {
@@ -51,9 +51,28 @@ export default function Records() {
     localStorage.setItem(FILTERS_KEY, JSON.stringify({ q: debouncedQuery, ...filters }));
   }, [debouncedQuery, filters, setSearchParams]);
 
+  const sort = useMemo(() => {
+    if (!sorting.length) return undefined;
+    const [first] = sorting;
+    return `${first.id}:${first.desc ? 'desc' : 'asc'}`;
+  }, [sorting]);
+
+  const listParams = useMemo(() => ({
+    q: debouncedQuery,
+    page: pagination.pageIndex,
+    pageSize: pagination.pageSize,
+    sort,
+    stile: filters.stile,
+    pattern: filters.pattern,
+    peso: filters.peso,
+    curvatura: filters.curvatura,
+  }), [debouncedQuery, filters.curvatura, filters.pattern, filters.peso, filters.stile, pagination.pageIndex, pagination.pageSize, sort]);
+
+  const queryKey = useMemo(() => recordsListQueryKey(listParams), [listParams]);
+
   const { data, isLoading } = useQuery({
-    queryKey: ['records', debouncedQuery, filters, page, pageSize, sort],
-    queryFn: () => listRecords({ q: debouncedQuery, page, pageSize, sort, ...filters }),
+    queryKey,
+    queryFn: () => listRecords(listParams),
   });
   const items = data?.items ?? [];
   const total = data?.total ?? items.length;
@@ -87,6 +106,14 @@ export default function Records() {
   const handleInputBlur = useCallback(() => {
     commitQuery();
   }, [commitQuery]);
+
+  const handlePaginationChange = useCallback((next: PaginationState) => {
+    setPagination(next);
+  }, []);
+
+  const handleSortingChange = useCallback((next: SortingState) => {
+    setSorting(next);
+  }, []);
 
   return (
     <Paper
@@ -134,7 +161,14 @@ export default function Records() {
       <FilterChips filters={chips} onRemove={(key)=>setFilters((f)=>({ ...f, [key]: undefined }))} />
       <FilterSidebar open={openFilters} value={filters} onChange={setFilters} onClear={()=>setFilters({})} onClose={()=>setOpenFilters(false)} />
       <Box sx={(theme) => ({ mt: theme.spacing(4) })}>
-        <RecordTable data={items} total={total} loading={isLoading} />
+        <RecordTable
+          data={items}
+          total={total}
+          loading={isLoading}
+          pagination={pagination}
+          onPaginationChange={handlePaginationChange}
+          onSortingChange={handleSortingChange}
+        />
       </Box>
     </Paper>
   );
