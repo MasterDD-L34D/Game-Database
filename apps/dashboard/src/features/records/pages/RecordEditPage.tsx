@@ -19,6 +19,30 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { getRecord, recordsListBaseKey, updateRecord } from '../../../lib/records';
 import type { RecordRow, Curvatura, Pattern, Peso, Stile } from '../../../types/record';
+import type { AppTheme } from '../../../theme';
+
+function resolveCardPadding(theme: Partial<AppTheme>): string | number {
+  const spacing = theme.spacing;
+  if (theme.layout?.cardPadding) {
+    return theme.layout.cardPadding;
+  }
+  if (typeof spacing === 'function') {
+    return spacing(3);
+  }
+  return '24px';
+}
+
+function resolveCardShadow(theme: Partial<AppTheme>): string {
+  const customShadow = theme.customShadows?.card;
+  if (customShadow) {
+    return customShadow;
+  }
+  const shadows = theme.shadows;
+  if (Array.isArray(shadows) && typeof shadows[1] === 'string') {
+    return shadows[1];
+  }
+  return 'none';
+}
 
 const statoOptions: RecordRow['stato'][] = ['Attivo', 'Bozza', 'Archiviato'];
 const stileOptions: (Stile | '')[] = ['', 'Monolinea', 'Tratteggiato', 'Puntinato', 'Brush', 'Calligrafico', 'Geometrico', 'Organico', 'DoppioTratto', 'Ombreggiato', 'Tecnico', 'Neon', 'Sfumato', 'Angolare', 'Spezzato', 'Contour', 'Ink'];
@@ -147,7 +171,13 @@ export default function RecordEditPage() {
       </Breadcrumbs>
 
       {!recordId ? (
-        <Paper className="p-4">
+        <Paper
+          sx={(theme) => ({
+            padding: resolveCardPadding(theme as Partial<AppTheme>),
+            boxShadow: resolveCardShadow(theme as Partial<AppTheme>),
+            backgroundColor: theme.palette.background.paper,
+          })}
+        >
           <Stack spacing={2}>
             <Alert severity="error">{t('records:edit.invalidId')}</Alert>
             <div>
@@ -158,7 +188,13 @@ export default function RecordEditPage() {
           </Stack>
         </Paper>
       ) : (
-        <Paper className="p-4">
+        <Paper
+          sx={(theme) => ({
+            padding: resolveCardPadding(theme as Partial<AppTheme>),
+            boxShadow: resolveCardShadow(theme as Partial<AppTheme>),
+            backgroundColor: theme.palette.background.paper,
+          })}
+        >
           <Stack spacing={3}>
             <Stack
               direction={{ xs: 'column', md: 'row' }}
