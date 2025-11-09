@@ -1,10 +1,9 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach, type Mock } from 'vitest';
 import RecordDetailsPage from '../RecordDetailsPage';
 import type { RecordRow } from '../../../../types/record';
 import * as recordsApi from '../../../../lib/records';
+import { renderWithProviders } from '../../../../testUtils/renderWithProviders';
 
 vi.mock('../../../../lib/records', async () => {
   const actual = await vi.importActual<typeof import('../../../../lib/records')>(
@@ -26,19 +25,17 @@ describe('RecordDetailsPage', () => {
   });
 
   function renderPage(initialEntry = '/records/1') {
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
+    return renderWithProviders(<div />, {
+      router: {
+        routes: [
+          {
+            path: '/records/:recordId?',
+            element: <RecordDetailsPage />,
+          },
+        ],
+        initialEntries: [initialEntry],
+      },
     });
-
-    return render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter initialEntries={[initialEntry]}>
-          <Routes>
-            <Route path="/records/:recordId" element={<RecordDetailsPage />} />
-          </Routes>
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
   }
 
   it('renders record details after loading data', async () => {
