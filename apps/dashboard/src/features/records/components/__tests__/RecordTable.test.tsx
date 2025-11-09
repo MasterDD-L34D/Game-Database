@@ -13,6 +13,7 @@ vi.mock('../../../../components/data-table/DataTable', () => ({
   default: (props: {
     onPaginationChange?: (pagination: PaginationState) => void;
     onSortingChange?: (sorting: { id: string; desc: boolean }[]) => void;
+    pageSizeOptions?: number[];
   }) => {
     dataTableMock(props);
     return (
@@ -72,11 +73,13 @@ describe('RecordTable', () => {
       onPaginationChange?: typeof handlePaginationChange;
       totalCount?: number;
       onSortingChange?: typeof handleSortChange;
+      pageSizeOptions?: number[];
     };
     expect(props.pagination).toBe(pagination);
     expect(props.onPaginationChange).toBe(handlePaginationChange);
     expect(props.totalCount).toBe(100);
     expect(props.onSortingChange).toBe(handleSortChange);
+    expect(props.pageSizeOptions).toEqual([10, 25, 50, 100]);
   });
 
   it('calls pagination handler when DataTable triggers a pagination change', () => {
