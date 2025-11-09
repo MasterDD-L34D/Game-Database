@@ -14,7 +14,7 @@ import {
   Typography,
 } from '@mui/material';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { getRecord, recordsListBaseKey, updateRecord } from '../../../lib/records';
@@ -62,15 +62,18 @@ type FormValues = {
 };
 
 function normalizePatch(values: FormValues): Partial<RecordRow> {
+  const trimmedDescription = values.descrizione.trim();
+  const trimmedDate = values.data.trim();
+
   return {
     nome: values.nome,
     stato: values.stato,
-    descrizione: values.descrizione.trim() ? values.descrizione.trim() : undefined,
-    data: values.data.trim() ? values.data : undefined,
-    stile: values.stile ? (values.stile as Stile) : undefined,
-    pattern: values.pattern ? (values.pattern as Pattern) : undefined,
-    peso: values.peso ? (values.peso as Peso) : undefined,
-    curvatura: values.curvatura ? (values.curvatura as Curvatura) : undefined,
+    descrizione: trimmedDescription ? trimmedDescription : undefined,
+    data: trimmedDate ? trimmedDate : undefined,
+    stile: values.stile.trim() ? (values.stile as Stile) : undefined,
+    pattern: values.pattern.trim() ? (values.pattern as Pattern) : undefined,
+    peso: values.peso.trim() ? (values.peso as Peso) : undefined,
+    curvatura: values.curvatura.trim() ? (values.curvatura as Curvatura) : undefined,
   } satisfies Partial<RecordRow>;
 }
 
@@ -111,11 +114,7 @@ export default function RecordEditPage() {
     [record],
   );
 
-  const {
-    handleSubmit,
-    register,
-    reset,
-  } = useForm<FormValues>({
+  const { control, handleSubmit, register, reset } = useForm<FormValues>({
     defaultValues: {
       nome: '',
       stato: 'Bozza',
@@ -255,19 +254,26 @@ export default function RecordEditPage() {
                       />
                     </Grid>
                     <Grid item xs={12} md={6}>
-                      <TextField
-                        label={t('records:edit.fields.status')}
-                        select
-                        fullWidth
-                        disabled={mutation.isPending}
-                        {...register('stato')}
-                      >
-                        {statoOptions.map((option) => (
-                          <MenuItem key={option} value={option}>
-                            {option}
-                          </MenuItem>
-                        ))}
-                      </TextField>
+                      <Controller
+                        name="stato"
+                        control={control}
+                        render={({ field }) => (
+                          <TextField
+                            label={t('records:edit.fields.status')}
+                            select
+                            fullWidth
+                            disabled={mutation.isPending}
+                            {...field}
+                            value={field.value ?? 'Bozza'}
+                          >
+                            {statoOptions.map((option) => (
+                              <MenuItem key={option} value={option}>
+                                {option}
+                              </MenuItem>
+                            ))}
+                          </TextField>
+                        )}
+                      />
                     </Grid>
                     <Grid item xs={12}>
                       <TextField
@@ -291,64 +297,92 @@ export default function RecordEditPage() {
                       />
                     </Grid>
                     <Grid item xs={12} md={6}>
-                      <TextField
-                        label={t('records:edit.fields.style')}
-                        select
-                        fullWidth
-                        disabled={mutation.isPending}
-                        {...register('stile')}
-                      >
-                        {stileOptions.map((option) => (
-                          <MenuItem key={option || 'none'} value={option}>
-                            {option || t('records:edit.emptyOption')}
-                          </MenuItem>
-                        ))}
-                      </TextField>
+                      <Controller
+                        name="stile"
+                        control={control}
+                        render={({ field }) => (
+                          <TextField
+                            label={t('records:edit.fields.style')}
+                            select
+                            fullWidth
+                            disabled={mutation.isPending}
+                            {...field}
+                            value={field.value ?? ''}
+                          >
+                            {stileOptions.map((option) => (
+                              <MenuItem key={option || 'none'} value={option}>
+                                {option || t('records:edit.emptyOption')}
+                              </MenuItem>
+                            ))}
+                          </TextField>
+                        )}
+                      />
                     </Grid>
                     <Grid item xs={12} md={6}>
-                      <TextField
-                        label={t('records:edit.fields.pattern')}
-                        select
-                        fullWidth
-                        disabled={mutation.isPending}
-                        {...register('pattern')}
-                      >
-                        {patternOptions.map((option) => (
-                          <MenuItem key={option || 'none'} value={option}>
-                            {option || t('records:edit.emptyOption')}
-                          </MenuItem>
-                        ))}
-                      </TextField>
+                      <Controller
+                        name="pattern"
+                        control={control}
+                        render={({ field }) => (
+                          <TextField
+                            label={t('records:edit.fields.pattern')}
+                            select
+                            fullWidth
+                            disabled={mutation.isPending}
+                            {...field}
+                            value={field.value ?? ''}
+                          >
+                            {patternOptions.map((option) => (
+                              <MenuItem key={option || 'none'} value={option}>
+                                {option || t('records:edit.emptyOption')}
+                              </MenuItem>
+                            ))}
+                          </TextField>
+                        )}
+                      />
                     </Grid>
                     <Grid item xs={12} md={6}>
-                      <TextField
-                        label={t('records:edit.fields.weight')}
-                        select
-                        fullWidth
-                        disabled={mutation.isPending}
-                        {...register('peso')}
-                      >
-                        {pesoOptions.map((option) => (
-                          <MenuItem key={option || 'none'} value={option}>
-                            {option || t('records:edit.emptyOption')}
-                          </MenuItem>
-                        ))}
-                      </TextField>
+                      <Controller
+                        name="peso"
+                        control={control}
+                        render={({ field }) => (
+                          <TextField
+                            label={t('records:edit.fields.weight')}
+                            select
+                            fullWidth
+                            disabled={mutation.isPending}
+                            {...field}
+                            value={field.value ?? ''}
+                          >
+                            {pesoOptions.map((option) => (
+                              <MenuItem key={option || 'none'} value={option}>
+                                {option || t('records:edit.emptyOption')}
+                              </MenuItem>
+                            ))}
+                          </TextField>
+                        )}
+                      />
                     </Grid>
                     <Grid item xs={12} md={6}>
-                      <TextField
-                        label={t('records:edit.fields.curvature')}
-                        select
-                        fullWidth
-                        disabled={mutation.isPending}
-                        {...register('curvatura')}
-                      >
-                        {curvaturaOptions.map((option) => (
-                          <MenuItem key={option || 'none'} value={option}>
-                            {option || t('records:edit.emptyOption')}
-                          </MenuItem>
-                        ))}
-                      </TextField>
+                      <Controller
+                        name="curvatura"
+                        control={control}
+                        render={({ field }) => (
+                          <TextField
+                            label={t('records:edit.fields.curvature')}
+                            select
+                            fullWidth
+                            disabled={mutation.isPending}
+                            {...field}
+                            value={field.value ?? ''}
+                          >
+                            {curvaturaOptions.map((option) => (
+                              <MenuItem key={option || 'none'} value={option}>
+                                {option || t('records:edit.emptyOption')}
+                              </MenuItem>
+                            ))}
+                          </TextField>
+                        )}
+                      />
                     </Grid>
                   </Grid>
                 </Stack>
