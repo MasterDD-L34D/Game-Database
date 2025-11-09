@@ -4,8 +4,9 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import ListPage from '../../pages/ListPage';
 import Topbar from '../Topbar';
+import { SnackbarProvider } from '../../components/SnackbarProvider';
 import { SEARCH_DEBOUNCE_DELAY } from '../../providers/SearchProvider';
-import { renderWithProviders } from '../../testUtils/renderWithProviders';
+import { renderListPage } from '../../testUtils/renderWithProviders';
 
 type Item = { id: string; name: string };
 
@@ -25,29 +26,22 @@ describe('Topbar search integration', () => {
       const fetcher = vi.fn().mockResolvedValue({ items: [] as Item[], total: 0, page: 0, pageSize: 25 });
       const user = userEvent.setup();
 
-      const { getAllByPlaceholderText } = renderWithProviders(<div />, {
-        router: {
-          routes: [
-            {
-              path: '/',
-              element: (
-                <>
-                  <Topbar />
-                  <div className="p-4">
-                    <ListPage<Item>
-                      title="Specie"
-                      columns={columns}
-                      fetcher={fetcher}
-                      queryKeyBase={['items']}
-                      autoloadOnMount
-                    />
-                  </div>
-                </>
-              ),
-            },
-          ],
-        },
-      });
+      const { getAllByPlaceholderText } = renderListPage(
+        <SnackbarProvider>
+          <>
+            <Topbar />
+            <div className="p-4">
+              <ListPage<Item>
+                title="Specie"
+                columns={columns}
+                fetcher={fetcher}
+                queryKeyBase={['items']}
+                autoloadOnMount
+              />
+            </div>
+          </>
+        </SnackbarProvider>,
+      );
 
       await waitFor(() => {
         expect(fetcher).toHaveBeenCalled();
