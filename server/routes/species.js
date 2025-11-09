@@ -3,6 +3,7 @@ const express = require('express');
 const prisma = require('../db/prisma');
 const { requireTaxonomyWrite } = require('../middleware/permissions');
 const { logAudit } = require('../utils/audit');
+const { findExistingByIdOrSlug } = require('../utils/taxonomyValidation');
 const router = express.Router();
 
 function parsePagination(req) {
@@ -62,8 +63,8 @@ router.get('/', async (req, res) => {
 });
 
 router.get('/:id', async (req, res) => {
-  const item = await prisma.species.findFirst({ where: { OR: [{ id: req.params.id }, { slug: req.params.id }] } });
-  if (!item) return res.status(404).json({ error: 'Not found' });
+  const item = await findExistingByIdOrSlug(prisma.species, req.params.id, res);
+  if (!item) return;
   res.json(item);
 });
 
@@ -91,8 +92,8 @@ router.post('/', requireTaxonomyWrite, async (req, res) => {
 
 router.put('/:id', requireTaxonomyWrite, async (req, res) => {
   try {
-    const existing = await prisma.species.findFirst({ where: { OR: [{ id: req.params.id }, { slug: req.params.id }] } });
-    if (!existing) return res.status(404).json({ error: 'Not found' });
+    const existing = await findExistingByIdOrSlug(prisma.species, req.params.id, res);
+    if (!existing) return;
 
     const scientificName = (req.body.scientificName || '').trim();
     if (!scientificName) return res.status(400).json({ error: 'scientificName is required' });
@@ -123,8 +124,8 @@ router.put('/:id', requireTaxonomyWrite, async (req, res) => {
 
 router.delete('/:id', requireTaxonomyWrite, async (req, res) => {
   try {
-    const existing = await prisma.species.findFirst({ where: { OR: [{ id: req.params.id }, { slug: req.params.id }] } });
-    if (!existing) return res.status(404).json({ error: 'Not found' });
+    const existing = await findExistingByIdOrSlug(prisma.species, req.params.id, res);
+    if (!existing) return;
 
     await prisma.species.delete({ where: { id: existing.id } });
 

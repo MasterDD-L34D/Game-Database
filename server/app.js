@@ -36,9 +36,9 @@ function createApp() {
   app.use('/api/records', recordsRouter);
   app.use('/api/traits', traitsRouter);
   app.use('/api/biomes', biomesRouter);
-  app.use('/api/species', speciesRouter);
   app.use('/api/species-traits', speciesTraitsRouter);
   app.use('/api/species-biomes', speciesBiomesRouter);
+  app.use('/api/species', speciesRouter);
   app.use('/api/ecosystem-biomes', ecosystemBiomesRouter);
   app.use('/api/ecosystem-species', ecosystemSpeciesRouter);
   app.use('/api/ecosystems', ecosystemsRouter);
