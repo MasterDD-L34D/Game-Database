@@ -30,7 +30,7 @@ describe('RecordDetailsPage', () => {
         routes: [
           {
             path: '/records/:recordId?',
-            element: <RecordDetailsPage />,
+            element: <RecordDetailsPage />, 
           },
         ],
         initialEntries: [initialEntry],
@@ -66,7 +66,7 @@ describe('RecordDetailsPage', () => {
   });
 
   it('renders fallback when record id is missing', async () => {
-    renderPage('/records/');
+    renderPage('/records');
 
     expect(await screen.findByText(/identificativo record non valido/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /torna all'elenco/i })).toBeInTheDocument();
