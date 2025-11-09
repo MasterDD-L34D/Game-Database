@@ -37,6 +37,43 @@ router.get('/', async (req, res) => {
   res.json({ items, page, pageSize, total });
 });
 
+router.get('/export', async (req, res) => {
+  const { where, orderBy } = buildWhereAndOrder(req);
+  const format = (req.query.format || 'csv').toString().toLowerCase();
+  const filename = `records_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.${format === 'json' ? 'json' : 'csv'}`;
+
+  if (format === 'json') {
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.write('[');
+    const batchSize = 1000; let page = 0, first = true;
+    while (true) {
+      const items = await prisma.record.findMany({ where, orderBy, skip: page * batchSize, take: batchSize });
+      if (!items.length) break;
+      for (const it of items) { if (!first) res.write(','); first = false; res.write(JSON.stringify(it)); }
+      page++; await new Promise(resolve => setImmediate(resolve));
+    }
+    res.write(']'); return res.end();
+  }
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  const header = ['id','nome','stato','stile','pattern','peso','curvatura','descrizione','data','createdBy','updatedBy','createdAt','updatedAt'];
+  res.write(header.join(',') + '\n');
+  function csvEscape(v) { if (v == null) return ''; const s = String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+  const batchSize = 1000; let page = 0;
+  while (true) {
+    const items = await prisma.record.findMany({ where, orderBy, skip: page * batchSize, take: batchSize });
+    if (!items.length) break;
+    for (const it of items) {
+      const row = [it.id, it.nome, it.stato, it.stile, it.pattern, it.peso, it.curvatura, it.descrizione, it.data?.toISOString?.().slice(0,10), it.createdBy, it.updatedBy, it.createdAt?.toISOString?.(), it.updatedAt?.toISOString?.()];
+      res.write(row.map(csvEscape).join(',') + '\n');
+    }
+    page++; await new Promise(resolve => setImmediate(resolve));
+  }
+  res.end();
+});
+
 router.get('/:id', async (req, res) => {
   const item = await prisma.record.findUnique({ where: { id: req.params.id } });
   if (!item) return res.status(404).json({ error: 'Not found' });
@@ -103,43 +140,6 @@ router.delete('/:id', async (req, res) => {
     console.error(e);
     res.status(500).json({ error: 'Internal error' });
   }
-});
-
-router.get('/export', async (req, res) => {
-  const { where, orderBy } = buildWhereAndOrder(req);
-  const format = (req.query.format || 'csv').toString().toLowerCase();
-  const filename = `records_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.${format === 'json' ? 'json' : 'csv'}`;
-
-  if (format === 'json') {
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.write('[');
-    const batchSize = 1000; let page = 0, first = true;
-    while (true) {
-      const items = await prisma.record.findMany({ where, orderBy, skip: page * batchSize, take: batchSize });
-      if (!items.length) break;
-      for (const it of items) { if (!first) res.write(','); first = false; res.write(JSON.stringify(it)); }
-      page++; await new Promise(resolve => setImmediate(resolve));
-    }
-    res.write(']'); return res.end();
-  }
-
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-  const header = ['id','nome','stato','stile','pattern','peso','curvatura','descrizione','data','createdBy','updatedBy','createdAt','updatedAt'];
-  res.write(header.join(',') + '\n');
-  function csvEscape(v) { if (v == null) return ''; const s = String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
-  const batchSize = 1000; let page = 0;
-  while (true) {
-    const items = await prisma.record.findMany({ where, orderBy, skip: page * batchSize, take: batchSize });
-    if (!items.length) break;
-    for (const it of items) {
-      const row = [it.id, it.nome, it.stato, it.stile, it.pattern, it.peso, it.curvatura, it.descrizione, it.data?.toISOString?.().slice(0,10), it.createdBy, it.updatedBy, it.createdAt?.toISOString?.(), it.updatedAt?.toISOString?.()];
-      res.write(row.map(csvEscape).join(',') + '\n');
-    }
-    page++; await new Promise(resolve => setImmediate(resolve));
-  }
-  res.end();
 });
 
 module.exports = router;
