@@ -17,14 +17,14 @@ type Props = {
   total: number;
   loading?: boolean;
   pagination?: PaginationState;
-  onPaginationChange?: (updater: PaginationState | ((prev: PaginationState) => PaginationState)) => void;
-  onSortChange?: (sorting: SortingState) => void;
+  onPaginationChange?: (pagination: PaginationState) => void;
+  onSortingChange?: (sorting: SortingState) => void;
 };
 
 const TABLE_KEY = 'records-table-v1';
 const columnHelper = createColumnHelper<RecordRow>();
 
-export default function RecordTable({ data, total, loading, pagination, onPaginationChange, onSortChange }: Props) {
+export default function RecordTable({ data, total, loading, pagination, onPaginationChange, onSortingChange }: Props) {
   const queryClient = useQueryClient();
   const deleteMutation = useDeleteRecordsMutation();
   const { t } = useTranslation('records');
@@ -162,8 +162,8 @@ export default function RecordTable({ data, total, loading, pagination, onPagina
           density={density}
           pagination={pagination}
           onPaginationChange={onPaginationChange}
-          total={total}
-          onSortChange={onSortChange}
+          totalCount={total}
+          onSortingChange={onSortingChange}
           rowSelection={rowSelection}
           onRowSelectionChange={setRowSelection}
           columnVisibility={columnVisibility}
