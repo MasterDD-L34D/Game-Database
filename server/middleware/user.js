@@ -31,8 +31,12 @@ function getIdentifier(req) {
 function normalizeRoleList(input) {
   if (!input) return [];
   if (Array.isArray(input)) return input.flatMap(normalizeRoleList);
-  const normalized = String(input).trim().toLowerCase();
-  return normalized ? [normalized] : [];
+  const raw = String(input).trim();
+  if (!raw) return [];
+  return raw
+    .split(/[\s,]+/)
+    .map(role => role.trim().toLowerCase())
+    .filter(Boolean);
 }
 
 function hasRole(req, ...roles) {

@@ -61,6 +61,35 @@ test('requireTaxonomyWrite uses allowed role list and allows authorized users', 
   assert.equal(nextCalled, true);
 });
 
+test('requireTaxonomyWrite honors comma and space separated TAXONOMY_WRITE_ROLES', () => {
+  const originalEnv = process.env.TAXONOMY_WRITE_ROLES;
+  process.env.TAXONOMY_WRITE_ROLES = 'taxonomy:write, custom-editor admin';
+
+  const permissionsPath = require.resolve('../middleware/permissions');
+  delete require.cache[permissionsPath];
+  const freshPermissions = require('../middleware/permissions');
+
+  assert.deepEqual(freshPermissions.TAXONOMY_WRITE_ROLES, [
+    'taxonomy:write',
+    'custom-editor',
+    'admin',
+  ]);
+
+  const req = { userRoles: ['custom-editor'] };
+  const res = createResponseCapture();
+  let nextCalled = false;
+
+  freshPermissions.requireTaxonomyWrite(req, res, () => {
+    nextCalled = true;
+  });
+
+  assert.equal(res.statusCode, null);
+  assert.equal(nextCalled, true);
+
+  process.env.TAXONOMY_WRITE_ROLES = originalEnv;
+  delete require.cache[permissionsPath];
+});
+
 test('requireTaxonomyWrite denies requests from unauthorized users', () => {
   const req = { userRoles: ['guest'] };
   const res = createResponseCapture();
