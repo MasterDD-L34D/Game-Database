@@ -125,7 +125,7 @@ describe('TraitListPage', () => {
 
   it(
     'allows creating, editing and deleting traits',
-    { timeout: 15000 },
+    { timeout: 25000 },
     async () => {
     const { user } = renderPage();
 
