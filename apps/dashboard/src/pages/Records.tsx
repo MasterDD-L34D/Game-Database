@@ -20,6 +20,9 @@ export default function Records() {
   const [openFilters, setOpenFilters] = useState(false);
   const { query, setQuery, commitQuery, debouncedQuery } = useSearch();
   const [filters, setFilters] = useState<{ stile?: Stile; pattern?: Pattern; peso?: Peso; curvatura?: Curvatura }>({});
+  const [page] = useState(0);
+  const [pageSize] = useState(25);
+  const [sort] = useState<string | undefined>(undefined);
   const { t } = useTranslation(['records', 'common']);
 
   useEffect(() => {
@@ -48,7 +51,10 @@ export default function Records() {
     localStorage.setItem(FILTERS_KEY, JSON.stringify({ q: debouncedQuery, ...filters }));
   }, [debouncedQuery, filters, setSearchParams]);
 
-  const { data, isLoading } = useQuery({ queryKey: ['records', debouncedQuery, filters], queryFn: () => listRecords({ q: debouncedQuery, page: 0, pageSize: 25, ...filters }) });
+  const { data, isLoading } = useQuery({
+    queryKey: ['records', debouncedQuery, filters, page, pageSize, sort],
+    queryFn: () => listRecords({ q: debouncedQuery, page, pageSize, sort, ...filters }),
+  });
   const items = data?.items ?? [];
   const total = data?.total ?? items.length;
 
