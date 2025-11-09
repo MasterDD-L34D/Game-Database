@@ -1,12 +1,31 @@
 
 import { deleteJSON, fetchJSON, postJSON } from './api';
 import type { RecordRow, Stile, Pattern, Peso, Curvatura } from '../types/record';
+
 export type ListResponse<T> = { items: T[]; page: number; pageSize: number; total: number };
-export function listRecords(params: { q?: string; page?: number; pageSize?: number; sort?: string; stile?: Stile; pattern?: Pattern; peso?: Peso; curvatura?: Curvatura; }) {
+
+export type ListRecordsParams = {
+  q?: string;
+  page: number;
+  pageSize: number;
+  sort?: string;
+  stile?: Stile;
+  pattern?: Pattern;
+  peso?: Peso;
+  curvatura?: Curvatura;
+};
+
+export const recordsListBaseKey = ['records', 'list'] as const;
+
+export function recordsListQueryKey(params: ListRecordsParams) {
+  return [...recordsListBaseKey, params] as const;
+}
+
+export function listRecords(params: ListRecordsParams) {
   const usp = new URLSearchParams();
   if (params.q) usp.set('q', params.q);
-  if (params.page != null) usp.set('page', String(params.page));
-  if (params.pageSize != null) usp.set('pageSize', String(params.pageSize));
+  usp.set('page', String(params.page));
+  usp.set('pageSize', String(params.pageSize));
   if (params.sort) usp.set('sort', params.sort);
   if (params.stile) usp.set('stile', params.stile);
   if (params.pattern) usp.set('pattern', params.pattern);

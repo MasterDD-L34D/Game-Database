@@ -75,4 +75,28 @@ describe('records API helpers', () => {
       body: JSON.stringify({ nome: 'Updated' }),
     });
   });
+
+  it('includes pagination and sort params when listing records', async () => {
+    vi.resetModules();
+    vi.stubEnv('VITE_API_USER', USER);
+    const fetchMock = createFetchMock();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { listRecords } = await import('./records');
+
+    await listRecords({
+      q: 'test',
+      page: 2,
+      pageSize: 50,
+      sort: 'nome:asc',
+      stile: 'Monolinea',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/records?q=test&page=2&pageSize=50&sort=nome%3Aasc&stile=Monolinea', {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User': USER,
+      },
+    });
+  });
 });

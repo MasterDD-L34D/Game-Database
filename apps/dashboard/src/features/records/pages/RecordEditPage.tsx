@@ -17,7 +17,7 @@ import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { getRecord, updateRecord } from '../../../lib/records';
+import { getRecord, recordsListBaseKey, updateRecord } from '../../../lib/records';
 import type { RecordRow, Curvatura, Pattern, Peso, Stile } from '../../../types/record';
 
 const statoOptions: RecordRow['stato'][] = ['Attivo', 'Bozza', 'Archiviato'];
@@ -113,7 +113,7 @@ export default function RecordEditPage() {
     onSuccess: (updated) => {
       if (recordId) {
         queryClient.setQueryData(['records', 'detail', recordId], updated);
-        queryClient.invalidateQueries({ queryKey: ['records'] });
+        queryClient.invalidateQueries({ queryKey: recordsListBaseKey, exact: false });
       }
       setSubmitError(null);
       setSuccessOpen(true);
