@@ -1,13 +1,7 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { render, screen, waitFor, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { ThemeProvider } from '@mui/material/styles';
+import { screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import ListPage from '../ListPage';
-import { SearchProvider } from '../../providers/SearchProvider';
-import { SnackbarProvider } from '../../components/SnackbarProvider';
-import { theme } from '../../theme';
+import { renderListPage, userEvent } from '../../testUtils/renderWithProviders';
 
 type Item = { id: string; name: string; description?: string };
 
@@ -36,65 +30,54 @@ describe('ListPage CRUD actions', () => {
     const updateFn = vi.fn().mockResolvedValue(undefined);
     const deleteFn = vi.fn().mockResolvedValue(undefined);
 
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const user = userEvent.setup();
 
-    render(
-      <QueryClientProvider client={queryClient}>
-        <SnackbarProvider>
-          <SearchProvider>
-            <ThemeProvider theme={theme}>
-              <ListPage<Item>
-                title="Elementi"
-                columns={columns}
-                fetcher={fetcher}
-                queryKeyBase={['items']}
-                autoloadOnMount
-                createConfig={{
-                  triggerLabel: 'Nuovo elemento',
-                  dialogTitle: 'Crea elemento',
-                  submitLabel: 'Salva nuovo',
-                  defaultValues: { name: '', description: '' },
-                  fields: [
-                    { name: 'name', label: 'Nome', required: true },
-                    { name: 'description', label: 'Descrizione', type: 'textarea' },
-                  ],
-                  mutation: async (values) => {
-                    await createFn(values);
-                  },
-                  successMessage: 'Elemento creato',
-                  errorMessage: 'Errore creazione',
-                }}
-                editConfig={{
-                  dialogTitle: 'Modifica elemento',
-                  submitLabel: 'Salva modifiche',
-                  fields: [
-                    { name: 'name', label: 'Nome', required: true },
-                    { name: 'description', label: 'Descrizione', type: 'textarea' },
-                  ],
-                  getInitialValues: (item) => ({ name: item.name, description: item.description ?? '' }),
-                  mutation: async (item, values) => {
-                    await updateFn(item, values);
-                  },
-                  successMessage: 'Elemento aggiornato',
-                  errorMessage: 'Errore aggiornamento',
-                }}
-                deleteConfig={{
-                  dialogTitle: 'Elimina elemento',
-                  description: (item) => `Confermi eliminazione di ${item.name}?`,
-                  mutation: async (item) => {
-                    await deleteFn(item);
-                  },
-                  successMessage: 'Elemento eliminato',
-                  errorMessage: 'Errore eliminazione',
-                }}
-                getItemLabel={(item) => item.name}
-              />
-            </ThemeProvider>
-          </SearchProvider>
-        </SnackbarProvider>
-      </QueryClientProvider>,
-    );
+    renderListPage<Item>({
+      title: 'Elementi',
+      columns,
+      fetcher,
+      queryKeyBase: ['items'],
+      autoloadOnMount: true,
+      createConfig: {
+        triggerLabel: 'Nuovo elemento',
+        dialogTitle: 'Crea elemento',
+        submitLabel: 'Salva nuovo',
+        defaultValues: { name: '', description: '' },
+        fields: [
+          { name: 'name', label: 'Nome', required: true },
+          { name: 'description', label: 'Descrizione', type: 'textarea' },
+        ],
+        mutation: async (values) => {
+          await createFn(values);
+        },
+        successMessage: 'Elemento creato',
+        errorMessage: 'Errore creazione',
+      },
+      editConfig: {
+        dialogTitle: 'Modifica elemento',
+        submitLabel: 'Salva modifiche',
+        fields: [
+          { name: 'name', label: 'Nome', required: true },
+          { name: 'description', label: 'Descrizione', type: 'textarea' },
+        ],
+        getInitialValues: (item) => ({ name: item.name, description: item.description ?? '' }),
+        mutation: async (item, values) => {
+          await updateFn(item, values);
+        },
+        successMessage: 'Elemento aggiornato',
+        errorMessage: 'Errore aggiornamento',
+      },
+      deleteConfig: {
+        dialogTitle: 'Elimina elemento',
+        description: (item) => `Confermi eliminazione di ${item.name}?`,
+        mutation: async (item) => {
+          await deleteFn(item);
+        },
+        successMessage: 'Elemento eliminato',
+        errorMessage: 'Errore eliminazione',
+      },
+      getItemLabel: (item) => item.name,
+    });
 
     await waitFor(() => {
       expect(fetcher).toHaveBeenCalledTimes(1);
