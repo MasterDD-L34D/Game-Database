@@ -1,5 +1,4 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
-import { createMemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import Records from '../Records';
 import type { RecordRow } from '../../types/record';
@@ -68,16 +67,17 @@ describe('Records page', () => {
   });
 
   function renderPage() {
-    const router = createMemoryRouter([
-      {
-        path: '/records',
-        element: <Records />,
+    return renderWithProviders(<div />, {
+      router: {
+        routes: [
+          {
+            path: '/records',
+            element: <Records />,
+          },
+        ],
+        initialEntries: ['/records'],
       },
-    ], {
-      initialEntries: ['/records'],
     });
-
-    return renderWithProviders(<Records />, { router });
   }
 
   it('fetches data on init and refetches on pagination and sorting changes', async () => {

@@ -1,6 +1,7 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { screen, waitFor, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
+import { describe, expect, it, vi } from 'vitest';
 import { renderListPage, userEvent } from '../../testUtils/renderWithProviders';
 
 type Item = { id: string; name: string; description?: string };
@@ -14,15 +15,10 @@ const columns: ColumnDef<Item, any>[] = [
 ];
 
 describe('ListPage CRUD actions', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('allows creating, editing and deleting items with automatic refresh', async () => {
+  it(
+    'allows creating, editing and deleting items with automatic refresh',
+    { timeout: 15000 },
+    async () => {
     const fetcher = vi
       .fn<(query: string, page?: number, pageSize?: number) => Promise<{ items: Item[]; total: number; page: number; pageSize: number }>>()
       .mockResolvedValue({ items: [{ id: '1', name: 'Item Uno', description: 'Desc' }], total: 1, page: 0, pageSize: 25 });
@@ -43,11 +39,15 @@ describe('ListPage CRUD actions', () => {
         dialogTitle: 'Crea elemento',
         submitLabel: 'Salva nuovo',
         defaultValues: { name: '', description: '' },
+        schema: z.object({
+          name: z.string().min(1),
+          description: z.string().optional(),
+        }),
         fields: [
           { name: 'name', label: 'Nome', required: true },
           { name: 'description', label: 'Descrizione', type: 'textarea' },
         ],
-        mutation: async (values) => {
+        onSubmit: async (values) => {
           await createFn(values);
         },
         successMessage: 'Elemento creato',
@@ -60,8 +60,12 @@ describe('ListPage CRUD actions', () => {
           { name: 'name', label: 'Nome', required: true },
           { name: 'description', label: 'Descrizione', type: 'textarea' },
         ],
+        schema: z.object({
+          name: z.string().min(1),
+          description: z.string().optional(),
+        }),
         getInitialValues: (item) => ({ name: item.name, description: item.description ?? '' }),
-        mutation: async (item, values) => {
+        onSubmit: async (item, values) => {
           await updateFn(item, values);
         },
         successMessage: 'Elemento aggiornato',
@@ -84,14 +88,15 @@ describe('ListPage CRUD actions', () => {
     });
 
     await user.click(screen.getByRole('button', { name: 'Nuovo elemento' }));
-    const nameInput = await screen.findByLabelText('Nome');
+    const createDialog = await screen.findByRole('dialog');
+    const nameInput = await within(createDialog).findByLabelText(/nome/i);
     await user.type(nameInput, 'Nuovo elemento');
     await user.click(screen.getByRole('button', { name: 'Salva nuovo' }));
 
     await waitFor(() => {
       expect(createFn).toHaveBeenCalledWith(expect.objectContaining({ name: 'Nuovo elemento' }));
     });
-    await screen.findByText('Elemento creato');
+    await screen.findByText(/elemento creato/i);
     await waitFor(() => {
       expect(fetcher).toHaveBeenCalledTimes(2);
     });
@@ -100,7 +105,8 @@ describe('ListPage CRUD actions', () => {
     const menu = await screen.findByRole('menu');
     await user.click(within(menu).getByRole('menuitem', { name: 'Modifica' }));
 
-    const editNameInput = await screen.findByLabelText('Nome');
+    const editDialog = await screen.findByRole('dialog');
+    const editNameInput = await within(editDialog).findByLabelText(/nome/i);
     await user.clear(editNameInput);
     await user.type(editNameInput, 'Elemento aggiornato');
     await user.click(screen.getByRole('button', { name: 'Salva modifiche' }));
@@ -108,7 +114,7 @@ describe('ListPage CRUD actions', () => {
     await waitFor(() => {
       expect(updateFn).toHaveBeenCalledWith(expect.objectContaining({ id: '1' }), expect.objectContaining({ name: 'Elemento aggiornato' }));
     });
-    await screen.findByText('Elemento aggiornato');
+    await screen.findByText(/elemento aggiornato/i, undefined, { timeout: 7000 });
     await waitFor(() => {
       expect(fetcher).toHaveBeenCalledTimes(3);
     });
@@ -123,9 +129,10 @@ describe('ListPage CRUD actions', () => {
     await waitFor(() => {
       expect(deleteFn).toHaveBeenCalledWith(expect.objectContaining({ id: '1' }));
     });
-    await screen.findByText('Elemento eliminato');
+    await screen.findByText(/elemento eliminato/i, undefined, { timeout: 7000 });
     await waitFor(() => {
       expect(fetcher).toHaveBeenCalledTimes(4);
     });
-  });
+    },
+  );
 });

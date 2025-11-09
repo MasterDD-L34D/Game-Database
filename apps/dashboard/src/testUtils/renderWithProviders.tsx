@@ -1,8 +1,20 @@
 import { ReactElement, isValidElement } from 'react';
 import { ThemeProvider } from '@mui/material';
 import { render, type RenderOptions, type RenderResult } from '@testing-library/react';
-import { QueryClient, QueryClientProvider, type QueryClientConfig } from '@tanstack/react-query';
-import { RouterProvider, createMemoryRouter, type Router } from 'react-router-dom';
+import {
+  QueryClient,
+  QueryClientProvider,
+  type QueryClientConfig,
+  type QueryKey,
+  type SetDataOptions,
+} from '@tanstack/react-query';
+import {
+  RouterProvider,
+  createMemoryRouter,
+  type MemoryRouterProps,
+  type RouteObject,
+  type Router,
+} from 'react-router-dom';
 import ListPage from '../pages/ListPage';
 import { SearchProvider } from '../providers/SearchProvider';
 import { SnackbarProvider } from '../components/SnackbarProvider';
@@ -19,9 +31,22 @@ const DEFAULT_QUERY_CLIENT_CONFIG: QueryClientConfig = {
   },
 };
 
+type InitialQueryEntry = {
+  queryKey: QueryKey;
+  data: unknown;
+  options?: SetDataOptions;
+};
+
+type RouterOverrides = Pick<MemoryRouterProps, 'initialEntries' | 'initialIndex'> & {
+  routes?: RouteObject[];
+};
+
+type RouterOption = Router | RouterOverrides;
+
 export type RenderWithProvidersOptions = Omit<RenderOptions, 'wrapper'> & {
   queryClientOptions?: QueryClientConfig;
-  router?: Router;
+  initialQueryData?: InitialQueryEntry[];
+  router?: RouterOption;
 };
 
 export type RenderWithProvidersResult = RenderResult & {
@@ -76,9 +101,18 @@ function mergeQueryClientConfig(
   };
 }
 
+function isRouter(value: RouterOption | undefined): value is Router {
+  return !!value && typeof value === 'object' && 'subscribe' in value && typeof value.subscribe === 'function';
+}
+
 export function renderWithProviders(
   ui: ReactElement,
-  { queryClientOptions, router: providedRouter, ...renderOptions }: RenderWithProvidersOptions = {},
+  {
+    queryClientOptions,
+    initialQueryData,
+    router: routerOption,
+    ...renderOptions
+  }: RenderWithProvidersOptions = {},
 ): RenderWithProvidersResult {
   const mergedQueryClientOptions = mergeQueryClientConfig(
     DEFAULT_QUERY_CLIENT_CONFIG,
@@ -86,9 +120,16 @@ export function renderWithProviders(
   );
   const queryClient = new QueryClient(mergedQueryClientOptions);
 
-  const router = providedRouter ?? createMemoryRouter([
-    { path: '/', element: ui },
-  ]);
+  for (const entry of initialQueryData ?? []) {
+    queryClient.setQueryData(entry.queryKey, entry.data, entry.options);
+  }
+
+  const router = isRouter(routerOption)
+    ? routerOption
+    : createMemoryRouter(routerOption?.routes ?? [{ path: '/', element: ui }], {
+        initialEntries: routerOption?.initialEntries,
+        initialIndex: routerOption?.initialIndex,
+      });
 
   const result = render(
     <ThemeProvider theme={theme}>
@@ -112,7 +153,7 @@ export type RenderListPageOptions = RenderWithProvidersOptions;
 
 export function renderListPage(
   propsOrElement: ListPageProps | ReactElement,
-  { queryClientOptions, ...options }: RenderListPageOptions = {},
+  { queryClientOptions, initialQueryData, ...options }: RenderListPageOptions = {},
 ): RenderWithProvidersResult {
   const mergedQueryClientOptions = mergeQueryClientConfig(
     {
@@ -130,12 +171,14 @@ export function renderListPage(
     return renderWithProviders(propsOrElement, {
       ...options,
       queryClientOptions: mergedQueryClientOptions,
+      initialQueryData,
     });
   }
 
   return renderWithProviders(<ListPage {...propsOrElement} />, {
     ...options,
     queryClientOptions: mergedQueryClientOptions,
+    initialQueryData,
   });
 }
 
