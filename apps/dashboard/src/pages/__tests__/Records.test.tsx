@@ -115,9 +115,36 @@ describe('Records page', () => {
     fireEvent.click(screen.getByRole('button', { name: /ordina per nome/i }));
 
     await waitFor(() => {
-      expect(listRecordsMock).toHaveBeenCalledTimes(3);
+      expect(listRecordsMock).toHaveBeenCalledTimes(4);
     });
 
-    expect(listRecordsMock.mock.calls.at(-1)?.[0]).toMatchObject({ page: 1, sort: 'nome:asc' });
+    expect(listRecordsMock.mock.calls.at(-1)?.[0]).toMatchObject({ page: 0, sort: 'nome:asc' });
+  });
+
+  it('resets the current page when search changes', async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(listRecordsMock).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /pagina successiva/i }));
+
+    await waitFor(() => {
+      expect(listRecordsMock).toHaveBeenCalledTimes(2);
+    });
+
+    expect(listRecordsMock.mock.calls.at(-1)?.[0]).toMatchObject({ page: 1, pageSize: 25 });
+
+    const searchInput = screen.getByPlaceholderText(/cerca/i);
+
+    fireEvent.change(searchInput, { target: { value: 'nuovo filtro' } });
+    fireEvent.blur(searchInput);
+
+    await waitFor(() => {
+      expect(listRecordsMock).toHaveBeenCalledTimes(4);
+    });
+
+    expect(listRecordsMock.mock.calls.at(-1)?.[0]).toMatchObject({ page: 0, q: 'nuovo filtro' });
   });
 });
