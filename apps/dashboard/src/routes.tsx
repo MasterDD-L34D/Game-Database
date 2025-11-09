@@ -16,7 +16,7 @@ export const router = createBrowserRouter([
     { index: true, element: <DashboardPage /> },
     { path: 'records', element: <Records /> },
     { path: 'records/new', element: <RecordCreatePage /> },
-    { path: 'records/:recordId', element: <RecordDetailsPage /> },
+    { path: 'records/:recordId?', element: <RecordDetailsPage /> },
     { path: 'records/:recordId/edit', element: <RecordEditPage /> },
     { path: 'traits', element: <TraitListPage /> },
     { path: 'biomes', element: <BiomeListPage /> },
