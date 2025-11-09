@@ -1,6 +1,6 @@
 
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type KeyboardEvent } from 'react';
-import { Paper, Typography, Box, Stack, TextField, Button } from '@mui/material';
+import { Paper, Typography, Box, Stack, TextField, Button, Alert } from '@mui/material';
 import ExportMenu from '../components/ExportMenu';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { Stile, Pattern, Peso, Curvatura } from '../types/record';
@@ -74,7 +74,7 @@ export default function Records() {
 
   const queryKey = useMemo(() => recordsListQueryKey(listParams), [listParams]);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey,
     queryFn: () => listRecords(listParams),
   });
@@ -169,7 +169,26 @@ export default function Records() {
         <Button variant="contained" onClick={()=>navigate('/records/new')}>{t('common:actions.add')}</Button>
       </Stack>
       <FilterChips filters={chips} onRemove={(key)=>setFilters((f)=>({ ...f, [key]: undefined }))} />
-      <FilterSidebar open={openFilters} value={filters} onChange={setFilters} onClear={()=>setFilters({})} onClose={()=>setOpenFilters(false)} />
+      <FilterSidebar
+        open={openFilters}
+        value={filters}
+        onChange={setFilters}
+        onClear={()=>setFilters({})}
+        onClose={()=>setOpenFilters(false)}
+      />
+      {isError ? (
+        <Alert
+          severity="error"
+          action={(
+            <Button color="inherit" size="small" onClick={() => refetch()}>
+              {t('common:actions.retry')}
+            </Button>
+          )}
+          sx={(theme) => ({ mt: theme.spacing(2) })}
+        >
+          {error instanceof Error ? error.message : t('common:feedback.loadError')}
+        </Alert>
+      ) : null}
       <Box sx={(theme) => ({ mt: theme.spacing(4) })}>
         <RecordTable
           data={items}
