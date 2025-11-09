@@ -8,6 +8,7 @@ Queste istruzioni descrivono come applicare le migrazioni Prisma e rilanciare il
 | --- | --- |
 | `DATABASE_URL` | Connessione PostgreSQL che Prisma utilizza (es. `postgresql://postgres:postgres@localhost:5432/game?schema=public`). |
 | `PORT` | Porta esposta da Express. Facoltativa (default `3333`). |
+| `TAXONOMY_WRITE_ROLES` | Ruoli autorizzati a creare/modificare la tassonomia. Facoltativa (default `taxonomy:write,admin`; accetta valori separati da virgola es. `taxonomy:write,superuser`). |
 
 > Copia `server/.env.example` in `server/.env` e compila le variabili con valori validi. In Docker puoi sovrascriverle tramite `environment:` nel `docker-compose.yml`.
 
