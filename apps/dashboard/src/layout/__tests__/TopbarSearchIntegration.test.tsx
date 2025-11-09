@@ -1,12 +1,11 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { render, screen, waitFor } from '@testing-library/react';
+import { waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ListPage from '../../pages/ListPage';
 import Topbar from '../Topbar';
-import { SearchProvider, SEARCH_DEBOUNCE_DELAY } from '../../providers/SearchProvider';
+import { SEARCH_DEBOUNCE_DELAY } from '../../providers/SearchProvider';
+import { createMemoryRouter, renderWithProviders } from '../../testUtils/renderWithProviders';
 
 type Item = { id: string; name: string };
 
@@ -29,15 +28,13 @@ describe('Topbar search integration', () => {
 
   it('propagates the debounced query to list pages', async () => {
     const fetcher = vi.fn().mockResolvedValue({ items: [] as Item[], total: 0, page: 0, pageSize: 25 });
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
     const user = userEvent.setup({ advanceTimers: async (ms) => vi.advanceTimersByTimeAsync(ms ?? 0) });
 
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <SearchProvider>
+    const router = createMemoryRouter([
+      {
+        path: '/',
+        element: (
+          <>
             <Topbar />
             <div className="p-4">
               <ListPage<Item>
@@ -48,10 +45,12 @@ describe('Topbar search integration', () => {
                 autoloadOnMount
               />
             </div>
-          </SearchProvider>
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
+          </>
+        ),
+      },
+    ]);
+
+    const { getAllByPlaceholderText } = renderWithProviders(<div />, { router });
 
     await waitFor(() => {
       expect(fetcher).toHaveBeenCalled();
@@ -59,7 +58,7 @@ describe('Topbar search integration', () => {
 
     fetcher.mockClear();
 
-    const [topbarInput] = screen.getAllByPlaceholderText('Cerca');
+    const [topbarInput] = getAllByPlaceholderText('Cerca');
     await user.type(topbarInput, 'lince');
     await vi.advanceTimersByTimeAsync(SEARCH_DEBOUNCE_DELAY);
 
