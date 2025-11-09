@@ -35,6 +35,9 @@ npm run dev                    # http://localhost:3333
 
 > Lo script `npm run dev:setup` esegue `prisma generate`, applica le migrazioni con `prisma migrate deploy` e lancia `prisma db seed`.
 > Per creare nuove migrazioni durante lo sviluppo continua a usare `npm run prisma:migrate`.
+>
+> Variabili d'ambiente utili:
+> - `TAXONOMY_WRITE_ROLES` (opzionale) elenca i ruoli autorizzati a creare/modificare la tassonomia. Il default è `taxonomy:write,admin`. Per sovrascriverlo usa ad esempio `setx TAXONOMY_WRITE_ROLES "taxonomy:write,superuser"` prima di avviare il server.
 
 #### Audit opzionale
 
