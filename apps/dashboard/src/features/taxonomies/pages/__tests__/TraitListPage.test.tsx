@@ -4,15 +4,21 @@ import { vi } from 'vitest';
 import TraitListPage from '../TraitListPage';
 import { renderListPage } from '../../../../testUtils/renderWithProviders';
 
-const {
-  baseTraits,
-  traits,
-  listTraits,
-  createTrait,
-  updateTrait,
-  deleteTrait,
-} = vi.hoisted(() => {
-  const baseTraits = [
+type TraitType = {
+  id: string;
+  slug: string;
+  name: string;
+  category: string;
+  unit?: string | null;
+  dataType: 'NUMERIC' | 'CATEGORICAL';
+  description: string;
+  allowedValues: string[] | null;
+  rangeMin: number | null;
+  rangeMax: number | null;
+};
+
+const taxonomyMocks = vi.hoisted(() => {
+  const baseTraits: TraitType[] = [
     {
       id: 'trait-1',
       slug: 'body-length',
@@ -50,8 +56,6 @@ const {
     },
   ];
 
-  type TraitType = (typeof baseTraits)[number];
-
   const traits: TraitType[] = baseTraits.map((trait) => ({ ...trait }));
 
   const listTraits = vi.fn(async () => ({
@@ -61,8 +65,8 @@ const {
     total: traits.length,
   }));
 
-  const createTrait = vi.fn(async (payload: any) => {
-    const next = { id: `trait-${traits.length + 1}`, ...payload } as TraitType;
+  const createTrait = vi.fn(async (payload: Omit<TraitType, 'id'>) => {
+    const next = { id: `trait-${traits.length + 1}`, ...payload } satisfies TraitType;
     traits.push({ ...next });
     return next;
   });
@@ -82,6 +86,14 @@ const {
     }
   });
 
+  const reset = () => {
+    traits.splice(0, traits.length, ...baseTraits.map((trait) => ({ ...trait })));
+    listTraits.mockClear();
+    createTrait.mockClear();
+    updateTrait.mockClear();
+    deleteTrait.mockClear();
+  };
+
   return {
     baseTraits,
     traits,
@@ -89,14 +101,15 @@ const {
     createTrait,
     updateTrait,
     deleteTrait,
+    reset,
   };
 });
 
 vi.mock('../../../../lib/taxonomy', () => ({
-  listTraits,
-  createTrait,
-  updateTrait,
-  deleteTrait,
+  listTraits: taxonomyMocks.listTraits,
+  createTrait: taxonomyMocks.createTrait,
+  updateTrait: taxonomyMocks.updateTrait,
+  deleteTrait: taxonomyMocks.deleteTrait,
 }));
 
 function renderPage() {
@@ -107,11 +120,7 @@ function renderPage() {
 
 describe('TraitListPage', () => {
   beforeEach(() => {
-    traits.splice(0, traits.length, ...baseTraits.map((trait) => ({ ...trait })));
-    listTraits.mockClear();
-    createTrait.mockClear();
-    updateTrait.mockClear();
-    deleteTrait.mockClear();
+    taxonomyMocks.reset();
   });
 
   it(
@@ -120,7 +129,7 @@ describe('TraitListPage', () => {
     async () => {
     const { user } = renderPage();
 
-    await waitFor(() => expect(listTraits).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(taxonomyMocks.listTraits).toHaveBeenCalledTimes(1));
     await screen.findByText('Lunghezza corpo');
 
     await user.click(screen.getByRole('button', { name: /nuovo trait/i }));
@@ -140,8 +149,8 @@ describe('TraitListPage', () => {
     await user.click(screen.getByRole('button', { name: /salva$/i }));
 
     await screen.findByText('Trait creato con successo.');
-    await waitFor(() => expect(listTraits).toHaveBeenCalledTimes(2));
-    expect(createTrait).toHaveBeenCalledWith({
+    await waitFor(() => expect(taxonomyMocks.listTraits).toHaveBeenCalledTimes(2));
+    expect(taxonomyMocks.createTrait).toHaveBeenCalledWith({
       slug: 'tolleranza-sale',
       name: 'Tolleranza al sale',
       category: 'Fisiologia',
@@ -165,8 +174,8 @@ describe('TraitListPage', () => {
     await user.click(screen.getByRole('button', { name: /salva modifiche/i }));
 
     await screen.findByText('Trait aggiornato con successo.');
-    await waitFor(() => expect(listTraits).toHaveBeenCalledTimes(3));
-    expect(updateTrait).toHaveBeenCalledWith('trait-3', {
+    await waitFor(() => expect(taxonomyMocks.listTraits).toHaveBeenCalledTimes(3));
+    expect(taxonomyMocks.updateTrait).toHaveBeenCalledWith('trait-3', {
       slug: 'diet',
       name: 'Dieta prevalente',
       category: 'Ecologia',
@@ -186,8 +195,8 @@ describe('TraitListPage', () => {
     await user.click(screen.getByRole('button', { name: /^elimina$/i }));
 
     await screen.findByText('Trait eliminato con successo.', undefined, { timeout: 10000 });
-    await waitFor(() => expect(listTraits).toHaveBeenCalledTimes(4));
-    expect(deleteTrait).toHaveBeenCalledWith('trait-2');
+    await waitFor(() => expect(taxonomyMocks.listTraits).toHaveBeenCalledTimes(4));
+    expect(taxonomyMocks.deleteTrait).toHaveBeenCalledWith('trait-2');
     await waitFor(() => expect(screen.queryByText('Massa corporea')).not.toBeInTheDocument());
   });
 });
