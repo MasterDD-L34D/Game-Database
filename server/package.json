@@ -23,6 +23,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "prisma:seed": "prisma db seed",
-    "test": "node --test"
+    "test": "node --test",
+    "evo:import": "./scripts/evo-pipeline.sh"
   }
 }
