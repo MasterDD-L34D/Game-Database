@@ -1,0 +1,19 @@
+{
+  "traits": [
+    "packs/evo_tactics_pack/docs/catalog/trait_glossary.json",
+    "packs/evo_tactics_pack/docs/catalog/trait_reference.json",
+    "packs/evo_tactics_pack/docs/catalog/env_traits.json"
+  ],
+  "biomes": [
+    "packs/evo_tactics_pack/docs/catalog/catalog_data.json",
+    "packs/evo_tactics_pack/docs/catalog/biomes/**/*.json"
+  ],
+  "species": [
+    "packs/evo_tactics_pack/docs/catalog/species/**/*.json",
+    "packs/evo_tactics_pack/docs/catalog/catalog_data.json"
+  ],
+  "ecosystems": [
+    "packs/evo_tactics_pack/docs/catalog/catalog_data.json",
+    "packs/evo_tactics_pack/docs/catalog/ecosystems/**/*.json"
+  ]
+}

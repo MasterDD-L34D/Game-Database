@@ -57,10 +57,12 @@ npm run dev                    # http://localhost:5174
 > - `VITE_API_USER` per indicare l'identità delle operazioni registrate (facoltativo).
 
 ### 4) Import taxonomy (opzionale)
+Consulta [docs/evo-import.md](docs/evo-import.md) per la pipeline completa.
+
 ```powershell
 Set-Location ..\server
-node scripts/ingest/import-taxonomy.js --repo C:\percorso\al\tuo\repo --dry-run --verbose
-node scripts/ingest/import-taxonomy.js --repo C:\percorso\al\tuo\repo --verbose
+npm run evo:import -- --repo C:\percorso\al\repo\EvoTactics --dry-run
+npm run evo:import -- --repo C:\percorso\al\repo\EvoTactics
 ```
 
 ### Ripopolamento database
