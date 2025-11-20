@@ -4,6 +4,15 @@ const { requireTaxonomyWrite } = require('../middleware/permissions');
 
 const router = express.Router();
 
+const ALLOWED_ROLES = new Set([
+  'keystone',
+  'dominant',
+  'engineer',
+  'common',
+  'invasive',
+  'other',
+]);
+
 function normalizeId(value) {
   if (value == null) return '';
   return String(value).trim();
@@ -12,6 +21,22 @@ function normalizeId(value) {
 function normalizeRole(value) {
   if (value == null) return '';
   return String(value).trim();
+}
+
+function parseRole(value, { required = true } = {}) {
+  const role = normalizeRole(value);
+
+  if (!role) {
+    return required ? { error: 'role is required' } : { ok: true, value: undefined };
+  }
+
+  if (!ALLOWED_ROLES.has(role)) {
+    return {
+      error: 'role must be one of: keystone, dominant, engineer, common, invasive, other',
+    };
+  }
+
+  return { ok: true, value: role };
 }
 
 function normalizeAbundance(value) {
@@ -39,8 +64,12 @@ function buildFilter(query = {}) {
   const where = {};
   if (query.ecosystemId) where.ecosystemId = String(query.ecosystemId);
   if (query.speciesId) where.speciesId = String(query.speciesId);
-  if (query.role) where.role = String(query.role);
-  return where;
+  if (query.role) {
+    const roleResult = parseRole(query.role, { required: false });
+    if (roleResult.error) return { error: roleResult.error };
+    if (roleResult.value) where.role = roleResult.value;
+  }
+  return { where };
 }
 
 async function ensureEcosystemAndSpecies(ecosystemId, speciesId) {
@@ -60,7 +89,10 @@ async function ensureEcosystemAndSpecies(ecosystemId, speciesId) {
 
 router.get('/', async (req, res) => {
   try {
-    const where = buildFilter(req.query);
+    const filter = buildFilter(req.query);
+    if (filter.error) return res.status(400).json({ error: filter.error });
+
+    const where = filter.where;
     const items = await prisma.ecosystemSpecies.findMany({
       where,
       orderBy: [
@@ -84,8 +116,9 @@ router.post('/', requireTaxonomyWrite, async (req, res) => {
     const speciesId = normalizeId(req.body.speciesId);
     if (!speciesId) return res.status(400).json({ error: 'speciesId is required' });
 
-    const role = normalizeRole(req.body.role);
-    if (!role) return res.status(400).json({ error: 'role is required' });
+    const roleResult = parseRole(req.body.role);
+    if (roleResult.error) return res.status(400).json({ error: roleResult.error });
+    const role = roleResult.value;
 
     const validation = await ensureEcosystemAndSpecies(ecosystemId, speciesId);
     if (validation.error) return res.status(400).json({ error: validation.error });
@@ -139,8 +172,9 @@ router.patch('/:id', requireTaxonomyWrite, async (req, res) => {
 
     let role = existing.role;
     if ('role' in req.body) {
-      role = normalizeRole(req.body.role);
-      if (!role) return res.status(400).json({ error: 'role is required' });
+      const roleResult = parseRole(req.body.role);
+      if (roleResult.error) return res.status(400).json({ error: roleResult.error });
+      role = roleResult.value;
     }
 
     const writable = collectWritableFields(req.body);
