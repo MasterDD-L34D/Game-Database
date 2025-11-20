@@ -20,12 +20,26 @@ function isValidPresence(value) {
   return ALLOWED_PRESENCES.includes(value);
 }
 
+function normalizeAbundance(value) {
+  if (value === undefined) return { ok: true, value: undefined };
+  if (value === null || value === '') return { ok: true, value: null };
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue)) {
+    return { ok: false, error: 'abundance must be a number' };
+  }
+  return { ok: true, value: numberValue };
+}
+
 function collectWritableFields(body) {
   const data = {};
   if ('presence' in body) data.presence = body.presence;
-  if ('abundance' in body) data.abundance = body.abundance ?? null;
+  if ('abundance' in body) {
+    const result = normalizeAbundance(body.abundance);
+    if (!result.ok) return { error: result.error };
+    if (result.value !== undefined) data.abundance = result.value;
+  }
   if ('notes' in body) data.notes = body.notes ?? null;
-  return data;
+  return { data };
 }
 
 function buildFilter(query = {}) {
@@ -38,7 +52,12 @@ function buildFilter(query = {}) {
 
   const presence = normalizePresence(query.presence);
   if (presence) where.presence = presence;
-  return where;
+
+  const abundanceResult = normalizeAbundance(query.abundance);
+  if (!abundanceResult.ok) return { error: abundanceResult.error };
+  if (abundanceResult.value !== undefined) where.abundance = abundanceResult.value;
+
+  return { where };
 }
 
 async function ensureSpeciesAndBiome(speciesId, biomeId) {
@@ -63,7 +82,10 @@ router.get('/', async (req, res) => {
       return res.status(400).json({ error: 'Invalid presence' });
     }
 
-    const where = buildFilter({ ...req.query, presence });
+    const filter = buildFilter({ ...req.query, presence });
+    if (filter.error) return res.status(400).json({ error: filter.error });
+
+    const where = filter.where;
     const items = await prisma.speciesBiome.findMany({
       where,
       orderBy: [
@@ -93,12 +115,15 @@ router.post('/', requireTaxonomyWrite, async (req, res) => {
     const validation = await ensureSpeciesAndBiome(speciesId, biomeId);
     if (validation.error) return res.status(400).json({ error: validation.error });
 
+    const writable = collectWritableFields({ ...req.body, presence });
+    if (writable.error) return res.status(400).json({ error: writable.error });
+
     const created = await prisma.speciesBiome.create({
       data: {
         speciesId,
         biomeId,
         presence,
-        ...collectWritableFields({ ...req.body, presence }),
+        ...writable.data,
       },
     });
 
@@ -141,13 +166,16 @@ router.patch('/:id', requireTaxonomyWrite, async (req, res) => {
       if (!isValidPresence(presence)) return res.status(400).json({ error: 'Invalid presence' });
     }
 
+    const writable = collectWritableFields({ ...req.body, presence });
+    if (writable.error) return res.status(400).json({ error: writable.error });
+
     const updated = await prisma.speciesBiome.update({
       where: { id: existing.id },
       data: {
         speciesId,
         biomeId,
         presence,
-        ...collectWritableFields({ ...req.body, presence }),
+        ...writable.data,
       },
     });
 
