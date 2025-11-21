@@ -122,7 +122,38 @@ function validateTraitData(body, trait) {
     };
   }
 
-  return collectWritableFields(body, allowedFields, trait);
+  const collected = collectWritableFields(body, allowedFields, trait);
+  if (collected.error) return collected;
+
+  if (trait.dataType === 'CATEGORICAL') {
+    const allowedValues =
+      Array.isArray(trait.allowedValues) && trait.allowedValues.length
+        ? trait.allowedValues
+            .filter(value => typeof value === 'string')
+            .map(value => value.trim())
+            .filter(Boolean)
+        : null;
+
+    if (!allowedValues || allowedValues.length === 0) {
+      return { error: 'allowedValues is required for categorical traits' };
+    }
+
+    const allowedSet = new Set(allowedValues);
+    for (const field of ['value', 'text']) {
+      if (field in collected.data && collected.data[field] !== undefined) {
+        const fieldValue = collected.data[field];
+        if (fieldValue != null && !allowedSet.has(fieldValue)) {
+          return {
+            error: `Invalid ${field} for categorical trait. Allowed values: ${allowedValues.join(
+              ', ',
+            )}`,
+          };
+        }
+      }
+    }
+  }
+
+  return collected;
 }
 
 async function buildTraitPayload(body, existing = {}) {
