@@ -43,6 +43,10 @@ function createApp() {
   app.use('/api/ecosystem-species', ecosystemSpeciesRouter);
   app.use('/api/ecosystems', ecosystemsRouter);
 
+  app.get('/api', (req, res) => {
+    res.json({ status: 'ok' });
+  });
+
   return app;
 }
 
