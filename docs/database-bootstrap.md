@@ -32,7 +32,19 @@ Queste istruzioni descrivono come applicare le migrazioni Prisma e rilanciare il
 
 ## Ambiente Docker / containerizzati
 
-Il servizio `server` nel `docker-compose.yml` utilizza `server/scripts/docker-entrypoint.sh` per garantire che le migrazioni e il seed vengano eseguiti la prima volta che il container parte.
+Il servizio `server` nel `docker-compose.yml` utilizza `server/scripts/docker-entrypoint.sh` per garantire che le migrazioni e il seed vengano eseguiti la prima volta che il container parte.  Assicurati di lanciare i comandi `docker compose` dalla radice del repository (dove si trova il file `docker-compose.yml`); eseguirli dalla cartella `server/` monta una directory sbagliata e il container non riesce a trovare lo script di entrypoint.
+
+**Errore `docker-entrypoint.sh: no such file or directory`**
+
+Se l'errore persiste anche dalla radice del repo:
+
+1. Verifica di vedere `docker-compose.yml` nell'output di `ls`/`dir` prima di lanciare i comandi.
+2. Controlla che la cartella `server/scripts` contenga `docker-entrypoint.sh` nel filesystem host.
+3. Ispeziona cosa vede il container con:
+   ```bash
+   docker compose run --rm --entrypoint ls server -al /app/scripts
+   ```
+   Se `docker-entrypoint.sh` manca, significa che la bind mount `./server:/app` non è stata applicata (probabilmente perché i comandi non sono stati eseguiti dalla radice del repo).
 
 ```bash
 docker compose up -d db
