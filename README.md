@@ -55,6 +55,10 @@ npm run dev                    # http://localhost:5174
 > Copia `.env.local.example` in `.env.local` e aggiorna i valori necessari:
 > - `VITE_API_BASE_URL` per puntare al server (default: `http://localhost:3333/api`).
 > - `VITE_API_USER` per indicare l'identità delle operazioni registrate (facoltativo).
+>
+> Prima di avviare la dashboard assicurati che il server API sia **già in esecuzione** e raggiungibile (es. `curl http://localhost:3333/api/biomes`). Se il backend gira su host/porta diversi:
+> - imposta `VITE_API_BASE_URL` nel tuo `.env.local` verso l'endpoint corretto (incluso il suffisso `/api`), **oppure** aggiorna il proxy di sviluppo in `apps/dashboard/vite.config.ts` per puntare al nuovo host;
+> - riavvia `npm run dev` del dashboard così da evitare il `NetworkError` causato da un proxy/API non raggiungibili.
 
 ### 4) Import taxonomy (opzionale)
 Consulta [docs/evo-import.md](docs/evo-import.md) per la pipeline completa.
