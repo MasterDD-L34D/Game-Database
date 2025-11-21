@@ -38,6 +38,10 @@ npm run dev                    # http://localhost:3333
 >
 > Variabili d'ambiente utili:
 > - `TAXONOMY_WRITE_ROLES` (opzionale) elenca i ruoli autorizzati a creare/modificare la tassonomia. Il default è `taxonomy:write,admin`. Per sovrascriverlo usa ad esempio `setx TAXONOMY_WRITE_ROLES "taxonomy:write,superuser"` prima di avviare il server.
+>
+> Porte e indirizzamenti in sviluppo:
+> - Il server espone le API su `http://localhost:3333` (anche se avvii `docker compose up server`, grazie al port mapping `3333:3333`).
+> - Il database Postgres del `docker compose` ascolta su `localhost:5432` dall'host. Se invece il server gira **dentro** il container `server`, usa `db:5432` come host nel `DATABASE_URL` (vedi esempio nel `docker-compose.yml`).
 
 #### Audit opzionale
 
