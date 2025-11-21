@@ -8,7 +8,7 @@ const DEFAULT_CATEGORY = 'baseline';
 const TRAIT_DATA_FIELDS = ['value', 'num', 'bool', 'text', 'unit', 'source', 'confidence'];
 const ALLOWED_FIELDS_BY_TYPE = {
   BOOLEAN: ['bool'],
-  NUMERIC: ['num', 'unit', 'confidence'],
+  NUMERIC: ['num', 'confidence', 'unit'],
   CATEGORICAL: ['value', 'text'],
   TEXT: ['text', 'source'],
 };
@@ -124,6 +124,13 @@ function validateTraitData(body, trait) {
 
   const collected = collectWritableFields(body, allowedFields, trait);
   if (collected.error) return collected;
+
+  if (!Object.keys(collected.data).length) {
+    const requiredFields = allowedFields.join('/');
+    return {
+      error: `Provide value for ${trait.dataType.toLowerCase()} trait: ${requiredFields}`,
+    };
+  }
 
   if (trait.dataType === 'CATEGORICAL') {
     const allowedValues =
