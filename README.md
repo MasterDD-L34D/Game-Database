@@ -38,6 +38,10 @@ npm run dev                    # http://localhost:3333
 >
 > Variabili d'ambiente utili:
 > - `TAXONOMY_WRITE_ROLES` (opzionale) elenca i ruoli autorizzati a creare/modificare la tassonomia. Il default è `taxonomy:write,admin`. Per sovrascriverlo usa ad esempio `setx TAXONOMY_WRITE_ROLES "taxonomy:write,superuser"` prima di avviare il server.
+>
+> Porte e indirizzamenti in sviluppo:
+> - Il server espone le API su `http://localhost:3333` (anche se avvii `docker compose up server`, grazie al port mapping `3333:3333`).
+> - Il database Postgres del `docker compose` ascolta su `localhost:5432` dall'host. Se invece il server gira **dentro** il container `server`, usa `db:5432` come host nel `DATABASE_URL` (vedi esempio nel `docker-compose.yml`).
 
 #### Audit opzionale
 
@@ -55,6 +59,10 @@ npm run dev                    # http://localhost:5174
 > Copia `.env.local.example` in `.env.local` e aggiorna i valori necessari:
 > - `VITE_API_BASE_URL` per puntare al server (default: `http://localhost:3333/api`).
 > - `VITE_API_USER` per indicare l'identità delle operazioni registrate (facoltativo).
+>
+> Prima di avviare la dashboard assicurati che il server API sia **già in esecuzione** e raggiungibile (es. `curl http://localhost:3333/api/biomes`). Se il backend gira su host/porta diversi:
+> - imposta `VITE_API_BASE_URL` nel tuo `.env.local` verso l'endpoint corretto (incluso il suffisso `/api`), **oppure** aggiorna il proxy di sviluppo in `apps/dashboard/vite.config.ts` per puntare al nuovo host;
+> - riavvia `npm run dev` del dashboard così da evitare il `NetworkError` causato da un proxy/API non raggiungibili.
 
 ### 4) Import taxonomy (opzionale)
 Consulta [docs/evo-import.md](docs/evo-import.md) per la pipeline completa.
