@@ -118,7 +118,24 @@ router.get('/export', async (req, res) => {
       const items = await prisma.record.findMany({ where, orderBy, skip: page * batchSize, take: batchSize });
       if (!items.length) break;
       for (const it of items) {
-        const row = [it.id, it.nome, it.stato, it.stile, it.pattern, it.peso, it.curvatura, it.descrizione, it.data?.toISOString?.().slice(0,10), it.createdBy, it.updatedBy, it.createdAt?.toISOString?.(), it.updatedAt?.toISOString?.()];
+        const date = it.data ? it.data.toISOString().slice(0, 10) : '';
+        const createdAt = it.createdAt ? it.createdAt.toISOString() : '';
+        const updatedAt = it.updatedAt ? it.updatedAt.toISOString() : '';
+        const row = [
+          it.id,
+          it.nome,
+          it.stato,
+          it.stile,
+          it.pattern,
+          it.peso,
+          it.curvatura,
+          it.descrizione,
+          date,
+          it.createdBy,
+          it.updatedBy,
+          createdAt,
+          updatedAt,
+        ];
         res.write(row.map(csvEscape).join(',') + '\n');
       }
       page++; await new Promise(resolve => setImmediate(resolve));

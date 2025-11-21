@@ -96,6 +96,72 @@ test('GET /api/records/export returns CSV content by default', async () => {
   }
 });
 
+test('GET /api/records/export handles null dates without crashing', async () => {
+  const sampleRecords = [
+    {
+      id: 'record-2',
+      nome: 'No Date',
+      stato: 'Bozza',
+      stile: null,
+      pattern: null,
+      peso: null,
+      curvatura: null,
+      descrizione: null,
+      data: null,
+      createdBy: null,
+      updatedBy: null,
+      createdAt: null,
+      updatedAt: null,
+    },
+  ];
+
+  prisma.record.findMany = async ({ skip = 0 } = {}) => {
+    if (skip === 0) return sampleRecords;
+    return [];
+  };
+
+  try {
+    const app = createApp();
+    const server = app.listen(0);
+    await new Promise(resolve => server.once('listening', resolve));
+    const { port } = server.address();
+
+    const response = await new Promise((resolve, reject) => {
+      const req = http.request(
+        {
+          method: 'GET',
+          hostname: '127.0.0.1',
+          port,
+          path: '/api/records/export',
+        },
+        res => {
+          const chunks = [];
+          res.on('data', chunk => chunks.push(chunk));
+          res.on('end', () => {
+            resolve({
+              status: res.statusCode,
+              headers: res.headers,
+              body: Buffer.concat(chunks).toString('utf8'),
+            });
+          });
+        },
+      );
+      req.on('error', reject);
+      req.end();
+    });
+
+    await new Promise(resolve => server.close(resolve));
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers['content-type'], 'text/csv; charset=utf-8');
+    assert.ok(response.headers['content-disposition']?.includes('records_'));
+    assert.match(response.body, /^id,nome,stato/);
+    assert.match(response.body, /record-2,No Date,Bozza/);
+  } finally {
+    restoreRecordModel();
+  }
+});
+
 test('POST /api/records returns 400 for invalid date input', async () => {
   let createCalled = false;
   prisma.record.create = async () => {
