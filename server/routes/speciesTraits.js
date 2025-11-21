@@ -5,6 +5,13 @@ const { requireTaxonomyWrite } = require('../middleware/permissions');
 const router = express.Router();
 
 const DEFAULT_CATEGORY = 'baseline';
+const TRAIT_DATA_FIELDS = ['value', 'num', 'bool', 'text', 'unit', 'source', 'confidence'];
+const ALLOWED_FIELDS_BY_TYPE = {
+  BOOLEAN: ['bool'],
+  NUMERIC: ['num', 'unit', 'confidence'],
+  CATEGORICAL: ['value', 'text'],
+  TEXT: ['text', 'source'],
+};
 
 function normalizeId(value) {
   if (value == null) return '';
@@ -19,16 +26,43 @@ function normalizeCategory(value, fallback = DEFAULT_CATEGORY) {
   return normalized || fallback;
 }
 
-function collectWritableFields(body) {
+function collectWritableFields(body, allowedFields) {
   const data = {};
-  if ('value' in body) data.value = body.value ?? null;
-  if ('num' in body) data.num = body.num ?? null;
-  if ('bool' in body) data.bool = body.bool ?? null;
-  if ('text' in body) data.text = body.text ?? null;
-  if ('unit' in body) data.unit = body.unit ?? null;
-  if ('source' in body) data.source = body.source ?? null;
-  if ('confidence' in body) data.confidence = body.confidence ?? null;
+  const allowedSet = allowedFields ? new Set(allowedFields) : null;
+
+  const addField = (key, value) => {
+    if (allowedSet && !allowedSet.has(key)) return;
+    data[key] = value ?? null;
+  };
+
+  if ('value' in body) addField('value', body.value);
+  if ('num' in body) addField('num', body.num);
+  if ('bool' in body) addField('bool', body.bool);
+  if ('text' in body) addField('text', body.text);
+  if ('unit' in body) addField('unit', body.unit);
+  if ('source' in body) addField('source', body.source);
+  if ('confidence' in body) addField('confidence', body.confidence);
   return data;
+}
+
+function validateTraitData(body, trait) {
+  const allowedFields = ALLOWED_FIELDS_BY_TYPE[trait?.dataType];
+  if (!allowedFields) {
+    return { error: 'Unsupported trait data type' };
+  }
+
+  const allowedSet = new Set(allowedFields);
+  const invalidFields = TRAIT_DATA_FIELDS.filter(
+    key => key in body && !allowedSet.has(key),
+  );
+
+  if (invalidFields.length) {
+    return {
+      error: `Fields not allowed for trait type ${trait.dataType}: ${invalidFields.join(', ')}`,
+    };
+  }
+
+  return { data: collectWritableFields(body, allowedFields) };
 }
 
 function buildFilter(query = {}) {
@@ -78,6 +112,9 @@ router.post('/', requireTaxonomyWrite, async (req, res) => {
     const validation = await ensureSpeciesAndTrait(speciesId, traitId);
     if (validation.error) return res.status(400).json({ error: validation.error });
 
+    const traitValidation = validateTraitData(req.body, validation.trait);
+    if (traitValidation.error) return res.status(400).json({ error: traitValidation.error });
+
     const category = normalizeCategory(req.body.category);
 
     const existing = await prisma.speciesTrait.findFirst({
@@ -90,7 +127,7 @@ router.post('/', requireTaxonomyWrite, async (req, res) => {
         speciesId,
         traitId,
         category,
-        ...collectWritableFields(req.body),
+        ...traitValidation.data,
       },
     });
 
@@ -118,10 +155,18 @@ router.patch('/:id', requireTaxonomyWrite, async (req, res) => {
       if (!traitId) return res.status(400).json({ error: 'traitId is required' });
     }
 
+    let trait;
     if ('speciesId' in req.body || 'traitId' in req.body) {
       const validation = await ensureSpeciesAndTrait(speciesId, traitId);
       if (validation.error) return res.status(400).json({ error: validation.error });
+      trait = validation.trait;
+    } else {
+      trait = await prisma.trait.findUnique({ where: { id: traitId } });
+      if (!trait) return res.status(400).json({ error: 'Invalid traitId' });
     }
+
+    const traitValidation = validateTraitData(req.body, trait);
+    if (traitValidation.error) return res.status(400).json({ error: traitValidation.error });
 
     const category =
       'category' in req.body
@@ -141,7 +186,7 @@ router.patch('/:id', requireTaxonomyWrite, async (req, res) => {
         speciesId,
         traitId,
         category,
-        ...collectWritableFields(req.body),
+        ...traitValidation.data,
       },
     });
 
