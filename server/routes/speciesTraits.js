@@ -26,23 +26,83 @@ function normalizeCategory(value, fallback = DEFAULT_CATEGORY) {
   return normalized || fallback;
 }
 
-function collectWritableFields(body, allowedFields) {
+function normalizeNumber(value, fieldName) {
+  if (value === undefined) return { skip: true };
+  if (value === null) return { value: null };
+  const numValue = Number(value);
+  if (!Number.isFinite(numValue)) {
+    return { error: `Invalid value for field "${fieldName}"` };
+  }
+  return { value: numValue };
+}
+
+function normalizeBoolean(value) {
+  if (value === undefined) return { skip: true };
+  if (value === null) return { value: null };
+  if (value === true || value === false) return { value };
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true') return { value: true };
+    if (normalized === 'false') return { value: false };
+  }
+  return { error: 'Invalid value for field "bool"' };
+}
+
+function normalizeString(value, fieldName, { allowEmpty = true } = {}) {
+  if (value === undefined) return { skip: true };
+  if (value === null) return { value: null };
+  if (typeof value !== 'string') {
+    return { error: `Invalid value for field "${fieldName}"` };
+  }
+  const normalized = value.trim();
+  if (!allowEmpty && normalized === '') {
+    return { error: `Invalid value for field "${fieldName}"` };
+  }
+  return { value: normalized };
+}
+
+function normalizeTraitFieldValue(dataType, field, value) {
+  switch (dataType) {
+    case 'NUMERIC': {
+      if (field === 'num' || field === 'confidence') {
+        return normalizeNumber(value, field);
+      }
+      if (field === 'unit') {
+        return normalizeString(value, field);
+      }
+      break;
+    }
+    case 'BOOLEAN':
+      return normalizeBoolean(value);
+    case 'CATEGORICAL': {
+      if (field === 'value') return normalizeString(value, field, { allowEmpty: false });
+      if (field === 'text') return normalizeString(value, field, { allowEmpty: false });
+      break;
+    }
+    case 'TEXT': {
+      if (field === 'text' || field === 'source') return normalizeString(value, field);
+      break;
+    }
+    default:
+      break;
+  }
+  return { error: 'Unsupported trait data type' };
+}
+
+function collectWritableFields(body, allowedFields, trait) {
   const data = {};
   const allowedSet = allowedFields ? new Set(allowedFields) : null;
 
-  const addField = (key, value) => {
-    if (allowedSet && !allowedSet.has(key)) return;
-    data[key] = value ?? null;
-  };
+  for (const field of TRAIT_DATA_FIELDS) {
+    if (!(field in body)) continue;
+    if (allowedSet && !allowedSet.has(field)) continue;
+    const normalized = normalizeTraitFieldValue(trait.dataType, field, body[field]);
+    if (normalized.skip) continue;
+    if (normalized.error) return { error: normalized.error };
+    data[field] = normalized.value;
+  }
 
-  if ('value' in body) addField('value', body.value);
-  if ('num' in body) addField('num', body.num);
-  if ('bool' in body) addField('bool', body.bool);
-  if ('text' in body) addField('text', body.text);
-  if ('unit' in body) addField('unit', body.unit);
-  if ('source' in body) addField('source', body.source);
-  if ('confidence' in body) addField('confidence', body.confidence);
-  return data;
+  return { data };
 }
 
 function validateTraitData(body, trait) {
@@ -62,7 +122,34 @@ function validateTraitData(body, trait) {
     };
   }
 
-  return { data: collectWritableFields(body, allowedFields) };
+  return collectWritableFields(body, allowedFields, trait);
+}
+
+async function buildTraitPayload(body, existing = {}) {
+  const speciesId = normalizeId('speciesId' in body ? body.speciesId : existing.speciesId);
+  if (!speciesId) return { error: 'speciesId is required' };
+
+  const traitId = normalizeId('traitId' in body ? body.traitId : existing.traitId);
+  if (!traitId) return { error: 'traitId is required' };
+
+  const validation = await ensureSpeciesAndTrait(speciesId, traitId);
+  if (validation.error) return { error: validation.error };
+
+  const traitValidation = validateTraitData(body, validation.trait);
+  if (traitValidation.error) return { error: traitValidation.error };
+
+  const category =
+    'category' in body
+      ? normalizeCategory(body.category)
+      : existing.category || DEFAULT_CATEGORY;
+
+  return {
+    speciesId,
+    traitId,
+    category,
+    trait: validation.trait,
+    data: traitValidation.data,
+  };
 }
 
 function buildFilter(query = {}) {
@@ -103,19 +190,10 @@ router.get('/', async (req, res) => {
 
 router.post('/', requireTaxonomyWrite, async (req, res) => {
   try {
-    const speciesId = normalizeId(req.body.speciesId);
-    if (!speciesId) return res.status(400).json({ error: 'speciesId is required' });
+    const payload = await buildTraitPayload(req.body);
+    if (payload.error) return res.status(400).json({ error: payload.error });
 
-    const traitId = normalizeId(req.body.traitId);
-    if (!traitId) return res.status(400).json({ error: 'traitId is required' });
-
-    const validation = await ensureSpeciesAndTrait(speciesId, traitId);
-    if (validation.error) return res.status(400).json({ error: validation.error });
-
-    const traitValidation = validateTraitData(req.body, validation.trait);
-    if (traitValidation.error) return res.status(400).json({ error: traitValidation.error });
-
-    const category = normalizeCategory(req.body.category);
+    const { speciesId, traitId, category, data } = payload;
 
     const existing = await prisma.speciesTrait.findFirst({
       where: { speciesId, traitId, category },
@@ -127,7 +205,7 @@ router.post('/', requireTaxonomyWrite, async (req, res) => {
         speciesId,
         traitId,
         category,
-        ...traitValidation.data,
+        ...data,
       },
     });
 
@@ -143,35 +221,10 @@ router.patch('/:id', requireTaxonomyWrite, async (req, res) => {
     const existing = await prisma.speciesTrait.findUnique({ where: { id: req.params.id } });
     if (!existing) return res.status(404).json({ error: 'Not found' });
 
-    let speciesId = existing.speciesId;
-    if ('speciesId' in req.body) {
-      speciesId = normalizeId(req.body.speciesId);
-      if (!speciesId) return res.status(400).json({ error: 'speciesId is required' });
-    }
+    const payload = await buildTraitPayload(req.body, existing);
+    if (payload.error) return res.status(400).json({ error: payload.error });
 
-    let traitId = existing.traitId;
-    if ('traitId' in req.body) {
-      traitId = normalizeId(req.body.traitId);
-      if (!traitId) return res.status(400).json({ error: 'traitId is required' });
-    }
-
-    let trait;
-    if ('speciesId' in req.body || 'traitId' in req.body) {
-      const validation = await ensureSpeciesAndTrait(speciesId, traitId);
-      if (validation.error) return res.status(400).json({ error: validation.error });
-      trait = validation.trait;
-    } else {
-      trait = await prisma.trait.findUnique({ where: { id: traitId } });
-      if (!trait) return res.status(400).json({ error: 'Invalid traitId' });
-    }
-
-    const traitValidation = validateTraitData(req.body, trait);
-    if (traitValidation.error) return res.status(400).json({ error: traitValidation.error });
-
-    const category =
-      'category' in req.body
-        ? normalizeCategory(req.body.category)
-        : existing.category || DEFAULT_CATEGORY;
+    const { speciesId, traitId, category, data } = payload;
 
     const duplicate = await prisma.speciesTrait.findFirst({
       where: { speciesId, traitId, category },
@@ -186,7 +239,7 @@ router.patch('/:id', requireTaxonomyWrite, async (req, res) => {
         speciesId,
         traitId,
         category,
-        ...traitValidation.data,
+        ...data,
       },
     });
 

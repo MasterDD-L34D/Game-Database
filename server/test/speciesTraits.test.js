@@ -63,6 +63,18 @@ function resetData() {
     name: 'Trait Numeric',
     dataType: 'NUMERIC',
   });
+  traitRecords.set('trait-4', {
+    id: 'trait-4',
+    slug: 'trait-4',
+    name: 'Trait Boolean',
+    dataType: 'BOOLEAN',
+  });
+  traitRecords.set('trait-5', {
+    id: 'trait-5',
+    slug: 'trait-5',
+    name: 'Trait Categorical',
+    dataType: 'CATEGORICAL',
+  });
 
   speciesTraitStore.clear();
   idCounter = 1;
@@ -250,6 +262,59 @@ test('POST /api/species-traits rejects data incompatible with trait type', async
 
   assert.equal(response.status, 400);
   assert.match(body.error, /Fields not allowed/);
+});
+
+test('POST /api/species-traits normalizes numeric and boolean values', async () => {
+  resetData();
+
+  const { server, baseUrl } = await startServer();
+
+  const numericResponse = await fetch(`${baseUrl}/api/species-traits`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Roles': TAXONOMY_ROLE,
+    },
+    body: JSON.stringify({ speciesId: 'species-1', traitId: 'trait-3', num: '42.5' }),
+  });
+  const numericBody = await numericResponse.json();
+
+  const booleanResponse = await fetch(`${baseUrl}/api/species-traits`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Roles': TAXONOMY_ROLE,
+    },
+    body: JSON.stringify({ speciesId: 'species-1', traitId: 'trait-4', bool: 'true' }),
+  });
+  const booleanBody = await booleanResponse.json();
+
+  await closeServer(server);
+
+  assert.equal(numericResponse.status, 201);
+  assert.equal(numericBody.num, 42.5);
+
+  assert.equal(booleanResponse.status, 201);
+  assert.equal(booleanBody.bool, true);
+});
+
+test('POST /api/species-traits rejects invalid categorical values', async () => {
+  resetData();
+
+  const { server, baseUrl } = await startServer();
+  const response = await fetch(`${baseUrl}/api/species-traits`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Roles': TAXONOMY_ROLE,
+    },
+    body: JSON.stringify({ speciesId: 'species-1', traitId: 'trait-5', value: '   ' }),
+  });
+  const body = await response.json();
+  await closeServer(server);
+
+  assert.equal(response.status, 400);
+  assert.match(body.error, /Invalid value/);
 });
 
 test('POST /api/species-traits denies access to unauthorized users', async () => {
