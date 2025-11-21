@@ -74,6 +74,7 @@ function resetData() {
     slug: 'trait-5',
     name: 'Trait Categorical',
     dataType: 'CATEGORICAL',
+    allowedValues: ['value-a', 'value-b'],
   });
 
   speciesTraitStore.clear();
@@ -264,6 +265,46 @@ test('POST /api/species-traits rejects data incompatible with trait type', async
   assert.match(body.error, /Fields not allowed/);
 });
 
+test('POST /api/species-traits rejects empty values for each trait type', async () => {
+  resetData();
+
+  const { server, baseUrl } = await startServer();
+  const scenarios = [
+    {
+      traitId: 'trait-4',
+      expected: 'Provide value for boolean trait: bool',
+    },
+    {
+      traitId: 'trait-3',
+      expected: 'Provide value for numeric trait: num/confidence/unit',
+    },
+    {
+      traitId: 'trait-5',
+      expected: 'Provide value for categorical trait: value/text',
+    },
+    {
+      traitId: 'trait-1',
+      expected: 'Provide value for text trait: text/source',
+    },
+  ];
+
+  for (const scenario of scenarios) {
+    const response = await fetch(`${baseUrl}/api/species-traits`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Roles': TAXONOMY_ROLE,
+      },
+      body: JSON.stringify({ speciesId: 'species-1', traitId: scenario.traitId }),
+    });
+    const body = await response.json();
+    assert.equal(response.status, 400);
+    assert.equal(body.error, scenario.expected);
+  }
+
+  await closeServer(server);
+});
+
 test('POST /api/species-traits normalizes numeric and boolean values', async () => {
   resetData();
 
@@ -395,7 +436,7 @@ test('PATCH /api/species-traits/:id returns 404 for missing records', async () =
 
 test('POST /api/species-traits enforces uniqueness on species, trait and category', async () => {
   resetData();
-  await createSpeciesTrait({ category: 'baseline' });
+  await createSpeciesTrait({ category: 'baseline', text: 'Existing' });
 
   const { server, baseUrl } = await startServer();
   const response = await fetch(`${baseUrl}/api/species-traits`, {
@@ -408,6 +449,7 @@ test('POST /api/species-traits enforces uniqueness on species, trait and categor
       speciesId: 'species-1',
       traitId: 'trait-1',
       category: 'baseline',
+      text: 'Another value',
     }),
   });
   await closeServer(server);
