@@ -49,11 +49,19 @@ function resetData() {
     id: 'trait-1',
     slug: 'trait-1',
     name: 'Trait One',
+    dataType: 'TEXT',
   });
   traitRecords.set('trait-2', {
     id: 'trait-2',
     slug: 'trait-2',
     name: 'Trait Two',
+    dataType: 'TEXT',
+  });
+  traitRecords.set('trait-3', {
+    id: 'trait-3',
+    slug: 'trait-3',
+    name: 'Trait Numeric',
+    dataType: 'NUMERIC',
   });
 
   speciesTraitStore.clear();
@@ -219,6 +227,31 @@ test('POST /api/species-traits creates a new entry for authorized users', async 
   assert.equal(body.text, payload.text);
 });
 
+test('POST /api/species-traits rejects data incompatible with trait type', async () => {
+  resetData();
+
+  const { server, baseUrl } = await startServer();
+  const payload = {
+    speciesId: 'species-1',
+    traitId: 'trait-3',
+    text: 'Invalid for numeric trait',
+  };
+
+  const response = await fetch(`${baseUrl}/api/species-traits`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Roles': TAXONOMY_ROLE,
+    },
+    body: JSON.stringify(payload),
+  });
+  const body = await response.json();
+  await closeServer(server);
+
+  assert.equal(response.status, 400);
+  assert.match(body.error, /Fields not allowed/);
+});
+
 test('POST /api/species-traits denies access to unauthorized users', async () => {
   resetData();
 
@@ -256,6 +289,26 @@ test('PATCH /api/species-traits/:id updates existing entries', async () => {
 
   assert.equal(response.status, 200);
   assert.equal(body.text, 'After');
+});
+
+test('PATCH /api/species-traits/:id enforces data type when traitId is unchanged', async () => {
+  resetData();
+  const numericTrait = await createSpeciesTrait({ traitId: 'trait-3', num: 1.5 });
+
+  const { server, baseUrl } = await startServer();
+  const response = await fetch(`${baseUrl}/api/species-traits/${numericTrait.id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Roles': TAXONOMY_ROLE,
+    },
+    body: JSON.stringify({ text: 'Not allowed' }),
+  });
+  const body = await response.json();
+  await closeServer(server);
+
+  assert.equal(response.status, 400);
+  assert.match(body.error, /Fields not allowed/);
 });
 
 test('PATCH /api/species-traits/:id returns 404 for missing records', async () => {
