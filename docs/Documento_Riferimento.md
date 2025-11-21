@@ -34,3 +34,36 @@ I test e gli snapshot devono usare i testi tradotti, quindi evita di inserire st
 - La palette principale è stata allineata a Tailwind: `primary` (blu 600) per le call-to-action, `secondary` (emerald 500) per gli accenti, `info/success/warning/error` coerenti con le tonalità delle notifiche. Lo sfondo base è `surface[50]`/`theme.palette.background.default`.
 - Tailwind (`apps/dashboard/tailwind.config.js`) esporta le stesse tonalità e la tipografia del tema: classi come `bg-gradient-primary`, `shadow-card`, `text-neutral-600`, `px-card` assicurano coerenza anche nei componenti non-MUI.
 - Per componenti dimostrativi/QA avvia `npm run dev` in `apps/dashboard`: la dashboard mostra le nuove card di sintesi e le viste `Records`/`Create` aggiornate con spacing e gradienti del tema.
+
+## Documento operativo – blocchi richiesti (template PM)
+Blocchi compilati secondo la struttura condivisa dal PM e allineati ai file/referenze interni del progetto.
+
+- **Identità / Versioning**
+  - Repository e stack: panoramica già presente in apertura di file; versionamento dello schema affidato alle migrazioni Prisma eseguite da `npm run dev:setup`. 【F:docs/Documento_Riferimento.md†L2-L9】【F:server/package.json†L8-L27】
+  - Stato di bootstrap e seed: comando `npm run dev:setup` (Prisma generate + migrate deploy + seed). 【F:README.md†L27-L37】【F:server/package.json†L17-L27】
+
+- **Classificazione / Ruolo**
+  - Ruoli applicativi e permessi di scrittura tassonomia definiti da `TAXONOMY_WRITE_ROLES`; audit opzionale tramite header `X-User`. 【F:README.md†L39-L49】
+  - Entità e dominio: mappa di record/tassonomia nella sezione Schema (tabella sottostante). 【F:docs/modal-game-database.md†L6-L30】
+
+- **Relazioni / Sinergie**
+  - Relazioni tra entità modellate in Prisma (Species↔Trait/biomi/ecosistemi, Ecosystem↔Biome/Species) con indici/unici per consistenza. 【F:server/prisma/schema.prisma†L136-L251】
+  - Pipeline di import che preserva sinergie tra collezioni (upsert specie/trait/biomi/ecosistemi e legami ponte). 【F:server/scripts/ingest/import-taxonomy.js†L1-L150】
+
+- **Ambiente / Contesto**
+  - Prerequisiti runtime e setup locale/Docker descritti nella scheda (Node 18+, PostgreSQL 15/Docker, Vite dashboard). 【F:docs/Documento_Riferimento.md†L2-L9】【F:docs/onboarding.md†L1-L66】
+  - Variabili d'ambiente principali: `DATABASE_URL`, `PORT`, `VITE_API_BASE_URL`, `VITE_API_USER`. 【F:README.md†L27-L63】
+
+- **Bilanciamento / Costi**
+  - Import idempotente (`--dry-run`, slug univoci, upsert) per evitare duplicati e ridurre costi operativi di bonifica. 【F:docs/evo-import.md†L1-L40】【F:server/scripts/ingest/import-taxonomy.js†L1-L80】
+  - Campi di range/allowed values nei Trait per controllare domini numerici e categoriali (limita errori e rework). 【F:server/prisma/schema.prisma†L119-L152】
+
+- **Localizzazione / Testi**
+  - Gestione i18n centralizzata in `apps/dashboard/src/i18n/index.ts` con namespace `common`, `records`, `taxonomy` ecc. 【F:apps/dashboard/src/i18n/index.ts†L1-L49】
+  - Stringhe italiane organizzate per modulo in `apps/dashboard/src/i18n/locales/it/*.json`; i componenti usano `useTranslation`. 【F:apps/dashboard/src/i18n/index.ts†L5-L35】
+
+### Reference rapide
+- **Glossario / schede dettagliate**: `docs/trait-scheda.md` per i campi trait e relativi vincoli. 【F:docs/trait-scheda.md†L1-L104】
+- **Fonti editoriali / pipeline**: `docs/evo-import.md` e `server/scripts/ingest/import-taxonomy.js` per origini dati e normalizzazione. 【F:docs/evo-import.md†L1-L40】【F:server/scripts/ingest/import-taxonomy.js†L1-L80】
+- **Tassonomie**: schema Prisma per Trait/Biome/Species/Ecosystem e relazioni ponte. 【F:server/prisma/schema.prisma†L119-L251】
+- **Modelli estesi**: tabella Schema in questo documento per ruoli e campi chiave delle entità. 【F:docs/modal-game-database.md†L6-L30】
