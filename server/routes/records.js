@@ -1,6 +1,7 @@
 
 const express = require('express');
 const prisma = require('../db/prisma');
+const { RecordStato } = require('@prisma/client');
 const { logAudit } = require('../utils/audit');
 const router = express.Router();
 
@@ -19,6 +20,30 @@ function normalizeDateInput(value) {
     return parsed;
   }
   throw new BadRequestError('Data non valida: usa una stringa ISO 8601 o null');
+}
+
+function validateRecordPayload(body, { requireNome = false, requireStato = false } = {}) {
+  const errors = [];
+
+  const shouldValidateNome = requireNome || Object.prototype.hasOwnProperty.call(body, 'nome');
+  if (shouldValidateNome) {
+    if (typeof body.nome !== 'string' || body.nome.trim() === '') {
+      errors.push('Il campo nome è obbligatorio e non può essere vuoto');
+    }
+  }
+
+  const shouldValidateStato = requireStato || Object.prototype.hasOwnProperty.call(body, 'stato');
+  if (shouldValidateStato) {
+    if (body.stato === undefined || body.stato === null) {
+      errors.push('Il campo stato è obbligatorio');
+    } else if (!Object.values(RecordStato).includes(body.stato)) {
+      errors.push(`Valore stato non valido: ${body.stato}`);
+    }
+  }
+
+  if (errors.length) {
+    throw new BadRequestError(errors.join('; '));
+  }
 }
 
 function buildWhereAndOrder(req) {
@@ -114,6 +139,7 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
+    validateRecordPayload(req.body, { requireNome: true, requireStato: true });
     const normalizedDate = normalizeDateInput(req.body.data ?? undefined);
     const created = await prisma.record.create({
       data: {
@@ -140,6 +166,7 @@ router.post('/', async (req, res) => {
 
 router.patch('/:id', async (req, res) => {
   try {
+    validateRecordPayload(req.body, { requireNome: false, requireStato: false });
     const normalizedDate = 'data' in req.body ? normalizeDateInput(req.body.data) : undefined;
     const updated = await prisma.record.update({
       where: { id: req.params.id },

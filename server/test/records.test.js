@@ -7,6 +7,7 @@ const prisma = require('../db/prisma');
 const originalRecordModel = {
   findMany: prisma.record?.findMany,
   create: prisma.record?.create,
+  update: prisma.record?.update,
 };
 
 function restoreRecordModel() {
@@ -20,6 +21,12 @@ function restoreRecordModel() {
     prisma.record.create = originalRecordModel.create;
   } else {
     delete prisma.record.create;
+  }
+
+  if (originalRecordModel.update) {
+    prisma.record.update = originalRecordModel.update;
+  } else {
+    delete prisma.record.update;
   }
 }
 
@@ -137,6 +144,222 @@ test('POST /api/records returns 400 for invalid date input', async () => {
     assert.equal(response.status, 400);
     assert.deepEqual(JSON.parse(response.body || '{}'), {
       error: 'Data non valida: usa una stringa ISO 8601 o null',
+    });
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+    restoreRecordModel();
+  }
+});
+
+test('POST /api/records returns 400 when nome is missing', async () => {
+  let createCalled = false;
+  prisma.record.create = async () => {
+    createCalled = true;
+    throw new Error('This should not be called when validation fails');
+  };
+
+  const app = createApp();
+  const server = app.listen(0);
+  try {
+    await new Promise(resolve => server.once('listening', resolve));
+    const { port } = server.address();
+
+    const payload = JSON.stringify({ stato: 'Bozza' });
+
+    const response = await new Promise((resolve, reject) => {
+      const req = http.request(
+        {
+          method: 'POST',
+          hostname: '127.0.0.1',
+          port,
+          path: '/api/records',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(payload),
+          },
+        },
+        res => {
+          const chunks = [];
+          res.on('data', chunk => chunks.push(chunk));
+          res.on('end', () => {
+            resolve({
+              status: res.statusCode,
+              body: Buffer.concat(chunks).toString('utf8'),
+            });
+          });
+        },
+      );
+      req.on('error', reject);
+      req.write(payload);
+      req.end();
+    });
+
+    assert.equal(createCalled, false);
+    assert.equal(response.status, 400);
+    assert.deepEqual(JSON.parse(response.body || '{}'), {
+      error: 'Il campo nome è obbligatorio e non può essere vuoto',
+    });
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+    restoreRecordModel();
+  }
+});
+
+test('POST /api/records returns 400 when stato is missing or invalid', async () => {
+  let createCalled = false;
+  prisma.record.create = async () => {
+    createCalled = true;
+    throw new Error('This should not be called when validation fails');
+  };
+
+  const app = createApp();
+  const server = app.listen(0);
+  try {
+    await new Promise(resolve => server.once('listening', resolve));
+    const { port } = server.address();
+
+    const payload = JSON.stringify({ nome: 'Missing stato' });
+
+    const response = await new Promise((resolve, reject) => {
+      const req = http.request(
+        {
+          method: 'POST',
+          hostname: '127.0.0.1',
+          port,
+          path: '/api/records',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(payload),
+          },
+        },
+        res => {
+          const chunks = [];
+          res.on('data', chunk => chunks.push(chunk));
+          res.on('end', () => {
+            resolve({
+              status: res.statusCode,
+              body: Buffer.concat(chunks).toString('utf8'),
+            });
+          });
+        },
+      );
+      req.on('error', reject);
+      req.write(payload);
+      req.end();
+    });
+
+    assert.equal(createCalled, false);
+    assert.equal(response.status, 400);
+    assert.deepEqual(JSON.parse(response.body || '{}'), {
+      error: 'Il campo stato è obbligatorio',
+    });
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+    restoreRecordModel();
+  }
+});
+
+test('POST /api/records returns 400 when stato is invalid', async () => {
+  let createCalled = false;
+  prisma.record.create = async () => {
+    createCalled = true;
+    throw new Error('This should not be called when validation fails');
+  };
+
+  const app = createApp();
+  const server = app.listen(0);
+  try {
+    await new Promise(resolve => server.once('listening', resolve));
+    const { port } = server.address();
+
+    const payload = JSON.stringify({ nome: 'Invalid stato', stato: 'NonValido' });
+
+    const response = await new Promise((resolve, reject) => {
+      const req = http.request(
+        {
+          method: 'POST',
+          hostname: '127.0.0.1',
+          port,
+          path: '/api/records',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(payload),
+          },
+        },
+        res => {
+          const chunks = [];
+          res.on('data', chunk => chunks.push(chunk));
+          res.on('end', () => {
+            resolve({
+              status: res.statusCode,
+              body: Buffer.concat(chunks).toString('utf8'),
+            });
+          });
+        },
+      );
+      req.on('error', reject);
+      req.write(payload);
+      req.end();
+    });
+
+    assert.equal(createCalled, false);
+    assert.equal(response.status, 400);
+    assert.deepEqual(JSON.parse(response.body || '{}'), {
+      error: 'Valore stato non valido: NonValido',
+    });
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+    restoreRecordModel();
+  }
+});
+
+test('PATCH /api/records/:id returns 400 when updating with invalid fields', async () => {
+  let updateCalled = false;
+  prisma.record.update = async () => {
+    updateCalled = true;
+    throw new Error('This should not be called when validation fails');
+  };
+
+  const app = createApp();
+  const server = app.listen(0);
+  try {
+    await new Promise(resolve => server.once('listening', resolve));
+    const { port } = server.address();
+
+    const payload = JSON.stringify({ nome: '', stato: 'NonValido' });
+
+    const response = await new Promise((resolve, reject) => {
+      const req = http.request(
+        {
+          method: 'PATCH',
+          hostname: '127.0.0.1',
+          port,
+          path: '/api/records/record-1',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(payload),
+          },
+        },
+        res => {
+          const chunks = [];
+          res.on('data', chunk => chunks.push(chunk));
+          res.on('end', () => {
+            resolve({
+              status: res.statusCode,
+              body: Buffer.concat(chunks).toString('utf8'),
+            });
+          });
+        },
+      );
+      req.on('error', reject);
+      req.write(payload);
+      req.end();
+    });
+
+    assert.equal(updateCalled, false);
+    assert.equal(response.status, 400);
+    assert.deepEqual(JSON.parse(response.body || '{}'), {
+      error: 'Il campo nome è obbligatorio e non può essere vuoto; Valore stato non valido: NonValido',
     });
   } finally {
     await new Promise(resolve => server.close(resolve));
