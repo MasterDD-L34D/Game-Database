@@ -8,6 +8,19 @@ const ALLOWED_SORT_FIELDS = ['createdAt', 'nome', 'stato', 'stile', 'pattern', '
 
 class BadRequestError extends Error {}
 
+function normalizeDateInput(value) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value === 'string') {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      throw new BadRequestError('Data non valida: usa una stringa ISO 8601 o null');
+    }
+    return parsed;
+  }
+  throw new BadRequestError('Data non valida: usa una stringa ISO 8601 o null');
+}
+
 function buildWhereAndOrder(req) {
   const q = (req.query.q || '').trim();
   const [sf, sd] = String(req.query.sort || '').split(':');
@@ -101,12 +114,13 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
+    const normalizedDate = normalizeDateInput(req.body.data ?? undefined);
     const created = await prisma.record.create({
       data: {
         nome: req.body.nome,
         stato: req.body.stato,
         descrizione: req.body.descrizione ?? null,
-        data: req.body.data ? new Date(req.body.data) : null,
+        data: normalizedDate ?? null,
         stile: req.body.stile ?? null,
         pattern: req.body.pattern ?? null,
         peso: req.body.peso ?? null,
@@ -118,6 +132,7 @@ router.post('/', async (req, res) => {
     await logAudit(req, 'Record', created.id, 'CREATE', created);
     res.status(201).json(created);
   } catch (e) {
+    if (e instanceof BadRequestError) return res.status(400).json({ error: e.message });
     console.error(e);
     res.status(400).json({ error: 'Validation failed or bad input' });
   }
@@ -125,13 +140,14 @@ router.post('/', async (req, res) => {
 
 router.patch('/:id', async (req, res) => {
   try {
+    const normalizedDate = 'data' in req.body ? normalizeDateInput(req.body.data) : undefined;
     const updated = await prisma.record.update({
       where: { id: req.params.id },
       data: {
         ...('nome' in req.body ? { nome: req.body.nome } : {}),
         ...('stato' in req.body ? { stato: req.body.stato } : {}),
         ...('descrizione' in req.body ? { descrizione: req.body.descrizione ?? null } : {}),
-        ...('data' in req.body ? { data: req.body.data ? new Date(req.body.data) : null } : {}),
+        ...('data' in req.body ? { data: normalizedDate ?? null } : {}),
         ...('stile' in req.body ? { stile: req.body.stile ?? null } : {}),
         ...('pattern' in req.body ? { pattern: req.body.pattern ?? null } : {}),
         ...('peso' in req.body ? { peso: req.body.peso ?? null } : {}),
@@ -143,6 +159,7 @@ router.patch('/:id', async (req, res) => {
     res.json(updated);
   } catch (e) {
     if (e.code === 'P2025') return res.status(404).json({ error: 'Not found' });
+    if (e instanceof BadRequestError) return res.status(400).json({ error: e.message });
     console.error(e);
     res.status(400).json({ error: 'Validation failed or bad input' });
   }

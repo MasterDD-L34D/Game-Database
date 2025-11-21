@@ -6,7 +6,22 @@ const prisma = require('../db/prisma');
 
 const originalRecordModel = {
   findMany: prisma.record?.findMany,
+  create: prisma.record?.create,
 };
+
+function restoreRecordModel() {
+  if (originalRecordModel.findMany) {
+    prisma.record.findMany = originalRecordModel.findMany;
+  } else {
+    delete prisma.record.findMany;
+  }
+
+  if (originalRecordModel.create) {
+    prisma.record.create = originalRecordModel.create;
+  } else {
+    delete prisma.record.create;
+  }
+}
 
 test('GET /api/records/export returns CSV content by default', async () => {
   const sampleRecords = [
@@ -70,10 +85,61 @@ test('GET /api/records/export returns CSV content by default', async () => {
     assert.match(response.body, /^id,nome,stato/);
     assert.match(response.body, /record-1,Record One,Bozza/);
   } finally {
-    if (originalRecordModel.findMany) {
-      prisma.record.findMany = originalRecordModel.findMany;
-    } else {
-      delete prisma.record.findMany;
-    }
+    restoreRecordModel();
+  }
+});
+
+test('POST /api/records returns 400 for invalid date input', async () => {
+  let createCalled = false;
+  prisma.record.create = async () => {
+    createCalled = true;
+    throw new Error('This should not be called for invalid payloads');
+  };
+
+  const app = createApp();
+  const server = app.listen(0);
+  try {
+    await new Promise(resolve => server.once('listening', resolve));
+    const { port } = server.address();
+
+    const payload = JSON.stringify({ nome: 'Invalid date', stato: 'Bozza', data: 'not-a-date' });
+
+    const response = await new Promise((resolve, reject) => {
+      const req = http.request(
+        {
+          method: 'POST',
+          hostname: '127.0.0.1',
+          port,
+          path: '/api/records',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(payload),
+          },
+        },
+        res => {
+          const chunks = [];
+          res.on('data', chunk => chunks.push(chunk));
+          res.on('end', () => {
+            resolve({
+              status: res.statusCode,
+              headers: res.headers,
+              body: Buffer.concat(chunks).toString('utf8'),
+            });
+          });
+        },
+      );
+      req.on('error', reject);
+      req.write(payload);
+      req.end();
+    });
+
+    assert.equal(createCalled, false);
+    assert.equal(response.status, 400);
+    assert.deepEqual(JSON.parse(response.body || '{}'), {
+      error: 'Data non valida: usa una stringa ISO 8601 o null',
+    });
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+    restoreRecordModel();
   }
 });
