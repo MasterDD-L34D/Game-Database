@@ -4,9 +4,16 @@ const prisma = require('../db/prisma');
 const { logAudit } = require('../utils/audit');
 const router = express.Router();
 
+const ALLOWED_SORT_FIELDS = ['createdAt', 'nome', 'stato', 'stile', 'pattern', 'peso', 'curvatura'];
+
+class BadRequestError extends Error {}
+
 function buildWhereAndOrder(req) {
   const q = (req.query.q || '').trim();
   const [sf, sd] = String(req.query.sort || '').split(':');
+  if (sf && !ALLOWED_SORT_FIELDS.includes(sf)) {
+    throw new BadRequestError(`Campo di ordinamento non valido: ${sf}`);
+  }
   const orderBy = sf ? { [sf]: sd === 'desc' ? 'desc' : 'asc' } : { createdAt: 'desc' };
   const stile = req.query.stile || undefined;
   const pattern = req.query.pattern || undefined;
@@ -27,51 +34,63 @@ function buildWhereAndOrder(req) {
 }
 
 router.get('/', async (req, res) => {
-  const page = Math.max(parseInt(req.query.page || '0', 10), 0);
-  const pageSize = Math.min(Math.max(parseInt(req.query.pageSize || '25', 10), 1), 100);
-  const { where, orderBy } = buildWhereAndOrder(req);
-  const [total, items] = await Promise.all([
-    prisma.record.count({ where }),
-    prisma.record.findMany({ where, orderBy, skip: page * pageSize, take: pageSize }),
-  ]);
-  res.json({ items, page, pageSize, total });
+  try {
+    const page = Math.max(parseInt(req.query.page || '0', 10), 0);
+    const pageSize = Math.min(Math.max(parseInt(req.query.pageSize || '25', 10), 1), 100);
+    const { where, orderBy } = buildWhereAndOrder(req);
+    const [total, items] = await Promise.all([
+      prisma.record.count({ where }),
+      prisma.record.findMany({ where, orderBy, skip: page * pageSize, take: pageSize }),
+    ]);
+    res.json({ items, page, pageSize, total });
+  } catch (e) {
+    if (e instanceof BadRequestError) return res.status(400).json({ error: e.message });
+    console.error(e);
+    res.status(500).json({ error: 'Internal error' });
+  }
 });
 
 router.get('/export', async (req, res) => {
-  const { where, orderBy } = buildWhereAndOrder(req);
-  const format = (req.query.format || 'csv').toString().toLowerCase();
-  const filename = `records_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.${format === 'json' ? 'json' : 'csv'}`;
+  try {
+    const { where, orderBy } = buildWhereAndOrder(req);
+    const format = (req.query.format || 'csv').toString().toLowerCase();
+    const filename = `records_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.${format === 'json' ? 'json' : 'csv'}`;
 
-  if (format === 'json') {
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    if (format === 'json') {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.write('[');
+      const batchSize = 1000; let page = 0, first = true;
+      while (true) {
+        const items = await prisma.record.findMany({ where, orderBy, skip: page * batchSize, take: batchSize });
+        if (!items.length) break;
+        for (const it of items) { if (!first) res.write(','); first = false; res.write(JSON.stringify(it)); }
+        page++; await new Promise(resolve => setImmediate(resolve));
+      }
+      res.write(']'); return res.end();
+    }
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.write('[');
-    const batchSize = 1000; let page = 0, first = true;
+    const header = ['id','nome','stato','stile','pattern','peso','curvatura','descrizione','data','createdBy','updatedBy','createdAt','updatedAt'];
+    res.write(header.join(',') + '\n');
+    function csvEscape(v) { if (v == null) return ''; const s = String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+    const batchSize = 1000; let page = 0;
     while (true) {
       const items = await prisma.record.findMany({ where, orderBy, skip: page * batchSize, take: batchSize });
       if (!items.length) break;
-      for (const it of items) { if (!first) res.write(','); first = false; res.write(JSON.stringify(it)); }
+      for (const it of items) {
+        const row = [it.id, it.nome, it.stato, it.stile, it.pattern, it.peso, it.curvatura, it.descrizione, it.data?.toISOString?.().slice(0,10), it.createdBy, it.updatedBy, it.createdAt?.toISOString?.(), it.updatedAt?.toISOString?.()];
+        res.write(row.map(csvEscape).join(',') + '\n');
+      }
       page++; await new Promise(resolve => setImmediate(resolve));
     }
-    res.write(']'); return res.end();
+    res.end();
+  } catch (e) {
+    if (e instanceof BadRequestError) return res.status(400).json({ error: e.message });
+    console.error(e);
+    res.status(500).json({ error: 'Internal error' });
   }
-
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-  const header = ['id','nome','stato','stile','pattern','peso','curvatura','descrizione','data','createdBy','updatedBy','createdAt','updatedAt'];
-  res.write(header.join(',') + '\n');
-  function csvEscape(v) { if (v == null) return ''; const s = String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
-  const batchSize = 1000; let page = 0;
-  while (true) {
-    const items = await prisma.record.findMany({ where, orderBy, skip: page * batchSize, take: batchSize });
-    if (!items.length) break;
-    for (const it of items) {
-      const row = [it.id, it.nome, it.stato, it.stile, it.pattern, it.peso, it.curvatura, it.descrizione, it.data?.toISOString?.().slice(0,10), it.createdBy, it.updatedBy, it.createdAt?.toISOString?.(), it.updatedAt?.toISOString?.()];
-      res.write(row.map(csvEscape).join(',') + '\n');
-    }
-    page++; await new Promise(resolve => setImmediate(resolve));
-  }
-  res.end();
 });
 
 router.get('/:id', async (req, res) => {
