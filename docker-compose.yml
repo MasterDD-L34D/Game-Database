@@ -17,7 +17,18 @@ services:
   server:
     image: node:18-bullseye
     working_dir: /app
-    entrypoint: ["/app/scripts/docker-entrypoint.sh"]
+    entrypoint:
+      - bash
+      - -lc
+      - |
+        if [ ! -f /app/scripts/docker-entrypoint.sh ]; then
+          echo "docker-entrypoint.sh not found in /app/scripts. Make sure you run docker compose from the repository root so ./server is mounted to /app."
+          echo "Contents of /app for debugging:"
+          ls -al /app
+          exit 1
+        fi
+        exec /app/scripts/docker-entrypoint.sh "$@"
+      - --
     command: ["npm", "run", "dev"]
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/game?schema=public
