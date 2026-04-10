@@ -1,6 +1,12 @@
 # Pipeline di import per Evo Tactics Pack
 
-Questo progetto può importare i cataloghi del repository **Evo Tactics Pack MongoDB** direttamente nel database Prisma/ Postgres grazie a una pipeline completamente scriptata.
+Questo progetto può importare i cataloghi del repository **Evo Tactics Pack MongoDB** direttamente nel database Prisma/Postgres grazie a una pipeline completamente scriptata.
+
+## Riferimenti operativi
+
+- Runbook operativo completo: [`docs/operativo/RUNBOOK.md`](./operativo/RUNBOOK.md)
+- Script ingest principale: [`server/scripts/ingest/import-taxonomy.js`](../server/scripts/ingest/import-taxonomy.js)
+- Configurazione glob: [`server/scripts/ingest/evo-import.config.json`](../server/scripts/ingest/evo-import.config.json)
 
 ## Prerequisiti
 
@@ -33,10 +39,22 @@ Parametri utili:
 - `--dry-run`: esegue il parsing e mostra i conteggi senza scrivere sul database.
 - `--config <file>`: usa un file config alternativo.
 - `--no-setup`: salta `npm run dev:setup` se il database è già aggiornato.
+- `--verbose`: stampa a log i singoli slug processati.
 
-## Output
+## Output e report
 
-Lo script riporta il numero di trait, biomi, specie ed ecosistemi importati. In caso di dry-run viene mantenuto l'output completo senza modificare il database.
+Output standard script:
+
+```text
+Import completato: { traits: <n>, biomes: <n>, species: <n>, ecosystems: <n> }
+```
+
+Per governance operativa usare il formato report definito nel runbook (`RUNBOOK.md`, sezione **Formato report import**) includendo sempre:
+
+- totali letti
+- aggiornati/upsertati
+- scartati
+- errori
 
 ## Estensioni
 
