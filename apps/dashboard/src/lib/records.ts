@@ -1,5 +1,5 @@
 
-import { deleteJSON, fetchJSON, postJSON } from './api';
+import { createJSONClient, deleteJSON, fetchJSON, postJSON } from './api';
 import type { RecordRow, Stile, Pattern, Peso, Curvatura } from '../types/record';
 
 export type ListResponse<T> = { items: T[]; page: number; pageSize: number; total: number };
@@ -19,6 +19,7 @@ type QueryParamKeys = 'q' | 'page' | 'pageSize' | 'sort' | 'stile' | 'pattern' |
 type ServerQueryParams = Partial<Pick<ListRecordsParams, QueryParamKeys>>;
 
 export const recordsListBaseKey = ['records', 'list'] as const;
+const recordsJSON = createJSONClient('/records');
 
 export function recordsListQueryKey(params: ListRecordsParams) {
   return [...recordsListBaseKey, params] as const;
@@ -42,13 +43,10 @@ export function listRecords(params: ListRecordsParams) {
 }
 export function createRecord(body: Omit<RecordRow, 'id'|'createdAt'|'updatedAt'>) { return postJSON<typeof body, RecordRow>('/records', body); }
 export function getRecord(id: string) {
-  return fetchJSON<RecordRow>(`/records/${id}`);
+  return recordsJSON<RecordRow>(`/${id}`);
 }
 export function updateRecord(id: string, patch: Partial<RecordRow>) {
-  return fetchJSON<RecordRow>(`/records/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(patch),
-  });
+  return postJSON<Partial<RecordRow>, RecordRow>(`/records/${id}`, patch, { method: 'PATCH' });
 }
 export function deleteRecord(id: string): Promise<void> {
   return deleteJSON(`/records/${id}`);

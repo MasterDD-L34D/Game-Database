@@ -134,7 +134,7 @@ export default function EcosystemListPage() {
         schema: ecosystemSchema,
         getInitialValues: mapToValues,
         onSubmit: async (item, values) => {
-          if (!item.id) throw new Error('Missing id');
+          if (!item.id) throw new Error(t('common:feedback.missingId'));
           const payload = mapToPayload(values);
           await updateEcosystem(item.id, payload);
         },
@@ -145,7 +145,7 @@ export default function EcosystemListPage() {
         dialogTitle: t('ecosystems.dialogs.deleteTitle'),
         description: (item) => t('ecosystems.dialogs.deleteDescription', { name: item.name ?? item.slug }),
         mutation: async (item) => {
-          if (!item.id) throw new Error('Missing id');
+          if (!item.id) throw new Error(t('common:feedback.missingId'));
           await deleteEcosystem(item.id);
         },
         successMessage: t('ecosystems.feedback.deleted'),

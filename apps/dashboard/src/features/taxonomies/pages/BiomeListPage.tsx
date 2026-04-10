@@ -134,7 +134,7 @@ export default function BiomeListPage() {
         schema: biomeSchema,
         getInitialValues: mapToValues,
         onSubmit: async (item, values) => {
-          if (!item.id) throw new Error('Missing id');
+          if (!item.id) throw new Error(t('common:feedback.missingId'));
           const payload = mapToPayload(values);
           await updateBiome(item.id, payload);
         },
@@ -145,7 +145,7 @@ export default function BiomeListPage() {
         dialogTitle: t('biomes.dialogs.deleteTitle'),
         description: (item) => t('biomes.dialogs.deleteDescription', { name: item.name ?? item.slug }),
         mutation: async (item) => {
-          if (!item.id) throw new Error('Missing id');
+          if (!item.id) throw new Error(t('common:feedback.missingId'));
           await deleteBiome(item.id);
         },
         successMessage: t('biomes.feedback.deleted'),

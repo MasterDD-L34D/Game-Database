@@ -32,7 +32,8 @@
     "created": "Creato con successo",
     "updated": "Record aggiornato con successo.",
     "deleted": "Eliminato con successo.",
-    "deleteConfirm": "Sei sicuro di voler eliminare {{name}}?"
+    "deleteConfirm": "Sei sicuro di voler eliminare {{name}}?",
+    "missingId": "Identificativo mancante."
   },
   "status": {
     "loading": "Caricamento…"

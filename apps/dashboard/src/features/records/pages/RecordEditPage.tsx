@@ -8,7 +8,6 @@ import {
   Link as MuiLink,
   MenuItem,
   Paper,
-  Snackbar,
   Stack,
   TextField,
   Typography,
@@ -17,6 +16,7 @@ import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { Controller, useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useSnackbar } from '../../../components/SnackbarProvider';
 import { getRecord, recordsListBaseKey, updateRecord } from '../../../lib/records';
 import type { RecordRow, Curvatura, Pattern, Peso, Stile } from '../../../types/record';
 import type { AppTheme } from '../../../theme';
@@ -81,9 +81,9 @@ export default function RecordEditPage() {
   const navigate = useNavigate();
   const { recordId } = useParams<{ recordId: string }>();
   const queryClient = useQueryClient();
-  const [successOpen, setSuccessOpen] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const { t } = useTranslation(['records', 'common', 'navigation']);
+  const { enqueueSnackbar } = useSnackbar();
 
   const {
     data,
@@ -139,10 +139,13 @@ export default function RecordEditPage() {
         queryClient.invalidateQueries({ queryKey: recordsListBaseKey, exact: false });
       }
       setSubmitError(null);
-      setSuccessOpen(true);
+      enqueueSnackbar(t('records:edit.success'), { variant: 'success' });
     },
     onError: (err: unknown) => {
-      setSubmitError(err instanceof Error ? err.message : t('records:edit.error'));
+      const fallbackError = t('records:edit.error');
+      const message = err instanceof Error ? err.message : fallbackError;
+      setSubmitError(message);
+      enqueueSnackbar(message || fallbackError, { variant: 'error' });
     },
   });
 
@@ -391,17 +394,6 @@ export default function RecordEditPage() {
           </Stack>
         </Paper>
       )}
-
-      <Snackbar
-        open={successOpen}
-        autoHideDuration={2500}
-        onClose={() => setSuccessOpen(false)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <Alert onClose={() => setSuccessOpen(false)} severity="success" variant="filled" sx={{ width: '100%' }}>
-          {t('records:edit.success')}
-        </Alert>
-      </Snackbar>
     </Stack>
   );
 }
