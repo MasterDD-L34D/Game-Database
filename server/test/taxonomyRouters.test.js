@@ -143,3 +143,82 @@ test('GET /api/ecosystems/:id resolves slugs', async () => {
     await closeServer(server);
   }
 });
+
+test('GET /api/species returns 400 for invalid pagination query', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/species?page=-1`);
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.deepEqual(body, {
+      code: 'VALIDATION_ERROR',
+      message: 'page must be an integer >= 0',
+      details: { field: 'page', location: 'query' },
+    });
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('GET /api/traits/:id returns 404 when trait is missing', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/traits/missing-trait`);
+    assert.equal(response.status, 404);
+    const body = await response.json();
+    assert.deepEqual(body, {
+      code: 'NOT_FOUND',
+      message: 'Trait not found',
+      details: { identifier: 'missing-trait' },
+    });
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('POST /api/species returns 403 when user lacks taxonomy write permission', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/species`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'viewer' },
+      body: JSON.stringify({ scientificName: 'No Permission Species' }),
+    });
+    assert.equal(response.status, 403);
+    const body = await response.json();
+    assert.deepEqual(body, {
+      code: 'FORBIDDEN',
+      message: 'Insufficient permissions',
+    });
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('POST /api/traits returns 400 for invalid input', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/traits`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ name: 'Trait invalid', dataType: 'WRONG_TYPE' }),
+    });
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.deepEqual(body, {
+      code: 'VALIDATION_ERROR',
+      message: 'dataType has an invalid value',
+      details: {
+        field: 'dataType',
+        location: 'body',
+        allowedValues: ['BOOLEAN', 'NUMERIC', 'CATEGORICAL', 'TEXT'],
+      },
+    });
+  } finally {
+    await closeServer(server);
+  }
+});
