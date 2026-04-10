@@ -1,36 +1,37 @@
-# SPRINT TEMPLATE
+# Template Sprint
 
-## Informazioni Sprint
-- **Nome sprint:**
-- **Periodo:**
-- **Obiettivo sprint:**
-- **Responsabile sprint:**
+## 1. Obiettivi Sprint
+- Obiettivo 1:
+- Obiettivo 2:
+- Obiettivo 3:
 
-## Obiettivi misurabili (max 3)
-- [ ] **Obiettivo 1** — metrica baseline: __ / target: __ / owner: __
-- [ ] **Obiettivo 2** — metrica baseline: __ / target: __ / owner: __
-- [ ] **Obiettivo 3** — metrica baseline: __ / target: __ / owner: __
+## 2. Task Pianificati
+| ID | Task | Owner | Priorità | Stato |
+|---|---|---|---|---|
+| T-01 |  |  | Alta/Media/Bassa | TODO/In progress/Done |
+| T-02 |  |  | Alta/Media/Bassa | TODO/In progress/Done |
+| T-03 |  |  | Alta/Media/Bassa | TODO/In progress/Done |
 
-## Scope
-- **In scope:**
-- **Out of scope:**
+## 3. Rischi
+| Rischio | Impatto | Probabilità | Mitigazione | Owner |
+|---|---|---|---|---|
+|  | Alto/Medio/Basso | Alta/Media/Bassa |  |  |
 
-## Backlog selezionato
-- [ ] Item 1
-- [ ] Item 2
-- [ ] Item 3
+## 4. Definition of Done (DoD)
+- [ ] Codice sviluppato secondo standard condivisi.
+- [ ] Test automatizzati aggiornati/eseguiti con esito positivo.
+- [ ] Revisione completata e commenti risolti.
+- [ ] Documentazione aggiornata.
+- [ ] Deployabile in ambiente target senza blocchi aperti.
 
-## Dipendenze e rischi
-- **Dipendenze:**
-- **Rischi:**
-- **Mitigazioni:**
+## 5. Retro Sprint
+### Cosa ha funzionato
+- 
 
-## Quality Gates (DoD minima)
-- [ ] Test locali pertinenti eseguiti
-- [ ] Nessuna modifica breaking senza nota
-- [ ] Documentazione aggiornata se cambia UX/API
+### Cosa migliorare
+- 
 
-## Demo e retro
-- **Cosa demo:**
-- **Esito:**
-- **Azioni migliorative:**
+### Azioni concrete per il prossimo sprint
+- Azione:
+- Owner:
+- Scadenza:
