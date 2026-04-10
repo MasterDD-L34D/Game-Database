@@ -84,6 +84,7 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', requireTaxonomyWrite, async (req, res) => {
   try {
+    assertPagination(req.query);
     const validated = validateSpeciesPayload(req.body);
     const existingSlug = await prisma.species.findUnique({ where: { slug: validated.slug } });
     if (existingSlug) return sendError(res, 409, 'CONFLICT', 'Slug already exists', { field: 'slug', value: validated.slug });
@@ -100,6 +101,7 @@ router.post('/', requireTaxonomyWrite, async (req, res) => {
 
 router.put('/:id', requireTaxonomyWrite, async (req, res) => {
   try {
+    assertPagination(req.query);
     const id = assertIdParam(req.params);
     const existing = await findExistingByIdOrSlug(prisma.species, id, res, 'Species not found');
     if (!existing) return null;
@@ -128,6 +130,7 @@ router.put('/:id', requireTaxonomyWrite, async (req, res) => {
 
 router.delete('/:id', requireTaxonomyWrite, async (req, res) => {
   try {
+    assertPagination(req.query);
     const id = assertIdParam(req.params);
     const existing = await findExistingByIdOrSlug(prisma.species, id, res, 'Species not found');
     if (!existing) return null;
