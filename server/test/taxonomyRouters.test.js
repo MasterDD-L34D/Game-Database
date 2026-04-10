@@ -222,3 +222,55 @@ test('POST /api/traits returns 400 for invalid input', async () => {
     await closeServer(server);
   }
 });
+
+test('POST /api/species validates pagination before write operations', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/species?page=-1`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ scientificName: 'Should Not Persist' }),
+    });
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.deepEqual(body, {
+      code: 'VALIDATION_ERROR',
+      message: 'page must be an integer >= 0',
+      details: { field: 'page', location: 'query' },
+    });
+
+    const listResponse = await fetch(`${baseUrl}/api/species`);
+    assert.equal(listResponse.status, 200);
+    const listBody = await listResponse.json();
+    assert.equal(listBody.total, 0);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('POST /api/traits validates pagination before write operations', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/traits?page=-1`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ name: 'Trait Should Not Persist', dataType: 'TEXT' }),
+    });
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.deepEqual(body, {
+      code: 'VALIDATION_ERROR',
+      message: 'page must be an integer >= 0',
+      details: { field: 'page', location: 'query' },
+    });
+
+    const listResponse = await fetch(`${baseUrl}/api/traits`);
+    assert.equal(listResponse.status, 200);
+    const listBody = await listResponse.json();
+    assert.equal(listBody.total, 0);
+  } finally {
+    await closeServer(server);
+  }
+});
