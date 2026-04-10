@@ -58,3 +58,8 @@
 - **Titolo:** Hardening finale e readiness di rilascio
 - **Owner:** Engineering Manager
 - **Outcome:** Criteri di rilascio verificati, piano rollback definito e pacchetto di release pronto per approvazione finale.
+
+## Priorità di domani (11 aprile 2026)
+1. Chiudere **standard error response backend** con evidenza test integrazione e aggiornamento documentazione API.
+2. Completare **test permessi negativi/positivi** in CI sui ruoli critici con report allegato.
+3. Consolidare **runbook bootstrap DB/import** con prova esecuzione da reviewer non autore.
