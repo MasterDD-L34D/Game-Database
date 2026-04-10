@@ -1,43 +1,28 @@
-# QUALITY GATES
+# Quality Gates — Regole Minime di Merge
 
-Questi gate minimi devono essere verificati prima del merge:
+Per poter effettuare il merge di una Pull Request nel branch principale, devono essere rispettate almeno le seguenti regole:
 
-1. **Test locali pertinenti eseguiti**
-   - Sono stati eseguiti i test locali coerenti con le modifiche introdotte.
-2. **Nessuna modifica breaking senza nota**
-   - Ogni cambiamento breaking deve essere esplicitato nella PR e nelle note di rilascio.
-3. **Documentazione aggiornata se cambia UX/API**
-   - Se cambiano flussi utente, interfacce o contratti API, la documentazione deve essere aggiornata nello stesso branch.
+## 1) Integrità tecnica
+- Build CI completata con esito positivo.
+- Nessun test unitario/integrativo fallito.
+- Nessun conflitto non risolto con il branch target.
 
-## Permessi scrittura tassonomie
+## 2) Revisione del codice
+- Almeno **1 approvazione** da un reviewer assegnato.
+- Tutti i commenti di review devono essere risolti o tracciati con decisione esplicita.
+- Le modifiche ad aree critiche (autenticazione, dati, sicurezza) richiedono reviewer con ownership del dominio.
 
-La scrittura delle tassonomie è protetta dal middleware `requireTaxonomyWrite`, che usa la lista ruoli `TAXONOMY_WRITE_ROLES` (default: `taxonomy:write`, `admin`). I ruoli possono essere passati negli header `X-Roles` o `X-User-Roles` (supporto multi-valore con separatori `,` e spazi).  
+## 3) Sicurezza e affidabilità
+- Nessuna vulnerabilità critica o alta introdotta dalle dipendenze/modifiche.
+- Segreti e credenziali non devono comparire nel codice o nella cronologia della PR.
+- Logging e gestione errori coerenti con gli standard di progetto.
 
-### Endpoint protetti (endpoint → ruolo richiesto)
+## 4) Tracciabilità
+- PR con descrizione chiara: contesto, modifica, impatti, piano di test.
+- Ticket/issue collegato (quando applicabile).
+- Evidenza dei test eseguiti (output CI o checklist manuale).
 
-| Endpoint | Metodo | Ruolo richiesto |
-|---|---|---|
-| `/api/biomes` | `POST` | uno tra `taxonomy:write` / `admin` (`TAXONOMY_WRITE_ROLES`) |
-| `/api/biomes/:id` | `PUT` | uno tra `taxonomy:write` / `admin` (`TAXONOMY_WRITE_ROLES`) |
-| `/api/biomes/:id` | `DELETE` | uno tra `taxonomy:write` / `admin` (`TAXONOMY_WRITE_ROLES`) |
-| `/api/species` | `POST` | uno tra `taxonomy:write` / `admin` (`TAXONOMY_WRITE_ROLES`) |
-| `/api/species/:id` | `PUT` | uno tra `taxonomy:write` / `admin` (`TAXONOMY_WRITE_ROLES`) |
-| `/api/species/:id` | `DELETE` | uno tra `taxonomy:write` / `admin` (`TAXONOMY_WRITE_ROLES`) |
-| `/api/traits` | `POST` | uno tra `taxonomy:write` / `admin` (`TAXONOMY_WRITE_ROLES`) |
-| `/api/traits/:id` | `PUT` | uno tra `taxonomy:write` / `admin` (`TAXONOMY_WRITE_ROLES`) |
-| `/api/traits/:id` | `DELETE` | uno tra `taxonomy:write` / `admin` (`TAXONOMY_WRITE_ROLES`) |
-| `/api/ecosystems` | `POST` | uno tra `taxonomy:write` / `admin` (`TAXONOMY_WRITE_ROLES`) |
-| `/api/ecosystems/:id` | `PUT` | uno tra `taxonomy:write` / `admin` (`TAXONOMY_WRITE_ROLES`) |
-| `/api/ecosystems/:id` | `DELETE` | uno tra `taxonomy:write` / `admin` (`TAXONOMY_WRITE_ROLES`) |
-| `/api/species-traits` | `POST` | uno tra `taxonomy:write` / `admin` (`TAXONOMY_WRITE_ROLES`) |
-| `/api/species-traits/:id` | `PATCH` | uno tra `taxonomy:write` / `admin` (`TAXONOMY_WRITE_ROLES`) |
-| `/api/species-traits/:id` | `DELETE` | uno tra `taxonomy:write` / `admin` (`TAXONOMY_WRITE_ROLES`) |
-| `/api/species-biomes` | `POST` | uno tra `taxonomy:write` / `admin` (`TAXONOMY_WRITE_ROLES`) |
-| `/api/species-biomes/:id` | `PATCH` | uno tra `taxonomy:write` / `admin` (`TAXONOMY_WRITE_ROLES`) |
-| `/api/species-biomes/:id` | `DELETE` | uno tra `taxonomy:write` / `admin` (`TAXONOMY_WRITE_ROLES`) |
-| `/api/ecosystem-biomes` | `POST` | uno tra `taxonomy:write` / `admin` (`TAXONOMY_WRITE_ROLES`) |
-| `/api/ecosystem-biomes/:id` | `PATCH` | uno tra `taxonomy:write` / `admin` (`TAXONOMY_WRITE_ROLES`) |
-| `/api/ecosystem-biomes/:id` | `DELETE` | uno tra `taxonomy:write` / `admin` (`TAXONOMY_WRITE_ROLES`) |
-| `/api/ecosystem-species` | `POST` | uno tra `taxonomy:write` / `admin` (`TAXONOMY_WRITE_ROLES`) |
-| `/api/ecosystem-species/:id` | `PATCH` | uno tra `taxonomy:write` / `admin` (`TAXONOMY_WRITE_ROLES`) |
-| `/api/ecosystem-species/:id` | `DELETE` | uno tra `taxonomy:write` / `admin` (`TAXONOMY_WRITE_ROLES`) |
+## 5) Prontezza funzionale
+- Criteri di accettazione soddisfatti.
+- Documentazione utente/tecnica aggiornata se il comportamento cambia.
+- Feature flag/configurazioni di rollout dichiarate (se previste).
