@@ -10,11 +10,17 @@ async function findByIdOrSlug(model, identifier) {
   return model.findFirst({ where: buildIdOrSlugWhere(identifier) });
 }
 
+const { AppError } = require('./httpErrors');
+
 async function findExistingByIdOrSlug(model, identifier, res, notFoundMessage = 'Not found') {
   const entity = await findByIdOrSlug(model, identifier);
   if (!entity) {
-    res.status(404).json({ error: notFoundMessage });
-    return null;
+    if (res) {
+      const { sendError } = require('./httpErrors');
+      sendError(res, 404, 'NOT_FOUND', notFoundMessage, { identifier });
+      return null;
+    }
+    throw new AppError(404, 'NOT_FOUND', notFoundMessage, { identifier });
   }
   return entity;
 }

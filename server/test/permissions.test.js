@@ -10,8 +10,13 @@ const {
 function createResponseCapture() {
   return {
     statusCode: null,
-    sendStatus(code) {
+    payload: null,
+    status(code) {
       this.statusCode = code;
+      return this;
+    },
+    json(value) {
+      this.payload = value;
       return this;
     },
   };
@@ -29,6 +34,10 @@ test('requireRole denies access when user lacks required roles', () => {
 
   assert.equal(nextCalled, false);
   assert.equal(res.statusCode, 403);
+  assert.deepEqual(res.payload, {
+    code: 'FORBIDDEN',
+    message: 'Insufficient permissions',
+  });
 });
 
 test('requireRole allows access when user has at least one required role', () => {
@@ -101,4 +110,8 @@ test('requireTaxonomyWrite denies requests from unauthorized users', () => {
 
   assert.equal(nextCalled, false);
   assert.equal(res.statusCode, 403);
+  assert.deepEqual(res.payload, {
+    code: 'FORBIDDEN',
+    message: 'Insufficient permissions',
+  });
 });

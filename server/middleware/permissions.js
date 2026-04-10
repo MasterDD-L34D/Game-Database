@@ -1,3 +1,4 @@
+const { sendError } = require('../utils/httpErrors');
 const userContext = require('./user');
 
 function requireRole(...roles) {
@@ -7,7 +8,7 @@ function requireRole(...roles) {
     if (!allowedRoles.length || userContext.hasRole(req, ...allowedRoles)) {
       return next();
     }
-    return res.sendStatus(403);
+    return sendError(res, 403, 'FORBIDDEN', 'Insufficient permissions');
   };
 }
 

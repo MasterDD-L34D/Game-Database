@@ -1,18 +1,14 @@
-
 const express = require('express');
 const prisma = require('../db/prisma');
 const { requireTaxonomyWrite } = require('../middleware/permissions');
 const { logAudit } = require('../utils/audit');
 const { findExistingByIdOrSlug } = require('../utils/taxonomyValidation');
+const { AppError, sendError, handleError } = require('../utils/httpErrors');
+const { assertPagination, assertIdParam, assertString, assertEnum } = require('../utils/validation');
+
 const router = express.Router();
 
-const ALLOWED_DATA_TYPES = new Set(['BOOLEAN', 'NUMERIC', 'CATEGORICAL', 'TEXT']);
-
-function parsePagination(req) {
-  const page = Math.max(parseInt(req.query.page || '0', 10), 0);
-  const pageSize = Math.min(Math.max(parseInt(req.query.pageSize || '25', 10), 1), 100);
-  return { page, pageSize };
-}
+const ALLOWED_DATA_TYPES = ['BOOLEAN', 'NUMERIC', 'CATEGORICAL', 'TEXT'];
 
 function buildWhere(req) {
   const q = (req.query.q || '').trim();
@@ -22,7 +18,7 @@ function buildWhere(req) {
 }
 
 async function fetchPaginatedTraits(req) {
-  const { page, pageSize } = parsePagination(req);
+  const { page, pageSize } = assertPagination(req.query);
   const where = buildWhere(req);
   const [total, items] = await Promise.all([
     prisma.trait.count({ where }),
@@ -42,167 +38,143 @@ function toNumber(value) {
   return Number.isFinite(num) ? num : NaN;
 }
 
+function validateTraitPayload(body) {
+  const name = assertString(body.name, 'name', { required: true });
+  const dataType = assertEnum(body.dataType, ALLOWED_DATA_TYPES, 'dataType', { required: true });
+
+  const slug = normalizeSlug(body.slug || name);
+  if (!slug) {
+    throw new AppError(400, 'VALIDATION_ERROR', 'slug is required', { field: 'slug', location: 'body' });
+  }
+
+  let allowedValues = null;
+  if (body.allowedValues !== undefined) {
+    if (!Array.isArray(body.allowedValues) || body.allowedValues.some(v => typeof v !== 'string')) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'allowedValues must be an array of strings', { field: 'allowedValues', location: 'body' });
+    }
+    allowedValues = body.allowedValues;
+  }
+
+  if (dataType === 'CATEGORICAL') {
+    if (!allowedValues || allowedValues.length === 0) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'allowedValues is required for categorical traits', { field: 'allowedValues', location: 'body' });
+    }
+  } else if (allowedValues) {
+    throw new AppError(400, 'VALIDATION_ERROR', 'allowedValues is only allowed for categorical traits', { field: 'allowedValues', location: 'body' });
+  }
+
+  const rangeMin = toNumber(body.rangeMin);
+  const rangeMax = toNumber(body.rangeMax);
+
+  if (dataType === 'NUMERIC') {
+    if (Number.isNaN(rangeMin) || Number.isNaN(rangeMax)) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'rangeMin and rangeMax must be numeric', { field: 'rangeMin,rangeMax', location: 'body' });
+    }
+    if (rangeMin !== null && rangeMax !== null && rangeMin > rangeMax) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'rangeMin cannot be greater than rangeMax', { field: 'rangeMin,rangeMax', location: 'body' });
+    }
+  } else if (rangeMin !== null || rangeMax !== null) {
+    throw new AppError(400, 'VALIDATION_ERROR', 'rangeMin and rangeMax are only allowed for numeric traits', { field: 'rangeMin,rangeMax', location: 'body' });
+  }
+
+  return {
+    slug,
+    name,
+    dataType,
+    allowedValues,
+    rangeMin: rangeMin === null ? null : rangeMin,
+    rangeMax: rangeMax === null ? null : rangeMax,
+  };
+}
+
 router.get('/', async (req, res) => {
-  const payload = await fetchPaginatedTraits(req);
-  res.json(payload);
+  try {
+    const payload = await fetchPaginatedTraits(req);
+    return res.json(payload);
+  } catch (error) {
+    return handleError(res, error);
+  }
 });
 
 router.get('/:id', async (req, res) => {
-  const item = await findExistingByIdOrSlug(prisma.trait, req.params.id, res);
-  if (!item) return;
-  res.json(item);
+  try {
+    const id = assertIdParam(req.params);
+    const item = await findExistingByIdOrSlug(prisma.trait, id, res, 'Trait not found');
+    if (!item) return null;
+    return res.json(item);
+  } catch (error) {
+    return handleError(res, error);
+  }
 });
 
 router.post('/', requireTaxonomyWrite, async (req, res) => {
   try {
-    const name = (req.body.name || '').trim();
-    const dataType = req.body.dataType;
-    if (!name) return res.status(400).json({ error: 'Name is required' });
-    if (!ALLOWED_DATA_TYPES.has(dataType)) return res.status(400).json({ error: 'Invalid dataType' });
-
-    const slug = normalizeSlug(req.body.slug || name);
-    if (!slug) return res.status(400).json({ error: 'Slug is required' });
-    const existingSlug = await prisma.trait.findUnique({ where: { slug } });
-    if (existingSlug) return res.status(409).json({ error: 'Slug already exists' });
-
-    let allowedValues = null;
-    if (req.body.allowedValues !== undefined) {
-      if (!Array.isArray(req.body.allowedValues) || req.body.allowedValues.some(v => typeof v !== 'string')) {
-        return res.status(400).json({ error: 'allowedValues must be an array of strings' });
-      }
-      allowedValues = req.body.allowedValues;
-    }
-    if (dataType === 'CATEGORICAL') {
-      if (!allowedValues || allowedValues.length === 0) {
-        return res.status(400).json({ error: 'allowedValues is required for categorical traits' });
-      }
-    } else if (allowedValues) {
-      return res.status(400).json({ error: 'allowedValues is only allowed for categorical traits' });
-    }
-
-    const rangeMin = toNumber(req.body.rangeMin);
-    const rangeMax = toNumber(req.body.rangeMax);
-    if (dataType === 'NUMERIC') {
-      if (Number.isNaN(rangeMin) || Number.isNaN(rangeMax)) {
-        return res.status(400).json({ error: 'rangeMin and rangeMax must be numeric' });
-      }
-      if (rangeMin !== null && rangeMax !== null && rangeMin > rangeMax) {
-        return res.status(400).json({ error: 'rangeMin cannot be greater than rangeMax' });
-      }
-    } else if (rangeMin !== null || rangeMax !== null) {
-      return res.status(400).json({ error: 'rangeMin and rangeMax are only allowed for numeric traits' });
-    }
+    const validated = validateTraitPayload(req.body);
+    const existingSlug = await prisma.trait.findUnique({ where: { slug: validated.slug } });
+    if (existingSlug) return sendError(res, 409, 'CONFLICT', 'Slug already exists', { field: 'slug', value: validated.slug });
 
     const created = await prisma.trait.create({
       data: {
-        slug,
-        name,
+        ...validated,
         description: req.body.description ?? null,
         category: req.body.category ?? null,
         unit: req.body.unit ?? null,
-        dataType,
-        allowedValues,
-        rangeMin: rangeMin === null ? null : rangeMin,
-        rangeMax: rangeMax === null ? null : rangeMax,
       },
     });
 
     await logAudit(req, 'Trait', created.id, 'CREATE', created);
-
     const payload = await fetchPaginatedTraits(req);
-    res.status(201).json(payload);
-  } catch (e) {
-    console.error(e);
-    res.status(400).json({ error: 'Validation failed or bad input' });
+    return res.status(201).json(payload);
+  } catch (error) {
+    return handleError(res, error);
   }
 });
 
 router.put('/:id', requireTaxonomyWrite, async (req, res) => {
   try {
-    const existing = await findExistingByIdOrSlug(prisma.trait, req.params.id, res);
-    if (!existing) return;
+    const id = assertIdParam(req.params);
+    const existing = await findExistingByIdOrSlug(prisma.trait, id, res, 'Trait not found');
+    if (!existing) return null;
 
-    const name = (req.body.name || '').trim();
-    const dataType = req.body.dataType;
-    if (!name) return res.status(400).json({ error: 'Name is required' });
-    if (!ALLOWED_DATA_TYPES.has(dataType)) return res.status(400).json({ error: 'Invalid dataType' });
-
-    const slug = normalizeSlug(req.body.slug || name);
-    if (!slug) return res.status(400).json({ error: 'Slug is required' });
-    if (slug !== existing.slug) {
-      const existingSlug = await prisma.trait.findUnique({ where: { slug } });
+    const validated = validateTraitPayload(req.body);
+    if (validated.slug !== existing.slug) {
+      const existingSlug = await prisma.trait.findUnique({ where: { slug: validated.slug } });
       if (existingSlug && existingSlug.id !== existing.id) {
-        return res.status(409).json({ error: 'Slug already exists' });
+        return sendError(res, 409, 'CONFLICT', 'Slug already exists', { field: 'slug', value: validated.slug });
       }
-    }
-
-    let allowedValues = null;
-    if (req.body.allowedValues !== undefined) {
-      if (!Array.isArray(req.body.allowedValues) || req.body.allowedValues.some(v => typeof v !== 'string')) {
-        return res.status(400).json({ error: 'allowedValues must be an array of strings' });
-      }
-      allowedValues = req.body.allowedValues;
-    }
-    if (dataType === 'CATEGORICAL') {
-      if (!allowedValues || allowedValues.length === 0) {
-        return res.status(400).json({ error: 'allowedValues is required for categorical traits' });
-      }
-    } else if (allowedValues) {
-      return res.status(400).json({ error: 'allowedValues is only allowed for categorical traits' });
-    }
-
-    const rangeMin = toNumber(req.body.rangeMin);
-    const rangeMax = toNumber(req.body.rangeMax);
-    if (dataType === 'NUMERIC') {
-      if (Number.isNaN(rangeMin) || Number.isNaN(rangeMax)) {
-        return res.status(400).json({ error: 'rangeMin and rangeMax must be numeric' });
-      }
-      if (rangeMin !== null && rangeMax !== null && rangeMin > rangeMax) {
-        return res.status(400).json({ error: 'rangeMin cannot be greater than rangeMax' });
-      }
-    } else if (rangeMin !== null || rangeMax !== null) {
-      return res.status(400).json({ error: 'rangeMin and rangeMax are only allowed for numeric traits' });
     }
 
     const updated = await prisma.trait.update({
       where: { id: existing.id },
       data: {
-        slug,
-        name,
+        ...validated,
         description: req.body.description ?? null,
         category: req.body.category ?? null,
         unit: req.body.unit ?? null,
-        dataType,
-        allowedValues,
-        rangeMin: rangeMin === null ? null : rangeMin,
-        rangeMax: rangeMax === null ? null : rangeMax,
       },
     });
 
     await logAudit(req, 'Trait', updated.id, 'UPDATE', req.body);
-
     const payload = await fetchPaginatedTraits(req);
-    res.json(payload);
-  } catch (e) {
-    console.error(e);
-    res.status(400).json({ error: 'Validation failed or bad input' });
+    return res.json(payload);
+  } catch (error) {
+    return handleError(res, error);
   }
 });
 
 router.delete('/:id', requireTaxonomyWrite, async (req, res) => {
   try {
-    const existing = await findExistingByIdOrSlug(prisma.trait, req.params.id, res);
-    if (!existing) return;
+    const id = assertIdParam(req.params);
+    const existing = await findExistingByIdOrSlug(prisma.trait, id, res, 'Trait not found');
+    if (!existing) return null;
 
     await prisma.trait.delete({ where: { id: existing.id } });
-
     await logAudit(req, 'Trait', existing.id, 'DELETE', existing);
 
     const payload = await fetchPaginatedTraits(req);
-    res.json(payload);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Internal error' });
+    return res.json(payload);
+  } catch (error) {
+    return handleError(res, error);
   }
 });
 

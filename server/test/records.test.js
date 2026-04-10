@@ -209,7 +209,9 @@ test('POST /api/records returns 400 for invalid date input', async () => {
     assert.equal(createCalled, false);
     assert.equal(response.status, 400);
     assert.deepEqual(JSON.parse(response.body || '{}'), {
-      error: 'Data non valida: usa una stringa ISO 8601 o null',
+      code: 'VALIDATION_ERROR',
+      message: 'Invalid date: use ISO 8601 string or null',
+      details: { field: 'data', location: 'body' },
     });
   } finally {
     await new Promise(resolve => server.close(resolve));
@@ -263,7 +265,9 @@ test('POST /api/records returns 400 when nome is missing', async () => {
     assert.equal(createCalled, false);
     assert.equal(response.status, 400);
     assert.deepEqual(JSON.parse(response.body || '{}'), {
-      error: 'Il campo nome è obbligatorio e non può essere vuoto',
+      code: 'VALIDATION_ERROR',
+      message: 'nome is required',
+      details: { field: 'nome', location: 'body' },
     });
   } finally {
     await new Promise(resolve => server.close(resolve));
@@ -317,7 +321,9 @@ test('POST /api/records returns 400 when stato is missing or invalid', async () 
     assert.equal(createCalled, false);
     assert.equal(response.status, 400);
     assert.deepEqual(JSON.parse(response.body || '{}'), {
-      error: 'Il campo stato è obbligatorio',
+      code: 'VALIDATION_ERROR',
+      message: 'stato is required',
+      details: { field: 'stato', location: 'body' },
     });
   } finally {
     await new Promise(resolve => server.close(resolve));
@@ -371,7 +377,13 @@ test('POST /api/records returns 400 when stato is invalid', async () => {
     assert.equal(createCalled, false);
     assert.equal(response.status, 400);
     assert.deepEqual(JSON.parse(response.body || '{}'), {
-      error: 'Valore stato non valido: NonValido',
+      code: 'VALIDATION_ERROR',
+      message: 'stato has an invalid value',
+      details: {
+        field: 'stato',
+        location: 'body',
+        allowedValues: ['Attivo', 'Bozza', 'Archiviato'],
+      },
     });
   } finally {
     await new Promise(resolve => server.close(resolve));
@@ -425,7 +437,63 @@ test('PATCH /api/records/:id returns 400 when updating with invalid fields', asy
     assert.equal(updateCalled, false);
     assert.equal(response.status, 400);
     assert.deepEqual(JSON.parse(response.body || '{}'), {
-      error: 'Il campo nome è obbligatorio e non può essere vuoto; Valore stato non valido: NonValido',
+      code: 'VALIDATION_ERROR',
+      message: 'nome cannot be empty',
+      details: { field: 'nome', location: 'body' },
+    });
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+    restoreRecordModel();
+  }
+});
+
+test('PATCH /api/records/:id returns 404 when resource is missing', async () => {
+  prisma.record.update = async () => {
+    const error = new Error('Not found');
+    error.code = 'P2025';
+    throw error;
+  };
+
+  const app = createApp();
+  const server = app.listen(0);
+  try {
+    await new Promise(resolve => server.once('listening', resolve));
+    const { port } = server.address();
+    const payload = JSON.stringify({ nome: 'Updated name' });
+
+    const response = await new Promise((resolve, reject) => {
+      const req = http.request(
+        {
+          method: 'PATCH',
+          hostname: '127.0.0.1',
+          port,
+          path: '/api/records/missing-record',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(payload),
+          },
+        },
+        res => {
+          const chunks = [];
+          res.on('data', chunk => chunks.push(chunk));
+          res.on('end', () => {
+            resolve({
+              status: res.statusCode,
+              body: Buffer.concat(chunks).toString('utf8'),
+            });
+          });
+        },
+      );
+      req.on('error', reject);
+      req.write(payload);
+      req.end();
+    });
+
+    assert.equal(response.status, 404);
+    assert.deepEqual(JSON.parse(response.body || '{}'), {
+      code: 'NOT_FOUND',
+      message: 'Record not found',
+      details: { id: 'missing-record' },
     });
   } finally {
     await new Promise(resolve => server.close(resolve));
