@@ -354,6 +354,11 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
     [getItemLabel],
   );
 
+  const resolveMutationErrorMessage = useCallback(
+    (error: unknown, fallbackMessage: string) => (error instanceof Error && error.message ? error.message : fallbackMessage),
+    [],
+  );
+
   const refreshList = useCallback(async () => {
     setHasSearched(true);
     shouldFetchRef.current = false;
@@ -373,7 +378,7 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
     },
     onError: (err, { config }) => {
       console.error('Create mutation error', err);
-      enqueueSnackbar(config.errorMessage ?? t('common:feedback.saveError'), { variant: 'error' });
+      enqueueSnackbar(resolveMutationErrorMessage(err, config.errorMessage ?? t('common:feedback.saveError')), { variant: 'error' });
     },
   });
 
@@ -391,7 +396,7 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
     },
     onError: (err, { config }) => {
       console.error('Edit mutation error', err);
-      enqueueSnackbar(config.errorMessage ?? t('common:feedback.saveError'), { variant: 'error' });
+      enqueueSnackbar(resolveMutationErrorMessage(err, config.errorMessage ?? t('common:feedback.saveError')), { variant: 'error' });
     },
   });
 
@@ -406,7 +411,7 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
     },
     onError: (err, { config }) => {
       console.error('Delete mutation error', err);
-      enqueueSnackbar(config.errorMessage ?? t('common:feedback.saveError'), { variant: 'error' });
+      enqueueSnackbar(resolveMutationErrorMessage(err, config.errorMessage ?? t('common:feedback.saveError')), { variant: 'error' });
     },
   });
 

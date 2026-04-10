@@ -277,7 +277,7 @@ export default function TraitListPage() {
         schema: traitSchema,
         getInitialValues: mapToValues,
         onSubmit: async (item, values) => {
-          if (!item.id) throw new Error('Missing id');
+          if (!item.id) throw new Error(t('common:feedback.missingId'));
           const payload = mapToPayload(values);
           await updateTrait(item.id, payload);
         },
@@ -288,7 +288,7 @@ export default function TraitListPage() {
         dialogTitle: t('traits.dialogs.deleteTitle'),
         description: (item) => t('traits.dialogs.deleteDescription', { name: item.name ?? item.slug }),
         mutation: async (item) => {
-          if (!item.id) throw new Error('Missing id');
+          if (!item.id) throw new Error(t('common:feedback.missingId'));
           await deleteTrait(item.id);
         },
         successMessage: t('traits.feedback.deleted'),

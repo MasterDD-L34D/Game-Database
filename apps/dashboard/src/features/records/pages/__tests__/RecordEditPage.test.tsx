@@ -1,11 +1,11 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { QueryClient } from '@tanstack/react-query';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi, beforeEach, afterEach, type Mock } from 'vitest';
 import RecordEditPage from '../RecordEditPage';
 import type { RecordRow } from '../../../../types/record';
 import * as recordsApi from '../../../../lib/records';
+import { renderWithProviders } from '../../../../testUtils/renderWithProviders';
 
 vi.mock('../../../../lib/records', async () => {
   const actual = await vi.importActual<typeof import('../../../../lib/records')>(
@@ -39,19 +39,20 @@ describe('RecordEditPage', () => {
   });
 
   function renderPage(initialEntry = '/records/1/edit') {
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
+    return renderWithProviders(<div />, {
+      queryClient: new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      }),
+      router: {
+        routes: [
+          {
+            path: '/records/:recordId/edit',
+            element: <RecordEditPage />,
+          },
+        ],
+        initialEntries: [initialEntry],
+      },
     });
-
-    return render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter initialEntries={[initialEntry]}>
-          <Routes>
-            <Route path="/records/:recordId/edit" element={<RecordEditPage />} />
-          </Routes>
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
   }
 
   it('prefills the form with the record data', async () => {

@@ -176,7 +176,7 @@ export default function SpeciesListPage() {
         schema: speciesSchema,
         getInitialValues: mapToValues,
         onSubmit: async (item, values) => {
-          if (!item.id) throw new Error('Missing id');
+          if (!item.id) throw new Error(t('common:feedback.missingId'));
           const payload = mapToPayload(values);
           await updateSpecies(item.id, payload);
         },
@@ -187,7 +187,7 @@ export default function SpeciesListPage() {
         dialogTitle: t('species.dialogs.deleteTitle'),
         description: (item) => t('species.dialogs.deleteDescription', { name: item.scientificName ?? item.slug }),
         mutation: async (item) => {
-          if (!item.id) throw new Error('Missing id');
+          if (!item.id) throw new Error(t('common:feedback.missingId'));
           await deleteSpecies(item.id);
         },
         successMessage: t('species.feedback.deleted'),

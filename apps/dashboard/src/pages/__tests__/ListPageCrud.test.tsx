@@ -135,4 +135,39 @@ describe('ListPage CRUD actions', () => {
     });
     },
   );
+
+  it('shows mutation error details in snackbar as fallback', async () => {
+    const fetcher = vi
+      .fn<(query: string, page?: number, pageSize?: number) => Promise<{ items: Item[]; total: number; page: number; pageSize: number }>>()
+      .mockResolvedValue({ items: [{ id: '1', name: 'Item Uno' }], total: 1, page: 0, pageSize: 25 });
+    const createFn = vi.fn().mockRejectedValue(new Error('Errore backend specifico'));
+
+    const user = userEvent.setup();
+
+    renderListPage<Item>({
+      title: 'Elementi',
+      columns,
+      fetcher,
+      queryKeyBase: ['items'],
+      autoloadOnMount: true,
+      createConfig: {
+        triggerLabel: 'Nuovo elemento',
+        dialogTitle: 'Crea elemento',
+        submitLabel: 'Salva nuovo',
+        defaultValues: { name: '' },
+        schema: z.object({ name: z.string().min(1) }),
+        fields: [{ name: 'name', label: 'Nome', required: true }],
+        onSubmit: async (values) => {
+          await createFn(values);
+        },
+      },
+    });
+
+    await user.click(await screen.findByRole('button', { name: 'Nuovo elemento' }));
+    const createDialog = await screen.findByRole('dialog');
+    await user.type(within(createDialog).getByLabelText(/nome/i), 'Nuovo');
+    await user.click(screen.getByRole('button', { name: 'Salva nuovo' }));
+
+    await screen.findByText('Errore backend specifico');
+  });
 });
