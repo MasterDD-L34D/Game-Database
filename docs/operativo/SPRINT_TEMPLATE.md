@@ -6,6 +6,11 @@
 - **Obiettivo sprint:**
 - **Responsabile sprint:**
 
+## Obiettivi misurabili (max 3)
+- [ ] **Obiettivo 1** — metrica baseline: __ / target: __ / owner: __
+- [ ] **Obiettivo 2** — metrica baseline: __ / target: __ / owner: __
+- [ ] **Obiettivo 3** — metrica baseline: __ / target: __ / owner: __
+
 ## Scope
 - **In scope:**
 - **Out of scope:**
