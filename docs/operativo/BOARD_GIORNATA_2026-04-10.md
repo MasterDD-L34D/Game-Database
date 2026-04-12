@@ -35,7 +35,7 @@ Completare **baseline docs + checklist qualita + piano settimana 1**.
 - **Status:** Todo
 - **Owner:** Solo Maintainer
 - **Stima:** 3h
-- **Next action (1 comando massimo):** `cd server && npm test -- permissions`
+- **Next action (1 comando massimo):** `cd server && node --test test/permissions.test.js`
 - **Blocker:** manca evidenza aggiornata dei casi positivi/negativi sui ruoli critici e relativo salvataggio output CI.
 - **Last verified at (UTC):** 2026-04-12T21:48:29Z
 - **Artifacts/links:** `docs/operativo/ROADMAP.md`; pipeline CI con test permessi; suite backend autorizzazioni.
@@ -63,7 +63,7 @@ Completare **baseline docs + checklist qualita + piano settimana 1**.
 - **Status:** Done
 - **Owner:** Solo Maintainer
 - **Stima:** 2h
-- **Next action (1 comando massimo):** `Get-Content docs/operativo/ROADMAP.md`
+- **Next action (1 comando massimo):** `cat docs/operativo/ROADMAP.md`
 - **Blocker:** nessuno.
 - **Last verified at (UTC):** 2026-04-12T21:48:29Z
 - **Artifacts/links:** `docs/operativo/ROADMAP.md`
@@ -73,7 +73,7 @@ Completare **baseline docs + checklist qualita + piano settimana 1**.
 - **Status:** Done
 - **Owner:** Solo Maintainer
 - **Stima:** 1h
-- **Next action (1 comando massimo):** `Get-Content docs/operativo/QUALITY_GATES.md`
+- **Next action (1 comando massimo):** `cat docs/operativo/QUALITY_GATES.md`
 - **Blocker:** nessuno.
 - **Last verified at (UTC):** 2026-04-12T21:48:29Z
 - **Artifacts/links:** `docs/operativo/QUALITY_GATES.md`
@@ -83,7 +83,7 @@ Completare **baseline docs + checklist qualita + piano settimana 1**.
 - **Status:** Done
 - **Owner:** Solo Maintainer
 - **Stima:** 2h
-- **Next action (1 comando massimo):** `Get-Content docs/operativo/RUNBOOK.md`
+- **Next action (1 comando massimo):** `cat docs/operativo/RUNBOOK.md`
 - **Blocker:** nessuno.
 - **Last verified at (UTC):** 2026-04-12T21:48:29Z
 - **Artifacts/links:** `docs/operativo/RUNBOOK.md`
