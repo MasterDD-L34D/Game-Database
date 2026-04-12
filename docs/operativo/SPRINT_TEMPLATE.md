@@ -6,11 +6,11 @@
 - Obiettivo 3:
 
 ## 2. Task Pianificati
-| ID | Task | Owner | Priorità | Stato |
-|---|---|---|---|---|
-| T-01 |  |  | Alta/Media/Bassa | TODO/In progress/Done |
-| T-02 |  |  | Alta/Media/Bassa | TODO/In progress/Done |
-| T-03 |  |  | Alta/Media/Bassa | TODO/In progress/Done |
+| ID | Task | Owner | Priorità | Stato | Execution Mode | Ready? | Evidence Path |
+|---|---|---|---|---|---|---|---|
+| T-01 |  |  | Alta/Media/Bassa | TODO/In progress/Done | AI-autonomous / Human-decision | Sì/No |  |
+| T-02 |  |  | Alta/Media/Bassa | TODO/In progress/Done | AI-autonomous / Human-decision | Sì/No |  |
+| T-03 |  |  | Alta/Media/Bassa | TODO/In progress/Done | AI-autonomous / Human-decision | Sì/No |  |
 
 ## 3. Rischi
 | Rischio | Impatto | Probabilità | Mitigazione | Owner |
