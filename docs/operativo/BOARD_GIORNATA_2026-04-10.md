@@ -1,5 +1,15 @@
 # Board operativa — 10 aprile 2026
 
+## Governance operativa
+- **Owner:** Solo Maintainer
+- **Executor:** AI Agent
+- **Decision policy:** human-in-the-loop solo per approvazioni di rilascio e scelte architetturali
+
+## RACI semplificata
+- **Decide:** Solo Maintainer
+- **Esegue:** AI Agent (con supervisione)
+- **Verifica finale:** Solo Maintainer
+
 ## Obiettivo di giornata
 Completare **baseline docs + checklist qualità + piano settimana 1**.
 
@@ -15,9 +25,9 @@ Completare **baseline docs + checklist qualità + piano settimana 1**.
 
 ### Todo
 - [ ] **permessi API**  
-  Owner: **Giulia (Backend)** · Stima: **3h** · Criterio di completamento: **Test positivi/negativi sui ruoli critici in CI con output salvato**
+  Owner: **Solo Maintainer** · Stima: **3h** · Criterio di completamento: **Test positivi/negativi sui ruoli critici in CI con output salvato**
 - [ ] **UX error handling dashboard**  
-  Owner: **Marco (Frontend)** · Stima: **4h** · Criterio di completamento: **Pattern loading/error unificato nelle viste principali con evidenza review UI**
+  Owner: **Solo Maintainer** · Stima: **4h** · Criterio di completamento: **Pattern loading/error unificato nelle viste principali con evidenza review UI**
 
 ### Doing
 - [ ] Nessuna attività in corso.
@@ -27,16 +37,16 @@ Completare **baseline docs + checklist qualità + piano settimana 1**.
 
 ### Done
 - [x] **baseline operativa**  
-  Owner: **Luca (Tech Lead)** · Stima: **2h** · Criterio di completamento: **Roadmap settimanale e milestone pubblicate in `docs/operativo/ROADMAP.md`**
+  Owner: **Solo Maintainer** · Stima: **2h** · Criterio di completamento: **Roadmap settimanale e milestone pubblicate in `docs/operativo/ROADMAP.md`**
 - [x] **quality gates**  
-  Owner: **Sara (QA)** · Stima: **1h** · Criterio di completamento: **Checklist e blocchi di merge pubblicati in `docs/operativo/QUALITY_GATES.md`**
+  Owner: **Solo Maintainer** · Stima: **1h** · Criterio di completamento: **Checklist e blocchi di merge pubblicati in `docs/operativo/QUALITY_GATES.md`**
 - [x] **runbook skeleton**  
-  Owner: **Elena (Ops/Docs)** · Stima: **2h** · Criterio di completamento: **Struttura operativa iniziale pubblicata in `docs/operativo/RUNBOOK.md`**
+  Owner: **Solo Maintainer** · Stima: **2h** · Criterio di completamento: **Struttura operativa iniziale pubblicata in `docs/operativo/RUNBOOK.md`**
 
 ## Registro decisioni (10 aprile 2026)
-- **2026-04-10 13:10 UTC** — Decisione: applicare gate di merge obbligatori su test, i18n, error handling e documentazione. **Responsabile:** Sara (QA).
-- **2026-04-10 15:40 UTC** — Decisione: priorità Week 1 focalizzata su standardizzazione errori API, validazioni input e test permessi. **Responsabile:** Luca (Tech Lead).
-- **2026-04-10 17:20 UTC** — Decisione: chiudere in Done solo attività con output già versionato nel repository. **Responsabile:** Elena (Ops/Docs).
+- **2026-04-10 13:10 UTC** — Decisione: applicare gate di merge obbligatori su test, i18n, error handling e documentazione. **Responsabile:** Solo Maintainer.
+- **2026-04-10 15:40 UTC** — Decisione: priorità Week 1 focalizzata su standardizzazione errori API, validazioni input e test permessi. **Responsabile:** Solo Maintainer.
+- **2026-04-10 17:20 UTC** — Decisione: chiudere in Done solo attività con output già versionato nel repository. **Responsabile:** Solo Maintainer.
 
 ## Capacità stimata (giornata)
 Totale stime: **12h**.
