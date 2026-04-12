@@ -1,4 +1,7 @@
-# Roadmap Operativa — 6 Settimane
+# Roadmap Operativa - 6 Settimane
+
+## Scopo
+Rendere ogni item pronto per esecuzione delegabile con il minimo attrito operativo.
 
 ## Governance operativa
 - **Owner:** Solo Maintainer
@@ -10,66 +13,63 @@
 - **Esegue:** AI Agent (con supervisione)
 - **Verifica finale:** Solo Maintainer
 
-## Settimana 1
+## Now (pronto subito)
 
-### P0
+### 1) Standard error response backend
+- **Dipendenza singola esplicita:** Nessuna
+- **Input minimi:** elenco endpoint prioritari; contratto API corrente nel repository; suite test di integrazione esistente o estendibile
+- **Output verificabile:** payload errore uniforme (`code`, `message`, `details`) sugli endpoint prioritari; test di integrazione verdi; documentazione API aggiornata
+- **Criterio di handoff to AI:** handoff possibile quando gli endpoint prioritari sono già identificati nel repo o in issue collegata e l'AI puo modificare backend, test e docs senza attendere decisioni di prodotto
 
-#### 1) Standard error response backend
-- **Owner:** Solo Maintainer
-- **Stima:** 1.5 giorni
-- **Dipendenze:** Allineamento con contratto API corrente e convenzioni logging.
-- **Criterio di chiusura:** Tutti gli endpoint prioritari restituiscono payload errore uniforme (codice, messaggio, dettagli) validato da test di integrazione e documentato.
+## Next (pronto dopo 1 dipendenza)
 
-#### 2) Validazioni input router prioritari
-- **Owner:** Solo Maintainer
-- **Stima:** 2 giorni
-- **Dipendenze:** Definizione schema richieste e regole dominio condivise con prodotto.
-- **Criterio di chiusura:** I router prioritari bloccano input non validi con errori coerenti; copertura test su casi limite principali.
+### 2) Test permessi negativi/positivi
+- **Dipendenza singola esplicita:** matrice ruoli/permessi approvata e versionata
+- **Input minimi:** matrice ruoli/permessi; elenco endpoint o use case critici; ambiente test/CI allineato
+- **Output verificabile:** suite automatizzata con casi consentiti e negati per i ruoli critici; esecuzione stabile in CI; report test allegabile a PR
+- **Criterio di handoff to AI:** handoff possibile appena esiste una sola fonte di verita per ruoli e permessi, cosi l'AI puo derivare i casi di test senza chiedere interpretazioni
 
-#### 3) Test permessi negativi/positivi
-- **Owner:** Solo Maintainer
-- **Stima:** 1.5 giorni
-- **Dipendenze:** Matrice ruoli/permessi aggiornata e ambienti test allineati.
-- **Criterio di chiusura:** Suite automatizzata copre percorsi consentiti e negati per i ruoli critici, con esecuzione stabile in CI.
+### 3) Verifica i18n stringhe nuove
+- **Dipendenza singola esplicita:** merge delle nuove chiavi di testo nei file sorgente
+- **Input minimi:** elenco chiavi nuove; file di localizzazione target; flussi UI toccati
+- **Output verificabile:** nessuna chiave mancante nelle lingue supportate per i flussi coinvolti; fallback verificato manualmente o con check automatico; eventuale report chiavi mancanti a zero
+- **Criterio di handoff to AI:** handoff possibile quando il set di chiavi da verificare e gia presente nel codice e non dipende da copy ancora in definizione
 
-### P1
+### 4) Runbook bootstrap DB/import
+- **Dipendenza singola esplicita:** script di bootstrap/import aggiornati e stabili
+- **Input minimi:** script correnti; percorso dati di esempio o dump minimo; ambiente target del runbook
+- **Output verificabile:** runbook versionato con passi ripetibili di bootstrap e import; esecuzione provata end-to-end; conferma di esito atteso documentata
+- **Criterio di handoff to AI:** handoff possibile quando gli script da documentare sono gia quelli definitivi o abbastanza stabili da non invalidare il runbook al primo cambio
 
-#### 4) Uniformazione feedback error/loading dashboard
-- **Owner:** Solo Maintainer
-- **Stima:** 2 giorni
-- **Dipendenze:** Linee guida UI/UX e componenti condivisi di stato caricamento/errore.
-- **Criterio di chiusura:** Dashboard usa pattern unico per loading/error in tutte le viste principali, verificato con review UI.
+## Later
 
-#### 5) Verifica i18n stringhe nuove
-- **Owner:** Solo Maintainer
-- **Stima:** 1 giorno
-- **Dipendenze:** Merge delle nuove chiavi testo e disponibilità file di localizzazione target.
-- **Criterio di chiusura:** Nessuna chiave mancante nelle lingue supportate per i flussi toccati e fallback validato manualmente.
+### 5) Validazioni input router prioritari
+- **Dipendenza singola esplicita:** schema richieste e regole di dominio approvati
+- **Input minimi:** elenco router prioritari; schema richieste; regole dominio da applicare; casi limite noti
+- **Output verificabile:** i router prioritari rifiutano input non validi con errori coerenti; test automatici sui casi limite principali; note di compatibilita aggiornate se necessarie
+- **Criterio di handoff to AI:** handoff possibile quando esiste una definizione univoca delle regole di validazione e non serve negoziare il comportamento con prodotto o backend
 
-### P2
+### 6) Uniformazione feedback error/loading dashboard
+- **Dipendenza singola esplicita:** linee guida UI/UX approvate per loading e error state
+- **Input minimi:** viste dashboard coinvolte; componenti condivisi disponibili o design reference approvato; elenco stati da coprire
+- **Output verificabile:** pattern unico di loading/error in tutte le viste principali; verifica UI su desktop e mobile; screenshot o review checklist completata
+- **Criterio di handoff to AI:** handoff possibile quando esiste un pattern UI unico da applicare, cosi l'AI esegue convergenza senza introdurre scelte visuali arbitrarie
 
-#### 6) Runbook bootstrap DB/import
-- **Owner:** Solo Maintainer
-- **Stima:** 1 giorno
-- **Dipendenze:** Script aggiornati di bootstrap e procedura import dati concordata con backend.
-- **Criterio di chiusura:** Runbook versionato con passi ripetibili (bootstrap + import), testato da almeno un membro non autore.
+## Milestone
 
-## Milestone 1 — Settimane 1-2: Fondazioni di delivery
-- **Titolo:** Baseline tecnica e governance del flusso di lavoro
-- **Owner:** Solo Maintainer
-- **Outcome:** Pipeline CI attiva, convenzioni di branching documentate e checklist PR condivisa per ridurre regressioni iniziali.
+### Milestone 1 - Settimane 1-2
+- **Titolo:** Fondazioni di delivery
+- **Outcome:** baseline tecnica e operativa pronta per delegare task eseguibili end-to-end all'AI con criteri di verifica espliciti
 
-## Milestone 2 — Settimane 3-4: Qualità e stabilizzazione
-- **Titolo:** Rafforzamento qualità e copertura test
-- **Owner:** Solo Maintainer
-- **Outcome:** Soglie minime di test applicate in CI, tracciamento bug prioritizzati e riduzione del tasso di difetti in ambiente di test.
+### Milestone 2 - Settimane 3-4
+- **Titolo:** Qualita e stabilizzazione
+- **Outcome:** copertura test e coerenza dei comportamenti applicativi aumentate sulle aree a rischio piu alto
 
-## Milestone 3 — Settimane 5-6: Preparazione rilascio
-- **Titolo:** Hardening finale e readiness di rilascio
-- **Owner:** Solo Maintainer
-- **Outcome:** Criteri di rilascio verificati, piano rollback definito e pacchetto di release pronto per approvazione finale.
+### Milestone 3 - Settimane 5-6
+- **Titolo:** Preparazione rilascio
+- **Outcome:** hardening finale, runbook affidabili e readiness di rilascio verificabile
 
-## Priorità di domani (11 aprile 2026)
-1. Chiudere **standard error response backend** con evidenza test integrazione e aggiornamento documentazione API.
-2. Completare **test permessi negativi/positivi** in CI sui ruoli critici con report allegato.
-3. Consolidare **runbook bootstrap DB/import** con prova esecuzione da reviewer non autore.
+## Regola operativa
+- Un item puo stare in **Now** solo se la dipendenza singola esplicita e `Nessuna`.
+- Un item puo stare in **Next** solo se manca una sola dipendenza concreta, osservabile e assegnabile.
+- Un item va in **Later** se la dipendenza esiste ma non e ancora abbastanza definita da consentire esecuzione autonoma senza chiarimenti.
