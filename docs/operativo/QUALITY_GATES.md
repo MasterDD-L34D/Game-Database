@@ -1,4 +1,4 @@
-# Quality Gates — Regole Minime di Merge
+# Quality Gates - Regole Minime di Merge
 
 ## Governance operativa
 - **Owner:** Solo Maintainer
@@ -24,9 +24,9 @@ Per poter effettuare il merge di una Pull Request nel branch principale, devono 
 - Nessun conflitto non risolto con il branch target.
 
 ## 2) Revisione del codice
-- Almeno **1 approvazione** da un reviewer assegnato.
-- Tutti i commenti di review devono essere risolti o tracciati con decisione esplicita.
-- Le modifiche ad aree critiche (autenticazione, dati, sicurezza) richiedono reviewer con ownership del dominio.
+- **Self-review obbligatoria** con checklist firmata dall'autore della PR.
+- Tutti i commenti di review eventualmente presenti devono essere risolti o tracciati con decisione esplicita.
+- I gate tecnici automatici (test, lint, sicurezza) restano il sostituto del reviewer umano e devono risultare tutti verdi.
 
 ## 3) Sicurezza e affidabilità
 - Nessuna vulnerabilità critica o alta introdotta dalle dipendenze/modifiche.
@@ -37,6 +37,7 @@ Per poter effettuare il merge di una Pull Request nel branch principale, devono 
 - PR con descrizione chiara: contesto, modifica, impatti, piano di test.
 - Ticket/issue collegato (quando applicabile).
 - Evidenza dei test eseguiti (output CI o checklist manuale).
+- Se il comportamento cambia, aggiornamento documentazione esplicitato nella PR.
 
 ## 5) Prontezza funzionale
 - Criteri di accettazione soddisfatti.
@@ -46,11 +47,13 @@ Per poter effettuare il merge di una Pull Request nel branch principale, devono 
 ## Blocchi al merge
 Una PR è **bloccata** (non mergiabile) se almeno uno dei criteri seguenti è vero:
 - Almeno un job CI obbligatorio è in stato `failed`, `canceled` o `timed_out`.
-- Sono presenti test falliti nei check obbligatori o mancano evidenze minime dei test pertinenti eseguiti.
+- Sono presenti test falliti nei check obbligatori.
+- Manca il piano di test nella descrizione della PR.
+- Manca evidenza dell'output dei test/check eseguiti.
 - È presente almeno un hardcode nuovo in i18n identificato in review o da controlli automatici.
 - È rilevata incoerenza nella gestione errori tra API e UI (es. codici non gestiti, messaggi non mappati, stato errore non coperto).
 - La PR modifica comportamento funzionale senza aggiornare la documentazione correlata.
-- Manca l'approvazione minima richiesta o sono presenti review in stato `changes requested`.
+- Manca la self-review obbligatoria con checklist firmata oppure sono presenti review in stato `changes requested`.
 - Esistono vulnerabilità `high`/`critical` introdotte dalla PR o segreti esposti nel codice.
 - Persistono conflitti di merge con il branch target.
 
