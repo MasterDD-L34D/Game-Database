@@ -1,5 +1,15 @@
 # Quality Gates — Regole Minime di Merge
 
+## Governance operativa
+- **Owner:** Solo Maintainer
+- **Executor:** AI Agent
+- **Decision policy:** human-in-the-loop solo per approvazioni di rilascio e scelte architetturali
+
+## RACI semplificata
+- **Decide:** Solo Maintainer
+- **Esegue:** AI Agent (con supervisione)
+- **Verifica finale:** Solo Maintainer
+
 Per poter effettuare il merge di una Pull Request nel branch principale, devono essere rispettate almeno le seguenti regole:
 
 ## Checklist obbligatoria pre-merge
