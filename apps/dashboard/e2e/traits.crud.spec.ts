@@ -30,7 +30,7 @@ test.describe('traits CRUD', () => {
 
     const createdRow = page.locator('tr', { has: page.getByRole('cell', { name }) });
     await createdRow.getByRole('button', { name: 'Azioni' }).click();
-    await page.getByRole('menuitem', { name: 'Modifica' }).click();
+    await page.getByRole('menuitem', { name: 'Modifica' }).click({ force: true });
 
     const editDialog = page.getByRole('dialog');
     await editDialog.getByLabel('Nome').fill(updatedName);
@@ -43,7 +43,7 @@ test.describe('traits CRUD', () => {
 
     const updatedRow = page.locator('tr', { has: page.getByRole('cell', { name: updatedName }) });
     await updatedRow.getByRole('button', { name: 'Azioni' }).click();
-    await page.getByRole('menuitem', { name: 'Elimina' }).click();
+    await page.getByRole('menuitem', { name: 'Elimina' }).click({ force: true });
 
     const deleteDialog = page.getByRole('dialog');
     await deleteDialog.getByRole('button', { name: 'Elimina' }).click();

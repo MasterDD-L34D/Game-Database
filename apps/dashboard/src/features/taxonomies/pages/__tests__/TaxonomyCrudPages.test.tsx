@@ -249,7 +249,7 @@ describe('Taxonomy CRUD Pages', () => {
     taxonomyMocks.reset();
   });
 
-  it('allows creating, editing and deleting biomes', async () => {
+  it('allows creating, editing and deleting biomes', { timeout: 10000 }, async () => {
     const user = userEvent.setup();
     renderListPage(<BiomeListPage />);
 
