@@ -40,7 +40,9 @@ export function SnackbarProvider({ children }: { children: ReactNode }) {
   }, [queue, current]);
 
   const enqueueSnackbar = useCallback((message: string, options: SnackbarOptions = {}) => {
-    setQueue((prev) => [...prev, { key: Date.now() + Math.random(), message, options }]);
+    const nextItem = { key: Date.now() + Math.random(), message, options };
+    setQueue((prev) => (current ? [...prev, current] : prev));
+    setCurrent(nextItem);
   }, []);
 
   const handleClose = useCallback((_: unknown, reason?: string) => {
