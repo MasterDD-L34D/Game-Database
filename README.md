@@ -35,6 +35,7 @@ npm run dev                    # http://localhost:3333
 
 > Lo script `npm run dev:setup` esegue `prisma generate`, applica le migrazioni con `prisma migrate deploy` e lancia `prisma db seed`.
 > Per creare nuove migrazioni durante lo sviluppo continua a usare `npm run prisma:migrate`.
+> Se importando `@prisma/client` ricevi l'errore "did not initialize yet", esegui `npm run prisma:generate` oppure rilancia `npm run dev:setup`.
 >
 > Variabili d'ambiente utili:
 > - `TAXONOMY_WRITE_ROLES` (opzionale) elenca i ruoli autorizzati a creare/modificare la tassonomia. Il default è `taxonomy:write,admin`. Per sovrascriverlo usa ad esempio `setx TAXONOMY_WRITE_ROLES "taxonomy:write,superuser"` prima di avviare il server.
@@ -63,6 +64,23 @@ npm run dev                    # http://localhost:5174
 > Prima di avviare la dashboard assicurati che il server API sia **già in esecuzione** e raggiungibile (es. `curl http://localhost:3333/api/biomes`). Se il backend gira su host/porta diversi:
 > - imposta `VITE_API_BASE_URL` nel tuo `.env.local` verso l'endpoint corretto (incluso il suffisso `/api`), **oppure** aggiorna il proxy di sviluppo in `apps/dashboard/vite.config.ts` per puntare al nuovo host;
 > - riavvia `npm run dev` del dashboard così da evitare il `NetworkError` causato da un proxy/API non raggiungibili.
+
+### 3.1) Test rapidi
+Backend:
+```powershell
+Set-Location server
+npm test
+```
+
+> La suite backend viene eseguita file-per-file tramite `test/run-tests.ps1`, così i mock Prisma restano isolati e non si contaminano tra loro.
+
+Frontend:
+```powershell
+Set-Location apps\dashboard
+npm test -- --run src/features/records/components/__tests__/RecordTable.test.tsx src/features/records/pages/__tests__/RecordDetailsPage.test.tsx src/features/records/pages/__tests__/RecordEditPage.test.tsx src/features/taxonomies/pages/__tests__/TraitListPage.test.tsx src/components/data-table/__tests__/DataTable.test.tsx
+```
+
+> I test frontend usano Vitest/Vite con `esbuild`: in ambienti con sandbox restrittivo potrebbero fallire con errori `spawn EPERM` anche se il codice è corretto.
 
 ### 4) Import taxonomy (opzionale)
 Consulta [docs/evo-import.md](docs/evo-import.md) per la pipeline completa.

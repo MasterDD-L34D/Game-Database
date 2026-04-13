@@ -23,6 +23,7 @@ Questa guida sintetizza i passaggi di setup già presenti nel README, con il foc
    npm run dev                    # http://localhost:3333
    ```
    - `npm run dev:setup` è idempotente: genera il client Prisma, applica le migrazioni e popola i dati demo.
+   - Se `@prisma/client` non risulta inizializzato, esegui `npm run prisma:generate` oppure rilancia `npm run dev:setup`.
    - Per creare nuove migrazioni continua a usare `npm run prisma:migrate`.
    - `TAXONOMY_WRITE_ROLES` (opzionale) elenca i ruoli autorizzati a modificare la tassonomia.
    - Per tracciare chi esegue le mutazioni, invia l'header `X-User` nelle chiamate API (opzionale).
@@ -36,6 +37,22 @@ Questa guida sintetizza i passaggi di setup già presenti nel README, con il foc
    ```
    - Configura `VITE_API_BASE_URL` per puntare al server (default: `http://localhost:3333/api`).
    - `VITE_API_USER` è facoltativo per identificare le operazioni registrate.
+
+## Verifica rapida
+- Backend:
+  ```powershell
+  cd server
+  npm test
+  ```
+- Frontend mirato:
+  ```powershell
+  cd apps\dashboard
+  npm test -- --run src/features/records/components/__tests__/RecordTable.test.tsx src/features/records/pages/__tests__/RecordDetailsPage.test.tsx src/features/records/pages/__tests__/RecordEditPage.test.tsx src/features/taxonomies/pages/__tests__/TraitListPage.test.tsx src/components/data-table/__tests__/DataTable.test.tsx
+  ```
+
+Note operative:
+- La suite backend usa `test/run-tests.ps1` per eseguire i file in processi separati ed evitare interferenze tra mock.
+- In ambienti sandboxati i test frontend possono fallire con `spawn EPERM` per limiti dell'ambiente, non per un errore del progetto.
 
 ## Ripopolamento/seed del database
 Il comando `npm run prisma:seed` inserisce 200 record di esempio e la tassonomia minima (trait, biomi, specie, ecosistemi) con relazioni già pronte. È idempotente e può essere rilanciato per ripristinare l'ambiente.

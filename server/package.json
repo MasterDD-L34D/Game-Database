@@ -23,7 +23,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "prisma:seed": "prisma db seed",
-    "test": "node test/run-tests.js",
+    "test": "powershell -ExecutionPolicy Bypass -File ./test/run-tests.ps1",
     "evo:import": "./scripts/evo-pipeline.sh"
   }
 }
