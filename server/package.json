@@ -26,7 +26,7 @@
     "prisma:seed": "prisma db seed",
     "prisma:studio": "prisma studio",
     "start:lan": "node scripts/start-lan.js",
-    "test": "powershell -ExecutionPolicy Bypass -File ./test/run-tests.ps1",
+    "test": "node ./test/run-tests.js",
     "evo:import": "node scripts/evo-import.js"
   }
 }
