@@ -36,6 +36,7 @@
     "@testing-library/user-event": "^14",
     "@vitejs/plugin-react-swc": "^3",
     "autoprefixer": "^10",
+    "baseline-browser-mapping": "^2.10.18",
     "jsdom": "^26",
     "postcss": "^8",
     "tailwindcss": "^3",

@@ -129,6 +129,9 @@ export function renderWithProviders(
     : createMemoryRouter(routerOption?.routes ?? [{ path: '/', element: ui }], {
         initialEntries: routerOption?.initialEntries,
         initialIndex: routerOption?.initialIndex,
+        future: {
+          v7_startTransition: true,
+        },
       });
 
   const result = render(
@@ -136,7 +139,12 @@ export function renderWithProviders(
       <QueryClientProvider client={queryClient}>
         <SnackbarProvider>
           <SearchProvider>
-            <RouterProvider router={router} />
+            <RouterProvider
+              router={router}
+              future={{
+                v7_startTransition: true,
+              }}
+            />
           </SearchProvider>
         </SnackbarProvider>
       </QueryClientProvider>
