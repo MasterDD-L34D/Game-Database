@@ -27,6 +27,6 @@
     "prisma:studio": "prisma studio",
     "start:lan": "node scripts/start-lan.js",
     "test": "powershell -ExecutionPolicy Bypass -File ./test/run-tests.ps1",
-    "evo:import": "./scripts/evo-pipeline.sh"
+    "evo:import": "node scripts/evo-import.js"
   }
 }

@@ -5,7 +5,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import ListPage from '../../../pages/ListPage';
-import { listSpecies, listTraits, type Trait } from '../../../lib/taxonomy';
+import { listAllTraits, listSpecies, type Trait } from '../../../lib/taxonomy';
 import {
   createSpeciesTrait,
   deleteSpeciesTrait,
@@ -51,11 +51,11 @@ export default function SpeciesTraitListPage() {
   });
   const { data: traitsData } = useQuery({
     queryKey: ['traits', 'lookup'],
-    queryFn: () => listTraits('', 0, 100),
+    queryFn: () => listAllTraits(''),
   });
 
   const speciesItems = speciesData?.items ?? [];
-  const traitItems = traitsData?.items ?? [];
+  const traitItems = traitsData ?? [];
 
   const speciesById = useMemo(() => Object.fromEntries(speciesItems.map(item => [item.id, item])), [speciesItems]);
   const traitsById = useMemo(() => Object.fromEntries(traitItems.map(item => [item.id, item])), [traitItems]);

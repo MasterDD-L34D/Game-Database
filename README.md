@@ -156,9 +156,11 @@ Consulta [docs/evo-import.md](docs/evo-import.md) per la pipeline completa.
 
 ```powershell
 Set-Location ..\server
-npm run evo:import -- --repo C:\percorso\al\repo\EvoTactics --dry-run
-npm run evo:import -- --repo C:\percorso\al\repo\EvoTactics
+npm run evo:import -- --repo C:\Users\VGit\Documents\GitHub\Game --dry-run
+npm run evo:import -- --repo C:\Users\VGit\Documents\GitHub\Game
 ```
+
+Il seed Prisma resta volutamente minimo per bootstrap e test. Il popolamento reale della tassonomia passa dall'import del repository `Game`.
 
 ### Ripopolamento database
 

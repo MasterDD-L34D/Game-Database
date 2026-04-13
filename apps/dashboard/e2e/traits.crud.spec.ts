@@ -9,6 +9,7 @@ test.describe('traits CRUD', () => {
     const slug = `playwright-trait-${suffix}`;
     const name = `Playwright Trait ${suffix}`;
     const updatedName = `Playwright Trait ${suffix} Updated`;
+    const tableSearch = page.locator('main').getByPlaceholder('Cerca');
 
     await page.goto('/traits');
 
@@ -24,6 +25,7 @@ test.describe('traits CRUD', () => {
     await createDialog.getByRole('button', { name: 'Salva' }).click();
 
     await expect(page.getByText('Trait creato con successo.')).toBeVisible();
+    await tableSearch.fill(name);
     await expect(page.getByRole('cell', { name })).toBeVisible();
 
     const createdRow = page.locator('tr', { has: page.getByRole('cell', { name }) });
@@ -36,6 +38,7 @@ test.describe('traits CRUD', () => {
     await editDialog.getByRole('button', { name: 'Salva modifiche' }).click();
 
     await expect(page.getByText('Trait aggiornato con successo.')).toBeVisible();
+    await tableSearch.fill(updatedName);
     await expect(page.getByRole('cell', { name: updatedName })).toBeVisible();
 
     const updatedRow = page.locator('tr', { has: page.getByRole('cell', { name: updatedName }) });
@@ -45,6 +48,7 @@ test.describe('traits CRUD', () => {
     const deleteDialog = page.getByRole('dialog');
     await deleteDialog.getByRole('button', { name: 'Elimina' }).click();
     await expect(page.getByText('Trait eliminato con successo.')).toBeVisible();
+    await tableSearch.fill(updatedName);
     await expect(page.getByRole('cell', { name: updatedName })).toHaveCount(0);
   });
 });

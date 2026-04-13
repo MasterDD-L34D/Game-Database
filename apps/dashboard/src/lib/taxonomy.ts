@@ -55,6 +55,19 @@ export const listBiomes = (q = '', page=0, pageSize=25) => fetchJSON<Paged<Biome
 export const listSpecies = (q = '', page=0, pageSize=25) => fetchJSON<Paged<Species>>(`/species?q=${encodeURIComponent(q)}&page=${page}&pageSize=${pageSize}`);
 export const listEcosystems = (q = '', page=0, pageSize=25) => fetchJSON<Paged<Ecosystem>>(`/ecosystems?q=${encodeURIComponent(q)}&page=${page}&pageSize=${pageSize}`);
 
+export async function listAllTraits(q = '', pageSize = 100) {
+  const items: Trait[] = [];
+  let page = 0;
+  let total = 0;
+  do {
+    const response = await listTraits(q, page, pageSize);
+    items.push(...response.items);
+    total = response.total;
+    page += 1;
+  } while (items.length < total);
+  return items;
+}
+
 export type TraitInput = Omit<Trait, 'id'>;
 export type BiomeInput = Omit<Biome, 'id'>;
 export type SpeciesInput = Omit<Species, 'id'>;
