@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { ColumnDef, createColumnHelper } from '@tanstack/react-table';
 import { useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import ListPage from '../../../pages/ListPage';
@@ -27,7 +28,10 @@ export default function SpeciesListPage() {
 
   const columns = useMemo<ColumnDef<Species, any>[]>(
     () => [
-      h.accessor('scientificName', { header: t('species.columns.scientificName'), cell: (i) => i.getValue() }),
+      h.accessor('scientificName', {
+        header: t('species.columns.scientificName'),
+        cell: (i) => <Link to={`/species/${i.row.original.slug}`}>{i.getValue()}</Link>,
+      }),
       h.accessor('commonName', { header: t('species.columns.commonName'), cell: (i) => i.getValue() ?? '' }),
       h.accessor('family', { header: t('species.columns.family'), cell: (i) => i.getValue() ?? '' }),
       h.accessor('genus', { header: t('species.columns.genus'), cell: (i) => i.getValue() ?? '' }),

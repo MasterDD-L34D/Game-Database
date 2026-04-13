@@ -74,8 +74,25 @@ function asArray(value) {
   return Array.isArray(value) ? value : [value];
 }
 
+function cleanText(value) {
+  if (typeof value !== 'string') return value;
+  return value
+    .replace(/â€‘/g, '-')
+    .replace(/â€”|â€“/g, '-')
+    .replace(/â€¦/g, '...')
+    .replace(/Ã /g, 'à')
+    .replace(/Ã¨/g, 'è')
+    .replace(/Ã©/g, 'é')
+    .replace(/Ã¬/g, 'ì')
+    .replace(/Ã²/g, 'ò')
+    .replace(/Ã¹/g, 'ù')
+    .replace(/Ã/g, 'à')
+    .replace(/Â/g, '')
+    .trim();
+}
+
 function pickText(...values) {
-  for (const value of values) if (typeof value === 'string' && value.trim()) return value.trim();
+  for (const value of values) if (typeof value === 'string' && value.trim()) return cleanText(value.trim());
   return null;
 }
 
@@ -83,6 +100,35 @@ function safeNumber(value) {
   if (value == null || value === '') return null;
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : null;
+}
+
+function humanizeSlug(value) {
+  const cleaned = cleanText(String(value || '').replace(/\(scaffold\)/gi, '').replace(/_/g, ' ').trim());
+  if (!cleaned) return null;
+  return cleaned
+    .split(/\s+/)
+    .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
+    .join(' ');
+}
+
+function humanizeCode(value) {
+  const cleaned = cleanText(String(value || '').replace(/[_-]+/g, ' ').trim());
+  if (!cleaned) return null;
+  return cleaned
+    .toLowerCase()
+    .split(/\s+/)
+    .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
+    .join(' ');
+}
+
+function stripScaffoldLabel(value) {
+  const cleaned = cleanText(value || '');
+  if (!cleaned) return cleaned;
+  const withoutScaffold = cleaned.replace(/\s*\(scaffold\)\s*/gi, '').trim();
+  if (/^[a-z0-9_-]+$/i.test(withoutScaffold)) {
+    return humanizeCode(withoutScaffold);
+  }
+  return withoutScaffold;
 }
 
 function summarizeClimate(climate) {
@@ -108,6 +154,67 @@ function buildBiomeDescription(record) {
   if (ecoregion) parts.push(`Ecoregione: ${ecoregion}`);
   if (groups.length) parts.push(`Gruppi funzionali: ${groups.slice(0, 5).join(', ')}`);
   return parts.length ? parts.join(' | ') : null;
+}
+
+function buildSpeciesDescription(record, normalized) {
+  const parts = [];
+  const role = pickText(record.role_trofico, record.balance?.encounter_role);
+  const tags = asArray(record.functional_tags).map((tag) => cleanText(String(tag))).filter(Boolean);
+  const hazards = asArray(record.hazards_expected).map((hazard) => cleanText(String(hazard))).filter(Boolean);
+  const jobsBias = asArray(record.jobs_bias).map((job) => cleanText(String(job))).filter(Boolean);
+  const biomeClass = pickText(record.environment_affinity?.biome_class);
+
+  if (role) parts.push(`Ruolo: ${role}`);
+  if (biomeClass) parts.push(`Affinita biome: ${biomeClass}`);
+  if (tags.length) parts.push(`Tag: ${tags.slice(0, 4).join(', ')}`);
+  if (hazards.length) parts.push(`Hazard attesi: ${hazards.slice(0, 4).join(', ')}`);
+  if (jobsBias.length) parts.push(`Bias: ${jobsBias.slice(0, 3).join(', ')}`);
+
+  if (!parts.length) {
+    const fallbackName = normalized.commonName || normalized.scientificName || humanizeSlug(normalized.slug);
+    return fallbackName ? `Scheda importata per ${fallbackName}.` : null;
+  }
+
+  return parts.join(' | ');
+}
+
+function shouldSkipEcosystem(record, filePath) {
+  const ecosystem = record?.ecosistema || record;
+  const label = pickText(ecosystem?.label, ecosystem?.name, ecosystem?.nome);
+  const slug = getEcosystemSlug(record, filePath);
+  const hasUsefulContent = Boolean(
+    pickText(ecosystem?.description, ecosystem?.descrizione, ecosystem?.note) ||
+      pickText(ecosystem?.region, ecosystem?.regione, ecosystem?.metadati?.localizzazione?.area) ||
+      summarizeClimate(ecosystem?.clima || ecosystem?.climate),
+  );
+  return slug === 'evo-tactics-meta-ecosystem-alpha' && !hasUsefulContent;
+}
+
+function getEcosystemSlug(record, filePath) {
+  const ecosystem = record?.ecosistema || record || {};
+  return slugify(
+    ecosystem.slug ||
+      ecosystem._id ||
+      ecosystem.id ||
+      ecosystem.label ||
+      ecosystem.nome ||
+      ecosystem.metadati?.nome ||
+      path.basename(filePath).replace(/\.ecosystem\.ya?ml$/i, ''),
+  );
+}
+
+function markPartial(report, domain, normalized) {
+  let partial = false;
+  if (domain === 'traits') {
+    partial = !normalized.description || !normalized.category;
+  } else if (domain === 'biomes') {
+    partial = !normalized.description || !normalized.climate;
+  } else if (domain === 'species') {
+    partial = !normalized.description || !normalized.commonName;
+  } else if (domain === 'ecosystems') {
+    partial = !normalized.description || !normalized.climate || !normalized.region;
+  }
+  if (partial) report.partial += 1;
 }
 
 function isEventSpecies(record) {
@@ -189,7 +296,7 @@ function normalizeBiome(record, filePath) {
   if (record.ecosistema?.bioma || filePath.endsWith('.biome.yaml')) {
     const ecosystem = record.ecosistema || {};
     const slug = slugify(ecosystem.bioma?.classe_bioma || record.links?.biome_id || ecosystem.id || path.basename(filePath).replace(/\.biome\.ya?ml$/i, ''));
-    const name = pickText(ecosystem.metadati?.nome, ecosystem.label, record.label, slug);
+    const name = stripScaffoldLabel(pickText(ecosystem.metadati?.nome, ecosystem.label, record.label) || humanizeSlug(slug));
     if (!slug || !name) return null;
     return {
       slug,
@@ -200,7 +307,7 @@ function normalizeBiome(record, filePath) {
     };
   }
   const slug = slugify(record.slug || record._id || record.id || record.network_id || record.label || record.name);
-  const name = pickText(record.name, record.nome, record.label, slug);
+  const name = stripScaffoldLabel(pickText(record.name, record.nome, record.label) || humanizeSlug(slug));
   if (!slug || !name) return null;
   return {
     slug,
@@ -276,7 +383,7 @@ function normalizeSpecies(record) {
     };
   }).filter(Boolean);
   if (!biomes.length && record.environment_affinity?.biome_class) biomes.push({ biomeSlug: slugify(record.environment_affinity.biome_class), presence: 'resident', abundance: null });
-  return {
+  const normalized = {
     slug,
     scientificName,
     commonName: pickText(record.commonName, record.nomeComune, record.vernacular, record.display_name, record.name),
@@ -292,13 +399,18 @@ function normalizeSpecies(record) {
     traits: collectSpeciesTraits(record),
     biomes,
   };
+  if (!normalized.description || normalized.description.startsWith('i18n:')) {
+    normalized.description = buildSpeciesDescription(record, normalized);
+  }
+  return normalized;
 }
 
 function normalizeEcosystem(record, filePath) {
   if (!record || typeof record !== 'object') return null;
+  if (shouldSkipEcosystem(record, filePath)) return null;
   const ecosystem = record.ecosistema || record;
-  const slug = slugify(ecosystem.slug || ecosystem._id || ecosystem.id || ecosystem.label || ecosystem.nome || ecosystem.metadati?.nome || path.basename(filePath).replace(/\.ecosystem\.ya?ml$/i, ''));
-  const name = pickText(ecosystem.name, ecosystem.nome, ecosystem.label, ecosystem.metadati?.nome, slug);
+  const slug = getEcosystemSlug(record, filePath);
+  const name = stripScaffoldLabel(pickText(ecosystem.name, ecosystem.nome, ecosystem.label, ecosystem.metadati?.nome) || humanizeSlug(slug));
   if (!slug || !name) return null;
   const biomes = [];
   for (const biome of asArray(record.biomi || ecosystem.biomi)) {
@@ -334,7 +446,7 @@ function normalizeEcosystem(record, filePath) {
     slug,
     name,
     description: pickText(ecosystem.description, ecosystem.descrizione, ecosystem.note, record.summary),
-    region: pickText(ecosystem.region, ecosystem.regione, ecosystem.metadati?.localizzazione?.area, ecosystem.id),
+    region: pickText(ecosystem.region, ecosystem.regione, ecosystem.metadati?.localizzazione?.area) || humanizeCode(ecosystem.id),
     climate: summarizeClimate(ecosystem.clima || ecosystem.climate),
     biomes,
     species: [...uniqueSpecies.values()],
@@ -342,7 +454,7 @@ function normalizeEcosystem(record, filePath) {
 }
 
 function createDomainReport(name, files) {
-  return { domain: name, files, read: 0, normalized: 0, upserted: 0, skipped: 0, errors: 0, skippedSamples: [] };
+  return { domain: name, files, read: 0, normalized: 0, upserted: 0, partial: 0, skipped: 0, errors: 0, skippedSamples: [] };
 }
 
 function noteSkip(report, message) {
@@ -368,6 +480,7 @@ async function processTraits(items) {
         continue;
       }
       report.normalized += 1;
+      markPartial(report, 'traits', normalized);
       if (verbose) console.log(`Trait: ${normalized.slug}`);
       if (!dryRun) {
         try {
@@ -408,6 +521,7 @@ async function processBiomes(items) {
         continue;
       }
       report.normalized += 1;
+      markPartial(report, 'biomes', normalized);
       if (verbose) console.log(`Biome: ${normalized.slug}`);
       if (!dryRun) {
         try {
@@ -452,6 +566,7 @@ async function processSpecies(items) {
         continue;
       }
       report.normalized += 1;
+      markPartial(report, 'species', normalized);
       if (verbose) console.log(`Species: ${normalized.slug}`);
       if (!dryRun) {
         try {
@@ -534,12 +649,25 @@ async function processEcosystems(items) {
   for (const item of items) {
     for (const record of expandDomainRecords('ecosystems', item.file, item.data)) {
       report.read += 1;
+      if (shouldSkipEcosystem(record, item.file)) {
+        if (!dryRun) {
+          const existing = await prisma.ecosystem.findUnique({ where: { slug: getEcosystemSlug(record, item.file) } });
+          if (existing) {
+            await prisma.ecosystemBiome.deleteMany({ where: { ecosystemId: existing.id } });
+            await prisma.ecosystemSpecies.deleteMany({ where: { ecosystemId: existing.id } });
+            await prisma.ecosystem.delete({ where: { id: existing.id } });
+          }
+        }
+        noteSkip(report, `${path.basename(item.file)}: ecosistema non normalizzabile`);
+        continue;
+      }
       const normalized = normalizeEcosystem(record, item.file);
       if (!normalized) {
         noteSkip(report, `${path.basename(item.file)}: ecosistema non normalizzabile`);
         continue;
       }
       report.normalized += 1;
+      markPartial(report, 'ecosystems', normalized);
       if (verbose) console.log(`Ecosystem: ${normalized.slug}`);
       if (!dryRun) {
         try {
@@ -604,6 +732,8 @@ async function main() {
       acc.totali_letti += report.read;
       acc.normalizzati += report.normalized;
       acc.aggiornati_o_upsertati += report.upserted;
+      acc.importati_parziali += report.partial;
+      acc.importati_completi += Math.max(report.upserted - report.partial, 0);
       acc.scartati += report.skipped;
       acc.errori += report.errors;
       acc.dettaglio[report.domain] = {
@@ -611,13 +741,15 @@ async function main() {
         letti: report.read,
         normalizzati: report.normalized,
         aggiornati: report.upserted,
+        completi: Math.max(report.upserted - report.partial, 0),
+        parziali: report.partial,
         scartati: report.skipped,
         errori: report.errors,
         esempi_scarti: report.skippedSamples,
       };
       return acc;
     },
-    { mode: dryRun ? 'dry-run' : 'import', repo: repoRoot, totali_letti: 0, normalizzati: 0, aggiornati_o_upsertati: 0, scartati: 0, errori: 0, dettaglio: {} },
+    { mode: dryRun ? 'dry-run' : 'import', repo: repoRoot, totali_letti: 0, normalizzati: 0, aggiornati_o_upsertati: 0, importati_completi: 0, importati_parziali: 0, scartati: 0, errori: 0, dettaglio: {} },
   );
   console.log(JSON.stringify(summary, null, 2));
 }

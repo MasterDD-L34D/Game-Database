@@ -31,6 +31,52 @@ async function fetchPaginatedSpecies(req) {
   return { items, page, pageSize, total };
 }
 
+async function fetchSpeciesDetail(identifier, res) {
+  const item = await findExistingByIdOrSlug(prisma.species, identifier, res, 'Species not found');
+  if (!item) return null;
+
+  const [traits, biomes, ecosystems] = await Promise.all([
+    prisma.speciesTrait.findMany({
+      where: { speciesId: item.id },
+      orderBy: [{ category: 'asc' }, { traitId: 'asc' }],
+    }),
+    prisma.speciesBiome.findMany({
+      where: { speciesId: item.id },
+      orderBy: [{ presence: 'asc' }, { biomeId: 'asc' }],
+    }),
+    prisma.ecosystemSpecies.findMany({
+      where: { speciesId: item.id },
+      orderBy: [{ role: 'asc' }, { ecosystemId: 'asc' }],
+    }),
+  ]);
+
+  const traitIds = [...new Set(traits.map((entry) => entry.traitId).filter(Boolean))];
+  const biomeIds = [...new Set(biomes.map((entry) => entry.biomeId).filter(Boolean))];
+  const ecosystemIds = [...new Set(ecosystems.map((entry) => entry.ecosystemId).filter(Boolean))];
+
+  const [traitRecords, biomeRecords, ecosystemRecords] = await Promise.all([
+    traitIds.length ? prisma.trait.findMany({ where: { id: { in: traitIds } }, orderBy: { name: 'asc' } }) : [],
+    biomeIds.length ? prisma.biome.findMany({ where: { id: { in: biomeIds } }, orderBy: { name: 'asc' } }) : [],
+    ecosystemIds.length ? prisma.ecosystem.findMany({ where: { id: { in: ecosystemIds } }, orderBy: { name: 'asc' } }) : [],
+  ]);
+
+  const traitsById = new Map(traitRecords.map((entry) => [entry.id, entry]));
+  const biomesById = new Map(biomeRecords.map((entry) => [entry.id, entry]));
+  const ecosystemsById = new Map(ecosystemRecords.map((entry) => [entry.id, entry]));
+
+  return {
+    ...item,
+    traits: traits.map((entry) => ({ ...entry, trait: traitsById.get(entry.traitId) ?? null })),
+    biomes: biomes.map((entry) => ({ ...entry, biome: biomesById.get(entry.biomeId) ?? null })),
+    ecosystems: ecosystems.map((entry) => ({ ...entry, ecosystem: ecosystemsById.get(entry.ecosystemId) ?? null })),
+    relationCounts: {
+      traits: traits.length,
+      biomes: biomes.length,
+      ecosystems: ecosystems.length,
+    },
+  };
+}
+
 function normalizeSlug(input) {
   if (!input) return '';
   return input.toString().trim().toLowerCase().replace(/\s+/g, '-');
@@ -74,7 +120,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const id = assertIdParam(req.params);
-    const item = await findExistingByIdOrSlug(prisma.species, id, res, 'Species not found');
+    const item = await fetchSpeciesDetail(id, res);
     if (!item) return null;
     return res.json(item);
   } catch (error) {

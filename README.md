@@ -162,6 +162,16 @@ npm run evo:import -- --repo C:\Users\VGit\Documents\GitHub\Game
 
 Il seed Prisma resta volutamente minimo per bootstrap e test. Il popolamento reale della tassonomia passa dall'import del repository `Game`.
 
+L'importer taxonomy ora espone anche indicatori di qualita nel report:
+- `importati_completi`
+- `importati_parziali`
+- `scartati` con esempi sintetici di record esclusi
+
+Limiti noti del dataset importato:
+- alcune specie derivate dai cataloghi Evo non hanno descrizioni narrative complete; in quei casi viene generato un riassunto diagnostico leggibile
+- i record evento restano esclusi dalla tassonomia principale
+- i meta-record aggregati non consultabili vengono scartati dall'import
+
 ### Ripopolamento database
 
 Vedi [docs/database-bootstrap.md](docs/database-bootstrap.md) per una guida dettagliata su come ripristinare le tabelle sia in locale sia negli ambienti Docker/staging.

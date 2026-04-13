@@ -22,7 +22,9 @@
   "search": {
     "placeholder": "Cerca",
     "ariaLabel": "Cerca",
-    "pressEnter": "Premi Invio per cercare."
+    "pressEnter": "Premi Invio per cercare.",
+    "noResults": "Nessun risultato per i filtri attivi.",
+    "noData": "Nessun dato disponibile."
   },
   "feedback": {
     "loadError": "Impossibile caricare i dati.",

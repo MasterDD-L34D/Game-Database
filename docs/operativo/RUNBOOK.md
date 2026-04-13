@@ -133,6 +133,8 @@ CONTEGGI
 - totali_letti: <n file/record sorgente>
 - normalizzati: <n>
 - aggiornati_o_upsertati: <n>
+- importati_completi: <n>
+- importati_parziali: <n>
 - scartati: <n>
 - errori: <n>
 
@@ -152,6 +154,8 @@ NOTE
 - **totali_letti**: record individuati nei file sorgente prima della normalizzazione.
 - **normalizzati**: record convertiti con successo nel formato atteso dal database.
 - **aggiornati_o_upsertati**: record effettivamente scritti via upsert.
+- **importati_completi**: record con i campi principali utili alla consultazione gia valorizzati.
+- **importati_parziali**: record importati ma ancora incompleti su campi descrittivi importanti.
 - **scartati**: record non validi/non normalizzabili (es. senza chiave minima come nome/slug).
 - **errori**: eccezioni runtime, errori parsing, errori DB.
 

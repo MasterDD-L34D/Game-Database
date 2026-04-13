@@ -51,6 +51,32 @@ test('GET /api/species/:id resolves slugs', async () => {
   }
 });
 
+test('GET /api/species/:id returns related traits, biomes and ecosystems', async () => {
+  taxonomy.reset();
+  const species = taxonomy.createSpecies({ scientificName: 'Specimen Detail', slug: 'specimen-detail' });
+  const trait = taxonomy.createTrait({ name: 'Frost Tolerance', slug: 'frost-tolerance' });
+  const biome = taxonomy.createBiome({ name: 'Tundra', slug: 'tundra' });
+  const ecosystem = taxonomy.createEcosystem({ name: 'Northern Belt', slug: 'northern-belt' });
+  taxonomy.createSpeciesTrait({ speciesId: species.id, traitId: trait.id, text: 'high', category: 'baseline' });
+  taxonomy.createSpeciesBiome({ speciesId: species.id, biomeId: biome.id, presence: 'resident' });
+  taxonomy.createEcosystemSpecies({ ecosystemId: ecosystem.id, speciesId: species.id, role: 'keystone' });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/species/${species.slug}`);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.traits.length, 1);
+    assert.equal(body.traits[0].trait.slug, 'frost-tolerance');
+    assert.equal(body.biomes.length, 1);
+    assert.equal(body.biomes[0].biome.slug, 'tundra');
+    assert.equal(body.ecosystems.length, 1);
+    assert.equal(body.ecosystems[0].ecosystem.slug, 'northern-belt');
+  } finally {
+    await closeServer(server);
+  }
+});
+
 test('GET /api/traits returns paginated traits', async () => {
   taxonomy.reset();
   taxonomy.createTrait({ name: 'Leaf Size', dataType: 'NUMERIC', unit: 'cm' });

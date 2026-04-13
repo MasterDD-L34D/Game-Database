@@ -29,6 +29,40 @@ async function fetchPaginatedBiomes(req) {
   return { items, page, pageSize, total };
 }
 
+async function fetchBiomeDetail(identifier, res) {
+  const item = await findExistingByIdOrSlug(prisma.biome, identifier, res);
+  if (!item) return null;
+
+  const [children, species, ecosystems] = await Promise.all([
+    prisma.biome.findMany({ where: { parentId: item.id }, orderBy: { name: 'asc' } }),
+    prisma.speciesBiome.findMany({ where: { biomeId: item.id }, orderBy: [{ presence: 'asc' }, { speciesId: 'asc' }] }),
+    prisma.ecosystemBiome.findMany({ where: { biomeId: item.id }, orderBy: [{ ecosystemId: 'asc' }] }),
+  ]);
+
+  const parent = item.parentId ? await prisma.biome.findUnique({ where: { id: item.parentId } }) : null;
+  const speciesIds = [...new Set(species.map((entry) => entry.speciesId).filter(Boolean))];
+  const ecosystemIds = [...new Set(ecosystems.map((entry) => entry.ecosystemId).filter(Boolean))];
+  const [speciesRecords, ecosystemRecords] = await Promise.all([
+    speciesIds.length ? prisma.species.findMany({ where: { id: { in: speciesIds } }, orderBy: { scientificName: 'asc' } }) : [],
+    ecosystemIds.length ? prisma.ecosystem.findMany({ where: { id: { in: ecosystemIds } }, orderBy: { name: 'asc' } }) : [],
+  ]);
+  const speciesById = new Map(speciesRecords.map((entry) => [entry.id, entry]));
+  const ecosystemsById = new Map(ecosystemRecords.map((entry) => [entry.id, entry]));
+
+  return {
+    ...item,
+    parent,
+    children,
+    species: species.map((entry) => ({ ...entry, species: speciesById.get(entry.speciesId) ?? null })),
+    ecosystems: ecosystems.map((entry) => ({ ...entry, ecosystem: ecosystemsById.get(entry.ecosystemId) ?? null })),
+    relationCounts: {
+      children: children.length,
+      species: species.length,
+      ecosystems: ecosystems.length,
+    },
+  };
+}
+
 function normalizeSlug(input) {
   if (!input) return '';
   return input.toString().trim().toLowerCase().replace(/\s+/g, '-');
@@ -48,7 +82,7 @@ router.get('/', async (req, res) => {
 });
 
 router.get('/:id', async (req, res) => {
-  const item = await findExistingByIdOrSlug(prisma.biome, req.params.id, res);
+  const item = await fetchBiomeDetail(req.params.id, res);
   if (!item) return;
   res.json(item);
 });

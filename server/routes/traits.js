@@ -27,6 +27,36 @@ async function fetchPaginatedTraits(req) {
   return { items, page, pageSize, total };
 }
 
+async function fetchTraitDetail(identifier, res) {
+  const item = await findExistingByIdOrSlug(prisma.trait, identifier, res, 'Trait not found');
+  if (!item) return null;
+
+  const speciesValues = await prisma.speciesTrait.findMany({
+    where: { traitId: item.id },
+    orderBy: [{ speciesId: 'asc' }, { category: 'asc' }],
+  });
+
+  const speciesIds = [...new Set(speciesValues.map((value) => value.speciesId).filter(Boolean))];
+  const species = speciesIds.length
+    ? await prisma.species.findMany({
+        where: { id: { in: speciesIds } },
+        orderBy: { scientificName: 'asc' },
+      })
+    : [];
+  const speciesById = new Map(species.map((entry) => [entry.id, entry]));
+
+  return {
+    ...item,
+    speciesValues: speciesValues.map((value) => ({
+      ...value,
+      species: speciesById.get(value.speciesId) ?? null,
+    })),
+    relationCounts: {
+      speciesValues: speciesValues.length,
+    },
+  };
+}
+
 function normalizeSlug(input) {
   if (!input) return '';
   return input.toString().trim().toLowerCase().replace(/\s+/g, '-');
@@ -99,7 +129,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const id = assertIdParam(req.params);
-    const item = await findExistingByIdOrSlug(prisma.trait, id, res, 'Trait not found');
+    const item = await fetchTraitDetail(id, res);
     if (!item) return null;
     return res.json(item);
   } catch (error) {

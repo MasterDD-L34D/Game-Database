@@ -544,6 +544,11 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
         pagination={paginationState}
         onPaginationChange={handlePaginationChange}
       />
+      {!showSkeleton && !isError && hasSearched && items.length === 0 && (
+        <Typography variant="body2" color="text.secondary" sx={(theme) => ({ mt: theme.spacing(2) })}>
+          {criteria.query ? t('common:search.noResults') : t('common:search.noData')}
+        </Typography>
+      )}
       {!autoloadOnMount && !hasSearched && !isFetching && (
         <Typography variant="caption" color="text.secondary" sx={(theme) => ({ display: 'block', mt: theme.spacing(2) })}>
           {t('common:search.pressEnter')}
