@@ -46,9 +46,11 @@ function hasRole(req, ...roles) {
 }
 
 function user(req, res, next) {
-  const headerUser = req.get('x-user') || req.get('x-user-email') || null;
+  const authContext = req.authContext || {};
+  const headerUser = req.get('x-user') || req.get('x-user-email') || authContext.user || null;
+  const headerRoles = req.get('x-roles') || req.get('x-user-roles') || authContext.roles || null;
   req.user = normalizeUser(headerUser);
-  req.userRoles = parseRolesHeader(req.get('x-roles') || req.get('x-user-roles'));
+  req.userRoles = parseRolesHeader(headerRoles);
   next();
 }
 

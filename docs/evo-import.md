@@ -1,62 +1,77 @@
-# Pipeline di import per Evo Tactics Pack
+# Pipeline di import per Game / Evo Tactics Pack
 
-Questo progetto può importare i cataloghi del repository **Evo Tactics Pack MongoDB** direttamente nel database Prisma/Postgres grazie a una pipeline completamente scriptata.
+Questo progetto importa i cataloghi del repository sorgente `Game` nel database Prisma/Postgres di `Game-Database`.
 
 ## Riferimenti operativi
 
-- Runbook operativo completo: [`docs/operativo/RUNBOOK.md`](./operativo/RUNBOOK.md)
-- Script ingest principale: [`server/scripts/ingest/import-taxonomy.js`](../server/scripts/ingest/import-taxonomy.js)
-- Configurazione glob: [`server/scripts/ingest/evo-import.config.json`](../server/scripts/ingest/evo-import.config.json)
+- Runbook operativo: [`docs/operativo/RUNBOOK.md`](./operativo/RUNBOOK.md)
+- Importer principale: [`server/scripts/ingest/import-taxonomy.js`](../server/scripts/ingest/import-taxonomy.js)
+- Wrapper cross-platform: [`server/scripts/evo-import.js`](../server/scripts/evo-import.js)
+- Config sorgenti: [`server/scripts/ingest/evo-import.config.json`](../server/scripts/ingest/evo-import.config.json)
 
-## Prerequisiti
+## Sorgente ufficiale v1
 
-- repository Evo clonato localmente (es. `/workspace/Game`)
-- variabile `DATABASE_URL` configurata verso l'istanza Postgres del progetto
-- dipendenze installate (`npm install` nella cartella `server/`)
+Repository validato:
+
+- `C:\Users\VGit\Documents\GitHub\Game`
+
+Input usati dal runtime:
+
+- `packs/evo_tactics_pack/docs/catalog/trait_glossary.json`
+- `packs/evo_tactics_pack/docs/catalog/trait_reference.json`
+- `packs/evo_tactics_pack/docs/catalog/env_traits.json`
+- `packs/evo_tactics_pack/docs/catalog/catalog_data.json`
+- `packs/evo_tactics_pack/docs/catalog/species/**/*.json`
+- `packs/evo_tactics_pack/data/ecosystems/*.biome.yaml`
+- `packs/evo_tactics_pack/data/ecosystems/*.ecosystem.yaml`
+
+Fuori scope runtime:
+
+- `archive`
+- `incoming`
+- `reports`
+- dump decompressi o cartelle di lavorazione temporanea
 
 ## Script disponibili
 
 | Script | Descrizione |
 | --- | --- |
-| `npm run dev:setup` | Genera il client Prisma, applica le migrazioni e rilancia il seed di base. |
-| `npm run evo:import -- --repo <path>` | Orchestratore completo: esegue `dev:setup` (salvo `--no-setup`) e poi l'importer `import-taxonomy.js`. |
-| `server/scripts/ingest/import-taxonomy.js` | Importatore generico (trait, biomi, specie, ecosistemi) con supporto JSON/YAML/MD/CSV. |
-
-## Configurazione glob
-
-Il file `server/scripts/ingest/evo-import.config.json` contiene i percorsi ai cataloghi generati dal repository Evo (biomi, specie, tratti, ecosistemi). Modificalo se i file sorgente vengono spostati o rinominati.
+| `npm run dev:setup` | Genera Prisma Client, applica le migrazioni ed esegue il seed base. |
+| `npm run evo:import -- --repo <path>` | Wrapper cross-platform che opzionalmente esegue `dev:setup` e poi l'importer taxonomy. |
+| `node scripts/ingest/import-taxonomy.js ...` | Importer diretto per debugging e test mirati. |
 
 ## Esecuzione tipica
 
-```bash
-cd server
+```powershell
+Set-Location server
 npm install
-npm run evo:import -- --repo /percorso/al/repo/EvoTactics
+npm run evo:import -- --repo C:\Users\VGit\Documents\GitHub\Game --dry-run
+npm run evo:import -- --repo C:\Users\VGit\Documents\GitHub\Game
 ```
 
 Parametri utili:
 
-- `--dry-run`: esegue il parsing e mostra i conteggi senza scrivere sul database.
-- `--config <file>`: usa un file config alternativo.
-- `--no-setup`: salta `npm run dev:setup` se il database è già aggiornato.
-- `--verbose`: stampa a log i singoli slug processati.
+- `--dry-run`: produce il report senza scrivere sul DB
+- `--config <file>`: usa una configurazione sorgenti alternativa
+- `--no-setup`: salta `npm run dev:setup`
+- `--verbose`: stampa slug processati e motivi sintetici di scarto
 
-## Output e report
+## Output
 
-Output standard script:
+L'importer produce un report JSON con:
 
-```text
-Import completato: { traits: <n>, biomes: <n>, species: <n>, ecosystems: <n> }
-```
+- `totali_letti`
+- `normalizzati`
+- `aggiornati_o_upsertati`
+- `scartati`
+- `errori`
+- `dettaglio` per dominio (`traits`, `biomes`, `species`, `ecosystems`)
 
-Per governance operativa usare il formato report definito nel runbook (`RUNBOOK.md`, sezione **Formato report import**) includendo sempre:
+Questo report vale sia in `dry-run` sia in import reale.
 
-- totali letti
-- aggiornati/upsertati
-- scartati
-- errori
+## Note operative
 
-## Estensioni
-
-- Per aggiungere nuove collezioni (es. `sessions`, `activity_logs`) seguire il pattern delle funzioni `upsert*` dentro `import-taxonomy.js`.
-- Il normalizzatore supporta i campi specifici del pacchetto Evo (`label`, `network_id`, `display_name`, `environment_affinity`, ecc.) e crea automaticamente gli upsert delle relazioni.
+- Il seed Prisma resta volutamente minimo e serve a bootstrap/test.
+- Il popolamento reale dei cataloghi passa dall'import del repository `Game`.
+- Il parser è tollerante verso shape eterogenee (`traits` come mappa, `biomi` in italiano, YAML `*.biome` / `*.ecosystem`).
+- I record evento vengono esclusi dal dominio `species` per evitare rumore nella tassonomia principale.

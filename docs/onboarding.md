@@ -23,6 +23,7 @@ Questa guida sintetizza i passaggi di setup già presenti nel README, con il foc
    npm run dev                    # http://localhost:3333
    ```
    - `npm run dev:setup` è idempotente: genera il client Prisma, applica le migrazioni e popola i dati demo.
+   - Se `@prisma/client` non risulta inizializzato, esegui `npm run prisma:generate` oppure rilancia `npm run dev:setup`.
    - Per creare nuove migrazioni continua a usare `npm run prisma:migrate`.
    - `TAXONOMY_WRITE_ROLES` (opzionale) elenca i ruoli autorizzati a modificare la tassonomia.
    - Per tracciare chi esegue le mutazioni, invia l'header `X-User` nelle chiamate API (opzionale).
@@ -36,6 +37,50 @@ Questa guida sintetizza i passaggi di setup già presenti nel README, con il foc
    ```
    - Configura `VITE_API_BASE_URL` per puntare al server (default: `http://localhost:3333/api`).
    - `VITE_API_USER` è facoltativo per identificare le operazioni registrate.
+
+## Verifica rapida
+- Backend:
+  ```powershell
+  cd server
+  npm test
+  ```
+- Frontend mirato:
+  ```powershell
+  cd apps\dashboard
+  npm test -- --run src/features/records/components/__tests__/RecordTable.test.tsx src/features/records/pages/__tests__/RecordDetailsPage.test.tsx src/features/records/pages/__tests__/RecordEditPage.test.tsx src/features/taxonomies/pages/__tests__/TraitListPage.test.tsx src/components/data-table/__tests__/DataTable.test.tsx
+  ```
+
+Note operative:
+- La suite backend usa `test/run-tests.ps1` per eseguire i file in processi separati ed evitare interferenze tra mock.
+- In ambienti sandboxati i test frontend possono fallire con `spawn EPERM` per limiti dell'ambiente, non per un errore del progetto.
+- Per consultare il database in UI puoi usare `cd server` seguito da `npm run prisma:studio`.
+- Per gli E2E live della dashboard:
+  ```powershell
+  cd apps\dashboard
+  npx playwright install
+  npm run test:e2e
+  ```
+  Al momento la suite copre smoke `records`, smoke `biomes`, CRUD live `traits`, `biomes`, `species`, `ecosystems` e tutte le relazioni taxonomy principali.
+
+## Modalità LAN protetta
+
+Per usare un solo URL in rete locale con protezione minima:
+
+```powershell
+cd server
+$env:APP_AUTH_USER="admin"
+$env:APP_AUTH_PASSWORD="change-me"
+$env:PORT="3333"
+npm run start:lan
+```
+
+Comportamento:
+- il server builda il dashboard e serve asset statici + API sullo stesso host
+- l'app è raggiungibile dagli altri browser della LAN tramite `http://IP-DELLA-MACCHINA:3333/`
+- l'accesso è protetto da Basic Auth
+- le API restano sotto `/api`
+
+Se vuoi personalizzare i permessi dell'utente autenticato, imposta `APP_AUTH_ROLES` (default `taxonomy:write,admin`).
 
 ## Ripopolamento/seed del database
 Il comando `npm run prisma:seed` inserisce 200 record di esempio e la tassonomia minima (trait, biomi, specie, ecosistemi) con relazioni già pronte. È idempotente e può essere rilanciato per ripristinare l'ambiente.

@@ -1,6 +1,8 @@
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const user = require('./middleware/user');
+const basicAuth = require('./middleware/basicAuth');
 
 const recordsRouter = require('./routes/records');
 const traitsRouter = require('./routes/traits');
@@ -31,6 +33,21 @@ function createApp() {
   );
   app.use(express.json());
 
+  const healthPayload = { status: 'ok' };
+
+  app.get('/health', (req, res) => {
+    res.json(healthPayload);
+  });
+
+  app.get('/api', (req, res) => {
+    res.json(healthPayload);
+  });
+
+  app.get('/api/health', (req, res) => {
+    res.json(healthPayload);
+  });
+
+  app.use(basicAuth);
   app.use('/api', user);
   app.use('/api/dashboard', dashboardRouter);
   app.use('/api/records', recordsRouter);
@@ -43,9 +60,13 @@ function createApp() {
   app.use('/api/ecosystem-species', ecosystemSpeciesRouter);
   app.use('/api/ecosystems', ecosystemsRouter);
 
-  app.get('/api', (req, res) => {
-    res.json({ status: 'ok' });
-  });
+  if (process.env.SERVE_DASHBOARD === '1') {
+    const dashboardDist = path.resolve(__dirname, '..', 'apps', 'dashboard', 'dist');
+    app.use(express.static(dashboardDist));
+    app.get(/^\/(?!api\/|health$).*/, (req, res) => {
+      res.sendFile(path.join(dashboardDist, 'index.html'));
+    });
+  }
 
   return app;
 }

@@ -10,6 +10,10 @@ import TraitListPage from './features/taxonomies/pages/TraitListPage';
 import BiomeListPage from './features/taxonomies/pages/BiomeListPage';
 import SpeciesListPage from './features/taxonomies/pages/SpeciesListPage';
 import EcosystemListPage from './features/taxonomies/pages/EcosystemListPage';
+import SpeciesTraitListPage from './features/taxonomies/pages/SpeciesTraitListPage';
+import SpeciesBiomeListPage from './features/taxonomies/pages/SpeciesBiomeListPage';
+import EcosystemBiomeListPage from './features/taxonomies/pages/EcosystemBiomeListPage';
+import EcosystemSpeciesListPage from './features/taxonomies/pages/EcosystemSpeciesListPage';
 
 export const router = createBrowserRouter([
   { path: '/', element: <App />, children: [
@@ -22,5 +26,9 @@ export const router = createBrowserRouter([
     { path: 'biomes', element: <BiomeListPage /> },
     { path: 'species', element: <SpeciesListPage /> },
     { path: 'ecosystems', element: <EcosystemListPage /> },
+    { path: 'species-traits', element: <SpeciesTraitListPage /> },
+    { path: 'species-biomes', element: <SpeciesBiomeListPage /> },
+    { path: 'ecosystem-biomes', element: <EcosystemBiomeListPage /> },
+    { path: 'ecosystem-species', element: <EcosystemSpeciesListPage /> },
   ]},
 ]);

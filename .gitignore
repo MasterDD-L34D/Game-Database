@@ -5,8 +5,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+*-live.log
 dist
 build
+playwright-report
+test-results
+apps/dashboard/playwright-report
+apps/dashboard/test-results
 
 # Env
 .env

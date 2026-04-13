@@ -35,6 +35,7 @@ npm run dev                    # http://localhost:3333
 
 > Lo script `npm run dev:setup` esegue `prisma generate`, applica le migrazioni con `prisma migrate deploy` e lancia `prisma db seed`.
 > Per creare nuove migrazioni durante lo sviluppo continua a usare `npm run prisma:migrate`.
+> Se importando `@prisma/client` ricevi l'errore "did not initialize yet", esegui `npm run prisma:generate` oppure rilancia `npm run dev:setup`.
 >
 > Variabili d'ambiente utili:
 > - `TAXONOMY_WRITE_ROLES` (opzionale) elenca i ruoli autorizzati a creare/modificare la tassonomia. Il default è `taxonomy:write,admin`. Per sovrascriverlo usa ad esempio `setx TAXONOMY_WRITE_ROLES "taxonomy:write,superuser"` prima di avviare il server.
@@ -64,14 +65,102 @@ npm run dev                    # http://localhost:5174
 > - imposta `VITE_API_BASE_URL` nel tuo `.env.local` verso l'endpoint corretto (incluso il suffisso `/api`), **oppure** aggiorna il proxy di sviluppo in `apps/dashboard/vite.config.ts` per puntare al nuovo host;
 > - riavvia `npm run dev` del dashboard così da evitare il `NetworkError` causato da un proxy/API non raggiungibili.
 
+### 3.1) Test rapidi
+Backend:
+```powershell
+Set-Location server
+npm test
+npx prisma studio
+```
+
+> La suite backend viene eseguita file-per-file tramite `test/run-tests.ps1`, così i mock Prisma restano isolati e non si contaminano tra loro.
+
+> Per consultare il database in modo visuale puoi usare anche `npm run prisma:studio`.
+
+Frontend:
+```powershell
+Set-Location apps\dashboard
+npm test -- --run src/features/records/components/__tests__/RecordTable.test.tsx src/features/records/pages/__tests__/RecordDetailsPage.test.tsx src/features/records/pages/__tests__/RecordEditPage.test.tsx src/features/taxonomies/pages/__tests__/TraitListPage.test.tsx src/features/taxonomies/pages/__tests__/TaxonomyCrudPages.test.tsx src/components/data-table/__tests__/DataTable.test.tsx
+```
+
+> I test frontend usano Vitest/Vite con `esbuild`: in ambienti con sandbox restrittivo potrebbero fallire con errori `spawn EPERM` anche se il codice è corretto.
+
+> Smoke test E2E con Playwright:
+> ```powershell
+> Set-Location apps\dashboard
+> npx playwright install
+> npm run test:e2e
+> ```
+> I test E2E assumono backend e dashboard raggiungibili in locale (`http://localhost:3333` e `http://localhost:5174`). Se serve, puoi sovrascrivere la UI target con `PLAYWRIGHT_BASE_URL`.
+
+### 3.2) Matrice di copertura
+
+| Area | Backend/API | Frontend unit/integration | E2E live |
+| --- | --- | --- | --- |
+| Health/API root | ✅ `server/test/health.test.js` | n/a | verificato via `GET /api`, `GET /health`, `GET /api/health` |
+| Records | ✅ `server/test/records.test.js` | ✅ `RecordTable`, `RecordDetailsPage`, `RecordEditPage` | ✅ smoke `/records` |
+| Trait | ✅ `server/test/taxonomyRouters.test.js` | ✅ `TraitListPage.test.tsx` | ✅ CRUD live |
+| Biome | ✅ `server/test/taxonomyRouters.test.js` | ✅ `TaxonomyCrudPages.test.tsx` | ✅ smoke + CRUD live |
+| Species | ✅ `server/test/taxonomyRouters.test.js` | ✅ `TaxonomyCrudPages.test.tsx` | ✅ CRUD live |
+| Ecosystem | ✅ `server/test/taxonomyRouters.test.js` | ✅ `TaxonomyCrudPages.test.tsx` | ✅ CRUD live |
+| Species traits | ✅ `server/test/speciesTraits.test.js` | ⏳ non ancora coperto | ✅ CRUD live |
+| Species biomes | ✅ `server/test/speciesBiomes.test.js` | ⏳ non ancora coperto | ✅ CRUD live |
+| Ecosystem biomes | ✅ `server/test/ecosystemBiomes.test.js` | ⏳ non ancora coperto | ✅ CRUD live |
+| Ecosystem species | ✅ `server/test/ecosystemSpecies.test.js` | ⏳ non ancora coperto | ✅ CRUD live |
+
+Legenda:
+- `✅` verificato
+- `⏳` copertura ancora da estendere
+
+### 3.3) CI
+
+La repository include ora tre workflow GitHub Actions:
+
+- `Verify Prisma seed`
+  verifica generate + migrate + seed del backend su Postgres effimero
+- `Backend and Frontend Tests`
+  esegue `server/npm test` e la suite frontend mirata consolidata
+- `Playwright E2E`
+  avvia Postgres, bootstrap Prisma, backend, dashboard e lancia l'intera suite Playwright con artifact del report
+
+Per rendere questi check obbligatori in PR devi ancora configurarli nelle branch protection rules del repository GitHub.
+
+### 3.4) Modalità LAN
+
+Per esporre dashboard e API su un solo URL accessibile da altri dispositivi della tua rete locale:
+
+```powershell
+Set-Location server
+$env:APP_AUTH_USER="admin"
+$env:APP_AUTH_PASSWORD="change-me"
+$env:PORT="3333"
+npm run start:lan
+```
+
+Effetto della modalità LAN:
+- il backend builda il dashboard e serve UI + API sullo stesso server
+- il server si espone su `0.0.0.0`
+- l'accesso è protetto da Basic Auth
+- le API restano sotto `/api`
+
+Da un altro dispositivo della stessa rete puoi aprire:
+- `http://IP-DELLA-MACCHINA:3333/`
+
+Note:
+- `GET /health` e `GET /api/health` restano disponibili per controllo stato
+- questa fase copre accesso in **LAN**, non pubblicazione su Internet
+- puoi personalizzare i ruoli dell'utente autenticato con `APP_AUTH_ROLES` (default: `taxonomy:write,admin`)
+
 ### 4) Import taxonomy (opzionale)
 Consulta [docs/evo-import.md](docs/evo-import.md) per la pipeline completa.
 
 ```powershell
 Set-Location ..\server
-npm run evo:import -- --repo C:\percorso\al\repo\EvoTactics --dry-run
-npm run evo:import -- --repo C:\percorso\al\repo\EvoTactics
+npm run evo:import -- --repo C:\Users\VGit\Documents\GitHub\Game --dry-run
+npm run evo:import -- --repo C:\Users\VGit\Documents\GitHub\Game
 ```
+
+Il seed Prisma resta volutamente minimo per bootstrap e test. Il popolamento reale della tassonomia passa dall'import del repository `Game`.
 
 ### Ripopolamento database
 

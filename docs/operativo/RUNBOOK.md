@@ -1,6 +1,6 @@
 # Runbook operativo import Evo
 
-Questo runbook descrive la procedura operativa per importare i cataloghi Evo nel database Game Database in modo ripetibile e verificabile.
+Questo runbook descrive la procedura operativa per importare i cataloghi Evo dal repository `Game` nel database Game Database in modo ripetibile e verificabile.
 
 > Documentazione tecnica di dettaglio: [`docs/evo-import.md`](../evo-import.md).
 
@@ -11,8 +11,8 @@ Preparare un database locale/staging con schema aggiornato + seed base prima del
 
 ### Procedura (locale)
 
-```bash
-cd /workspace/Game-Database/server
+```powershell
+cd C:\Users\VGit\Documents\GitHub\Game-Database\server
 npm install
 npm run dev:setup
 ```
@@ -25,11 +25,11 @@ npm run dev:setup
 
 ### Verifica rapida bootstrap
 
-```bash
-cd /workspace/Game-Database/server
+```powershell
+cd C:\Users\VGit\Documents\GitHub\Game-Database\server
 npm run dev
 # In un altro terminale:
-curl -s http://localhost:3333/health
+Invoke-WebRequest http://localhost:3333/health
 ```
 
 Se `/health` risponde, l'ambiente è pronto per l'import.
@@ -42,8 +42,8 @@ Usare questa sezione quando serve ripartire da DB pulito (test, QA, replay impor
 
 ### Reset completo + seed
 
-```bash
-cd /workspace/Game-Database/server
+```powershell
+cd C:\Users\VGit\Documents\GitHub\Game-Database\server
 npx prisma migrate reset --force
 ```
 
@@ -51,8 +51,8 @@ Il comando resetta il database, riapplica le migrazioni ed esegue il seed.
 
 ### Seed senza reset
 
-```bash
-cd /workspace/Game-Database/server
+```powershell
+cd C:\Users\VGit\Documents\GitHub\Game-Database\server
 npm run dev:setup
 ```
 
@@ -70,28 +70,28 @@ Usare in caso di ambiente “rotto” (dipendenze incoerenti, DB fuori sync, imp
 2. Verifica variabili in `server/.env` (`DATABASE_URL`, `PORT`, eventuali ruoli).
 3. Reinstalla dipendenze:
 
-```bash
-cd /workspace/Game-Database/server
-rm -rf node_modules
+```powershell
+cd C:\Users\VGit\Documents\GitHub\Game-Database\server
+Remove-Item node_modules -Recurse -Force
 npm install
 ```
 
 4. Riallinea DB:
 
-```bash
+```powershell
 npm run dev:setup
 ```
 
 5. Esegui dry-run import per validazione input:
 
-```bash
-npm run evo:import -- --repo /percorso/repo/EvoTactics --dry-run
+```powershell
+npm run evo:import -- --repo C:\Users\VGit\Documents\GitHub\Game --dry-run
 ```
 
 6. Esegui import reale:
 
-```bash
-npm run evo:import -- --repo /percorso/repo/EvoTactics
+```powershell
+npm run evo:import -- --repo C:\Users\VGit\Documents\GitHub\Game
 ```
 
 ---
@@ -101,7 +101,7 @@ npm run evo:import -- --repo /percorso/repo/EvoTactics
 - [ ] `DATABASE_URL` punta al database corretto (dev/staging/prod).
 - [ ] Backup disponibile o snapshot creato prima dell'import.
 - [ ] `npm run dev:setup` eseguito senza errori.
-- [ ] Repository sorgente Evo aggiornato e coerente con il branch target.
+- [ ] Repository sorgente `Game` aggiornato e coerente con il branch target.
 - [ ] Config import verificata (`server/scripts/ingest/evo-import.config.json`).
 - [ ] Dry-run completato e output coerente con le attese.
 - [ ] Finestra operativa concordata (se ambiente condiviso).
@@ -125,21 +125,22 @@ IMPORT REPORT
 - data_ora_utc: 2026-04-10T14:30:00Z
 - ambiente: local|staging|prod
 - operatore: <nome o CI job>
-- repo_sorgente: /percorso/repo/EvoTactics
+- repo_sorgente: C:\Users\VGit\Documents\GitHub\Game
 - comando: npm run evo:import -- --repo ... [--dry-run]
 - esito: OK|KO
 
 CONTEGGI
 - totali_letti: <n file/record sorgente>
+- normalizzati: <n>
 - aggiornati_o_upsertati: <n>
 - scartati: <n>
 - errori: <n>
 
 DETTAGLIO PER DOMINIO
-- traits: letti=<n> aggiornati=<n> scartati=<n> errori=<n>
-- biomes: letti=<n> aggiornati=<n> scartati=<n> errori=<n>
-- species: letti=<n> aggiornati=<n> scartati=<n> errori=<n>
-- ecosystems: letti=<n> aggiornati=<n> scartati=<n> errori=<n>
+- traits: letti=<n> normalizzati=<n> aggiornati=<n> scartati=<n> errori=<n>
+- biomes: letti=<n> normalizzati=<n> aggiornati=<n> scartati=<n> errori=<n>
+- species: letti=<n> normalizzati=<n> aggiornati=<n> scartati=<n> errori=<n>
+- ecosystems: letti=<n> normalizzati=<n> aggiornati=<n> scartati=<n> errori=<n>
 
 NOTE
 - anomalie_rilevate: <testo libero>
@@ -149,6 +150,7 @@ NOTE
 ### Definizioni operative
 
 - **totali_letti**: record individuati nei file sorgente prima della normalizzazione.
+- **normalizzati**: record convertiti con successo nel formato atteso dal database.
 - **aggiornati_o_upsertati**: record effettivamente scritti via upsert.
 - **scartati**: record non validi/non normalizzabili (es. senza chiave minima come nome/slug).
 - **errori**: eccezioni runtime, errori parsing, errori DB.

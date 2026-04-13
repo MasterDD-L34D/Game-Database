@@ -6,7 +6,7 @@
   ],
   "biomes": [
     "packs/evo_tactics_pack/docs/catalog/catalog_data.json",
-    "packs/evo_tactics_pack/docs/catalog/biomes/**/*.json"
+    "packs/evo_tactics_pack/data/ecosystems/*.biome.yaml"
   ],
   "species": [
     "packs/evo_tactics_pack/docs/catalog/species/**/*.json",
@@ -14,6 +14,6 @@
   ],
   "ecosystems": [
     "packs/evo_tactics_pack/docs/catalog/catalog_data.json",
-    "packs/evo_tactics_pack/docs/catalog/ecosystems/**/*.json"
+    "packs/evo_tactics_pack/data/ecosystems/*.ecosystem.yaml"
   ]
 }

@@ -16,6 +16,7 @@ USAGE
 REPO=""
 CONFIG="$(cd "$(dirname "$0")"/ingest && pwd)/evo-import.config.json"
 DRY_RUN=""
+VERBOSE=""
 RUN_SETUP=1
 
 while [[ $# -gt 0 ]]; do
@@ -30,6 +31,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --dry-run)
       DRY_RUN="--dry-run"
+      shift 1
+      ;;
+    --verbose)
+      VERBOSE="--verbose"
       shift 1
       ;;
     --no-setup)
@@ -71,9 +76,12 @@ else
   echo "[evo-pipeline] Skip npm run dev:setup"
 fi
 
-CMD=(node scripts/ingest/import-taxonomy.js --repo "$REPO" --config "$CONFIG" --verbose)
+CMD=(node scripts/ingest/import-taxonomy.js --repo "$REPO" --config "$CONFIG")
 if [[ -n "$DRY_RUN" ]]; then
   CMD+=(--dry-run)
+fi
+if [[ -n "$VERBOSE" ]]; then
+  CMD+=(--verbose)
 fi
 
 echo "[evo-pipeline] Esecuzione ${CMD[*]}"
