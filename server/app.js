@@ -43,8 +43,18 @@ function createApp() {
   app.use('/api/ecosystem-species', ecosystemSpeciesRouter);
   app.use('/api/ecosystems', ecosystemsRouter);
 
+  const healthPayload = { status: 'ok' };
+
+  app.get('/health', (req, res) => {
+    res.json(healthPayload);
+  });
+
   app.get('/api', (req, res) => {
-    res.json({ status: 'ok' });
+    res.json(healthPayload);
+  });
+
+  app.get('/api/health', (req, res) => {
+    res.json(healthPayload);
   });
 
   return app;
