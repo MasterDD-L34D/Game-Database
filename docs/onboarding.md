@@ -53,6 +53,14 @@ Questa guida sintetizza i passaggi di setup già presenti nel README, con il foc
 Note operative:
 - La suite backend usa `test/run-tests.ps1` per eseguire i file in processi separati ed evitare interferenze tra mock.
 - In ambienti sandboxati i test frontend possono fallire con `spawn EPERM` per limiti dell'ambiente, non per un errore del progetto.
+- Per consultare il database in UI puoi usare `cd server` seguito da `npm run prisma:studio`.
+- Per gli E2E live della dashboard:
+  ```powershell
+  cd apps\dashboard
+  npx playwright install
+  npm run test:e2e
+  ```
+  Al momento la suite copre smoke `records`, smoke `biomes` e CRUD live `biomes`, `species`, `ecosystems`.
 
 ## Ripopolamento/seed del database
 Il comando `npm run prisma:seed` inserisce 200 record di esempio e la tassonomia minima (trait, biomi, specie, ecosistemi) con relazioni già pronte. È idempotente e può essere rilanciato per ripristinare l'ambiente.

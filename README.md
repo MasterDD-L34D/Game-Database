@@ -70,9 +70,12 @@ Backend:
 ```powershell
 Set-Location server
 npm test
+npx prisma studio
 ```
 
 > La suite backend viene eseguita file-per-file tramite `test/run-tests.ps1`, così i mock Prisma restano isolati e non si contaminano tra loro.
+
+> Per consultare il database in modo visuale puoi usare anche `npm run prisma:studio`.
 
 Frontend:
 ```powershell
@@ -81,6 +84,33 @@ npm test -- --run src/features/records/components/__tests__/RecordTable.test.tsx
 ```
 
 > I test frontend usano Vitest/Vite con `esbuild`: in ambienti con sandbox restrittivo potrebbero fallire con errori `spawn EPERM` anche se il codice è corretto.
+
+> Smoke test E2E con Playwright:
+> ```powershell
+> Set-Location apps\dashboard
+> npx playwright install
+> npm run test:e2e
+> ```
+> I test E2E assumono backend e dashboard raggiungibili in locale (`http://localhost:3333` e `http://localhost:5174`). Se serve, puoi sovrascrivere la UI target con `PLAYWRIGHT_BASE_URL`.
+
+### 3.2) Matrice di copertura
+
+| Area | Backend/API | Frontend unit/integration | E2E live |
+| --- | --- | --- | --- |
+| Health/API root | ✅ `server/test/health.test.js` | n/a | verificato via `GET /api`, `GET /health`, `GET /api/health` |
+| Records | ✅ `server/test/records.test.js` | ✅ `RecordTable`, `RecordDetailsPage`, `RecordEditPage` | ✅ smoke `/records` |
+| Trait | ✅ `server/test/taxonomyRouters.test.js` | ✅ `TraitListPage.test.tsx` | ⏳ non ancora coperto live |
+| Biome | ✅ `server/test/taxonomyRouters.test.js` | ✅ `TaxonomyCrudPages.test.tsx` | ✅ smoke + CRUD live |
+| Species | ✅ `server/test/taxonomyRouters.test.js` | ✅ `TaxonomyCrudPages.test.tsx` | ✅ CRUD live |
+| Ecosystem | ✅ `server/test/taxonomyRouters.test.js` | ✅ `TaxonomyCrudPages.test.tsx` | ✅ CRUD live |
+| Species traits | ✅ `server/test/speciesTraits.test.js` | ⏳ non ancora coperto | ⏳ non ancora coperto live |
+| Species biomes | ✅ `server/test/speciesBiomes.test.js` | ⏳ non ancora coperto | ⏳ non ancora coperto live |
+| Ecosystem biomes | ✅ `server/test/ecosystemBiomes.test.js` | ⏳ non ancora coperto | ⏳ non ancora coperto live |
+| Ecosystem species | ✅ `server/test/ecosystemSpecies.test.js` | ⏳ non ancora coperto | ⏳ non ancora coperto live |
+
+Legenda:
+- `✅` verificato
+- `⏳` copertura ancora da estendere
 
 ### 4) Import taxonomy (opzionale)
 Consulta [docs/evo-import.md](docs/evo-import.md) per la pipeline completa.
