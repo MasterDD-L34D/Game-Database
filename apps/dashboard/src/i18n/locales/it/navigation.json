@@ -5,6 +5,10 @@
   "biomes": "Biomi",
   "species": "Specie",
   "ecosystems": "Ecosistemi",
+  "speciesTraits": "Specie-Trait",
+  "speciesBiomes": "Specie-Biomi",
+  "ecosystemBiomes": "Ecosistemi-Biomi",
+  "ecosystemSpecies": "Ecosistemi-Specie",
   "toggleCollapse": "Comprimi sidebar",
   "toggleExpand": "Espandi sidebar"
 }

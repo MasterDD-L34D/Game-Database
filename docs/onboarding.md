@@ -60,7 +60,27 @@ Note operative:
   npx playwright install
   npm run test:e2e
   ```
-  Al momento la suite copre smoke `records`, smoke `biomes` e CRUD live `biomes`, `species`, `ecosystems`.
+  Al momento la suite copre smoke `records`, smoke `biomes`, CRUD live `traits`, `biomes`, `species`, `ecosystems` e tutte le relazioni taxonomy principali.
+
+## Modalità LAN protetta
+
+Per usare un solo URL in rete locale con protezione minima:
+
+```powershell
+cd server
+$env:APP_AUTH_USER="admin"
+$env:APP_AUTH_PASSWORD="change-me"
+$env:PORT="3333"
+npm run start:lan
+```
+
+Comportamento:
+- il server builda il dashboard e serve asset statici + API sullo stesso host
+- l'app è raggiungibile dagli altri browser della LAN tramite `http://IP-DELLA-MACCHINA:3333/`
+- l'accesso è protetto da Basic Auth
+- le API restano sotto `/api`
+
+Se vuoi personalizzare i permessi dell'utente autenticato, imposta `APP_AUTH_ROLES` (default `taxonomy:write,admin`).
 
 ## Ripopolamento/seed del database
 Il comando `npm run prisma:seed` inserisce 200 record di esempio e la tassonomia minima (trait, biomi, specie, ecosistemi) con relazioni già pronte. È idempotente e può essere rilanciato per ripristinare l'ambiente.

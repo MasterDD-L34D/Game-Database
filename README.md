@@ -80,7 +80,7 @@ npx prisma studio
 Frontend:
 ```powershell
 Set-Location apps\dashboard
-npm test -- --run src/features/records/components/__tests__/RecordTable.test.tsx src/features/records/pages/__tests__/RecordDetailsPage.test.tsx src/features/records/pages/__tests__/RecordEditPage.test.tsx src/features/taxonomies/pages/__tests__/TraitListPage.test.tsx src/components/data-table/__tests__/DataTable.test.tsx
+npm test -- --run src/features/records/components/__tests__/RecordTable.test.tsx src/features/records/pages/__tests__/RecordDetailsPage.test.tsx src/features/records/pages/__tests__/RecordEditPage.test.tsx src/features/taxonomies/pages/__tests__/TraitListPage.test.tsx src/features/taxonomies/pages/__tests__/TaxonomyCrudPages.test.tsx src/components/data-table/__tests__/DataTable.test.tsx
 ```
 
 > I test frontend usano Vitest/Vite con `esbuild`: in ambienti con sandbox restrittivo potrebbero fallire con errori `spawn EPERM` anche se il codice è corretto.
@@ -99,18 +99,57 @@ npm test -- --run src/features/records/components/__tests__/RecordTable.test.tsx
 | --- | --- | --- | --- |
 | Health/API root | ✅ `server/test/health.test.js` | n/a | verificato via `GET /api`, `GET /health`, `GET /api/health` |
 | Records | ✅ `server/test/records.test.js` | ✅ `RecordTable`, `RecordDetailsPage`, `RecordEditPage` | ✅ smoke `/records` |
-| Trait | ✅ `server/test/taxonomyRouters.test.js` | ✅ `TraitListPage.test.tsx` | ⏳ non ancora coperto live |
+| Trait | ✅ `server/test/taxonomyRouters.test.js` | ✅ `TraitListPage.test.tsx` | ✅ CRUD live |
 | Biome | ✅ `server/test/taxonomyRouters.test.js` | ✅ `TaxonomyCrudPages.test.tsx` | ✅ smoke + CRUD live |
 | Species | ✅ `server/test/taxonomyRouters.test.js` | ✅ `TaxonomyCrudPages.test.tsx` | ✅ CRUD live |
 | Ecosystem | ✅ `server/test/taxonomyRouters.test.js` | ✅ `TaxonomyCrudPages.test.tsx` | ✅ CRUD live |
-| Species traits | ✅ `server/test/speciesTraits.test.js` | ⏳ non ancora coperto | ⏳ non ancora coperto live |
-| Species biomes | ✅ `server/test/speciesBiomes.test.js` | ⏳ non ancora coperto | ⏳ non ancora coperto live |
-| Ecosystem biomes | ✅ `server/test/ecosystemBiomes.test.js` | ⏳ non ancora coperto | ⏳ non ancora coperto live |
-| Ecosystem species | ✅ `server/test/ecosystemSpecies.test.js` | ⏳ non ancora coperto | ⏳ non ancora coperto live |
+| Species traits | ✅ `server/test/speciesTraits.test.js` | ⏳ non ancora coperto | ✅ CRUD live |
+| Species biomes | ✅ `server/test/speciesBiomes.test.js` | ⏳ non ancora coperto | ✅ CRUD live |
+| Ecosystem biomes | ✅ `server/test/ecosystemBiomes.test.js` | ⏳ non ancora coperto | ✅ CRUD live |
+| Ecosystem species | ✅ `server/test/ecosystemSpecies.test.js` | ⏳ non ancora coperto | ✅ CRUD live |
 
 Legenda:
 - `✅` verificato
 - `⏳` copertura ancora da estendere
+
+### 3.3) CI
+
+La repository include ora tre workflow GitHub Actions:
+
+- `Verify Prisma seed`
+  verifica generate + migrate + seed del backend su Postgres effimero
+- `Backend and Frontend Tests`
+  esegue `server/npm test` e la suite frontend mirata consolidata
+- `Playwright E2E`
+  avvia Postgres, bootstrap Prisma, backend, dashboard e lancia l'intera suite Playwright con artifact del report
+
+Per rendere questi check obbligatori in PR devi ancora configurarli nelle branch protection rules del repository GitHub.
+
+### 3.4) Modalità LAN
+
+Per esporre dashboard e API su un solo URL accessibile da altri dispositivi della tua rete locale:
+
+```powershell
+Set-Location server
+$env:APP_AUTH_USER="admin"
+$env:APP_AUTH_PASSWORD="change-me"
+$env:PORT="3333"
+npm run start:lan
+```
+
+Effetto della modalità LAN:
+- il backend builda il dashboard e serve UI + API sullo stesso server
+- il server si espone su `0.0.0.0`
+- l'accesso è protetto da Basic Auth
+- le API restano sotto `/api`
+
+Da un altro dispositivo della stessa rete puoi aprire:
+- `http://IP-DELLA-MACCHINA:3333/`
+
+Note:
+- `GET /health` e `GET /api/health` restano disponibili per controllo stato
+- questa fase copre accesso in **LAN**, non pubblicazione su Internet
+- puoi personalizzare i ruoli dell'utente autenticato con `APP_AUTH_ROLES` (default: `taxonomy:write,admin`)
 
 ### 4) Import taxonomy (opzionale)
 Consulta [docs/evo-import.md](docs/evo-import.md) per la pipeline completa.

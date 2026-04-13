@@ -19,11 +19,13 @@
   },
   "scripts": {
     "dev": "node index.js",
+    "dashboard:build": "npm --prefix ../apps/dashboard run build",
     "dev:setup": "prisma generate && prisma migrate deploy && prisma db seed",
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "prisma:seed": "prisma db seed",
     "prisma:studio": "prisma studio",
+    "start:lan": "node scripts/start-lan.js",
     "test": "powershell -ExecutionPolicy Bypass -File ./test/run-tests.ps1",
     "evo:import": "./scripts/evo-pipeline.sh"
   }

@@ -37,7 +37,6 @@
     "@testing-library/jest-dom": "^6",
     "@testing-library/react": "^16",
     "@testing-library/user-event": "^14",
-    "@playwright/test": "^1.56.1",
     "@vitejs/plugin-react-swc": "^3",
     "autoprefixer": "^10",
     "baseline-browser-mapping": "^2.10.18",

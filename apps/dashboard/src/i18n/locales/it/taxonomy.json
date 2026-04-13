@@ -158,5 +158,141 @@
       "deleted": "Trait eliminato con successo.",
       "deleteError": "Impossibile eliminare il trait."
     }
+  },
+  "speciesTraits": {
+    "title": "Relazioni specie-trait",
+    "columns": {
+      "species": "Specie",
+      "trait": "Trait",
+      "category": "Categoria",
+      "value": "Valore"
+    },
+    "actions": {
+      "create": "Nuova relazione specie-trait"
+    },
+    "form": {
+      "species": "Specie",
+      "trait": "Trait",
+      "category": "Categoria",
+      "boolValue": "Valore booleano",
+      "numValue": "Valore numerico",
+      "confidence": "Confidenza",
+      "unit": "Unità",
+      "textValue": "Testo",
+      "source": "Fonte",
+      "categoricalValue": "Valore categorico"
+    },
+    "dialogs": {
+      "createTitle": "Aggiungi relazione specie-trait",
+      "editTitle": "Modifica relazione specie-trait",
+      "deleteTitle": "Elimina relazione specie-trait",
+      "deleteDescription": "Sei sicuro di voler eliminare la relazione tra {{species}} e {{trait}}?"
+    },
+    "feedback": {
+      "created": "Relazione specie-trait creata con successo.",
+      "createError": "Impossibile creare la relazione specie-trait.",
+      "updated": "Relazione specie-trait aggiornata con successo.",
+      "updateError": "Impossibile aggiornare la relazione specie-trait.",
+      "deleted": "Relazione specie-trait eliminata con successo.",
+      "deleteError": "Impossibile eliminare la relazione specie-trait."
+    }
+  },
+  "speciesBiomes": {
+    "title": "Relazioni specie-biomi",
+    "columns": {
+      "species": "Specie",
+      "biome": "Bioma",
+      "presence": "Presenza",
+      "abundance": "Abbondanza"
+    },
+    "actions": {
+      "create": "Nuova relazione specie-bioma"
+    },
+    "form": {
+      "species": "Specie",
+      "biome": "Bioma",
+      "presence": "Presenza",
+      "abundance": "Abbondanza",
+      "notes": "Note"
+    },
+    "dialogs": {
+      "createTitle": "Aggiungi relazione specie-bioma",
+      "editTitle": "Modifica relazione specie-bioma",
+      "deleteTitle": "Elimina relazione specie-bioma",
+      "deleteDescription": "Sei sicuro di voler eliminare la relazione tra {{species}} e {{biome}}?"
+    },
+    "feedback": {
+      "created": "Relazione specie-bioma creata con successo.",
+      "createError": "Impossibile creare la relazione specie-bioma.",
+      "updated": "Relazione specie-bioma aggiornata con successo.",
+      "updateError": "Impossibile aggiornare la relazione specie-bioma.",
+      "deleted": "Relazione specie-bioma eliminata con successo.",
+      "deleteError": "Impossibile eliminare la relazione specie-bioma."
+    }
+  },
+  "ecosystemBiomes": {
+    "title": "Relazioni ecosistemi-biomi",
+    "columns": {
+      "ecosystem": "Ecosistema",
+      "biome": "Bioma",
+      "proportion": "Proporzione",
+      "notes": "Note"
+    },
+    "actions": {
+      "create": "Nuova relazione ecosistema-bioma"
+    },
+    "form": {
+      "ecosystem": "Ecosistema",
+      "biome": "Bioma",
+      "proportion": "Proporzione",
+      "notes": "Note"
+    },
+    "dialogs": {
+      "createTitle": "Aggiungi relazione ecosistema-bioma",
+      "editTitle": "Modifica relazione ecosistema-bioma",
+      "deleteTitle": "Elimina relazione ecosistema-bioma",
+      "deleteDescription": "Sei sicuro di voler eliminare la relazione tra {{ecosystem}} e {{biome}}?"
+    },
+    "feedback": {
+      "created": "Relazione ecosistema-bioma creata con successo.",
+      "createError": "Impossibile creare la relazione ecosistema-bioma.",
+      "updated": "Relazione ecosistema-bioma aggiornata con successo.",
+      "updateError": "Impossibile aggiornare la relazione ecosistema-bioma.",
+      "deleted": "Relazione ecosistema-bioma eliminata con successo.",
+      "deleteError": "Impossibile eliminare la relazione ecosistema-bioma."
+    }
+  },
+  "ecosystemSpecies": {
+    "title": "Relazioni ecosistemi-specie",
+    "columns": {
+      "ecosystem": "Ecosistema",
+      "species": "Specie",
+      "role": "Ruolo",
+      "abundance": "Abbondanza"
+    },
+    "actions": {
+      "create": "Nuova relazione ecosistema-specie"
+    },
+    "form": {
+      "ecosystem": "Ecosistema",
+      "species": "Specie",
+      "role": "Ruolo",
+      "abundance": "Abbondanza",
+      "notes": "Note"
+    },
+    "dialogs": {
+      "createTitle": "Aggiungi relazione ecosistema-specie",
+      "editTitle": "Modifica relazione ecosistema-specie",
+      "deleteTitle": "Elimina relazione ecosistema-specie",
+      "deleteDescription": "Sei sicuro di voler eliminare la relazione tra {{ecosystem}} e {{species}}?"
+    },
+    "feedback": {
+      "created": "Relazione ecosistema-specie creata con successo.",
+      "createError": "Impossibile creare la relazione ecosistema-specie.",
+      "updated": "Relazione ecosistema-specie aggiornata con successo.",
+      "updateError": "Impossibile aggiornare la relazione ecosistema-specie.",
+      "deleted": "Relazione ecosistema-specie eliminata con successo.",
+      "deleteError": "Impossibile eliminare la relazione ecosistema-specie."
+    }
   }
 }

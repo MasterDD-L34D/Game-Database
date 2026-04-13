@@ -13,6 +13,10 @@ const NAV_ENTRIES = [
   { to: '/biomes', key: 'biomes', icon: TableCellsIcon },
   { to: '/species', key: 'species', icon: TableCellsIcon },
   { to: '/ecosystems', key: 'ecosystems', icon: TableCellsIcon },
+  { to: '/species-traits', key: 'speciesTraits', icon: TableCellsIcon },
+  { to: '/species-biomes', key: 'speciesBiomes', icon: TableCellsIcon },
+  { to: '/ecosystem-biomes', key: 'ecosystemBiomes', icon: TableCellsIcon },
+  { to: '/ecosystem-species', key: 'ecosystemSpecies', icon: TableCellsIcon },
 ];
 
 export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
