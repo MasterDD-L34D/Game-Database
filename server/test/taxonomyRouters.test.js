@@ -178,6 +178,109 @@ test('GET /api/traits/:id returns 404 when trait is missing', async () => {
   }
 });
 
+test('GET /api/biomes returns 400 for invalid pagination query', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/biomes?page=-1`);
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.deepEqual(body, {
+      code: 'VALIDATION_ERROR',
+      message: 'page must be an integer >= 0',
+      details: { field: 'page', location: 'query' },
+    });
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('GET /api/ecosystems returns 400 for invalid pageSize query', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/ecosystems?pageSize=101`);
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.deepEqual(body, {
+      code: 'VALIDATION_ERROR',
+      message: 'pageSize must be an integer between 1 and 100',
+      details: { field: 'pageSize', location: 'query' },
+    });
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('GET /api/ecosystems/:id returns 404 when ecosystem is missing', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/ecosystems/missing-ecosystem`);
+    assert.equal(response.status, 404);
+    const body = await response.json();
+    assert.deepEqual(body, {
+      code: 'NOT_FOUND',
+      message: 'Ecosystem not found',
+      details: { identifier: 'missing-ecosystem' },
+    });
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('POST /api/biomes validates pagination query before creating records', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    const createResponse = await fetch(`${baseUrl}/api/biomes?page=-1`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ name: 'Should Not Be Created' }),
+    });
+    assert.equal(createResponse.status, 400);
+    const createBody = await createResponse.json();
+    assert.deepEqual(createBody, {
+      code: 'VALIDATION_ERROR',
+      message: 'page must be an integer >= 0',
+      details: { field: 'page', location: 'query' },
+    });
+
+    const listResponse = await fetch(`${baseUrl}/api/biomes`);
+    assert.equal(listResponse.status, 200);
+    const listBody = await listResponse.json();
+    assert.equal(listBody.total, 0);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('POST /api/ecosystems validates pagination query before creating records', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    const createResponse = await fetch(`${baseUrl}/api/ecosystems?pageSize=101`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ name: 'Should Not Be Created' }),
+    });
+    assert.equal(createResponse.status, 400);
+    const createBody = await createResponse.json();
+    assert.deepEqual(createBody, {
+      code: 'VALIDATION_ERROR',
+      message: 'pageSize must be an integer between 1 and 100',
+      details: { field: 'pageSize', location: 'query' },
+    });
+
+    const listResponse = await fetch(`${baseUrl}/api/ecosystems`);
+    assert.equal(listResponse.status, 200);
+    const listBody = await listResponse.json();
+    assert.equal(listBody.total, 0);
+  } finally {
+    await closeServer(server);
+  }
+});
+
 test('POST /api/species returns 403 when user lacks taxonomy write permission', async () => {
   taxonomy.reset();
   const { server, baseUrl } = await startServer();
