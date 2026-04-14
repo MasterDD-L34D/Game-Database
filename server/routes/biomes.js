@@ -4,13 +4,9 @@ const prisma = require('../db/prisma');
 const { requireTaxonomyWrite } = require('../middleware/permissions');
 const { logAudit } = require('../utils/audit');
 const { findByIdOrSlug, findExistingByIdOrSlug } = require('../utils/taxonomyValidation');
+const { AppError, sendError, handleError } = require('../utils/httpErrors');
+const { assertPagination, assertIdParam, assertString } = require('../utils/validation');
 const router = express.Router();
-
-function parsePagination(req) {
-  const page = Math.max(parseInt(req.query.page || '0', 10), 0);
-  const pageSize = Math.min(Math.max(parseInt(req.query.pageSize || '25', 10), 1), 100);
-  return { page, pageSize };
-}
 
 function buildWhere(req) {
   const q = (req.query.q || '').trim();
@@ -20,7 +16,7 @@ function buildWhere(req) {
 }
 
 async function fetchPaginatedBiomes(req) {
-  const { page, pageSize } = parsePagination(req);
+  const { page, pageSize } = assertPagination(req.query);
   const where = buildWhere(req);
   const [total, items] = await Promise.all([
     prisma.biome.count({ where }),
@@ -37,46 +33,78 @@ function normalizeSlug(input) {
 async function resolveParent(parentValue, currentId) {
   if (parentValue === null || parentValue === undefined || parentValue === '') return null;
   const parent = await findByIdOrSlug(prisma.biome, parentValue);
-  if (!parent) throw new Error('Invalid parent biome');
-  if (parent.id === currentId) throw new Error('A biome cannot be its own parent');
+  if (!parent) {
+    throw new AppError(400, 'VALIDATION_ERROR', 'Invalid parent biome', {
+      field: 'parentId',
+      location: 'body',
+    });
+  }
+  if (parent.id === currentId) {
+    throw new AppError(400, 'VALIDATION_ERROR', 'A biome cannot be its own parent', {
+      field: 'parentId',
+      location: 'body',
+    });
+  }
   return parent.id;
 }
 
+async function validateBiomePayload(body, existing = null) {
+  const name = assertString(body.name, 'name', { required: true });
+  const slug = normalizeSlug(body.slug || name);
+  if (!slug) {
+    throw new AppError(400, 'VALIDATION_ERROR', 'slug is required', { field: 'slug', location: 'body' });
+  }
+
+  let parentId = existing?.parentId ?? null;
+  if (Object.prototype.hasOwnProperty.call(body, 'parentId')) {
+    parentId = await resolveParent(body.parentId, existing?.id ?? null);
+  }
+
+  return {
+    name,
+    slug,
+    parentId,
+    description: body.description ?? null,
+    climate: body.climate ?? null,
+  };
+}
+
 router.get('/', async (req, res) => {
-  const payload = await fetchPaginatedBiomes(req);
-  res.json(payload);
+  try {
+    const payload = await fetchPaginatedBiomes(req);
+    return res.json(payload);
+  } catch (error) {
+    return handleError(res, error);
+  }
 });
 
 router.get('/:id', async (req, res) => {
-  const item = await findExistingByIdOrSlug(prisma.biome, req.params.id, res);
-  if (!item) return;
-  res.json(item);
+  try {
+    const id = assertIdParam(req.params);
+    const item = await findExistingByIdOrSlug(prisma.biome, id, res, 'Biome not found');
+    if (!item) return null;
+    return res.json(item);
+  } catch (error) {
+    return handleError(res, error);
+  }
 });
 
 router.post('/', requireTaxonomyWrite, async (req, res) => {
   try {
-    const name = (req.body.name || '').trim();
-    if (!name) return res.status(400).json({ error: 'Name is required' });
-    const slug = normalizeSlug(req.body.slug || name);
-    if (!slug) return res.status(400).json({ error: 'Slug is required' });
-    const existingSlug = await prisma.biome.findUnique({ where: { slug } });
-    if (existingSlug) return res.status(409).json({ error: 'Slug already exists' });
+    const validated = await validateBiomePayload(req.body);
+    const { name, slug, parentId, description, climate } = validated;
 
-    let parentId = null;
-    if (req.body.parentId !== undefined && req.body.parentId !== null && req.body.parentId !== '') {
-      try {
-        parentId = await resolveParent(req.body.parentId, null);
-      } catch (err) {
-        return res.status(400).json({ error: err.message });
-      }
+    const existingSlug = await prisma.biome.findUnique({ where: { slug } });
+    if (existingSlug) {
+      return sendError(res, 409, 'CONFLICT', 'Slug already exists', { field: 'slug', value: slug });
     }
 
     const created = await prisma.biome.create({
       data: {
         slug,
         name,
-        description: req.body.description ?? null,
-        climate: req.body.climate ?? null,
+        description,
+        climate,
         parentId,
       },
     });
@@ -84,35 +112,25 @@ router.post('/', requireTaxonomyWrite, async (req, res) => {
     await logAudit(req, 'Biome', created.id, 'CREATE', created);
 
     const payload = await fetchPaginatedBiomes(req);
-    res.status(201).json(payload);
-  } catch (e) {
-    console.error(e);
-    res.status(400).json({ error: 'Validation failed or bad input' });
+    return res.status(201).json(payload);
+  } catch (error) {
+    return handleError(res, error);
   }
 });
 
 router.put('/:id', requireTaxonomyWrite, async (req, res) => {
   try {
-    const existing = await findExistingByIdOrSlug(prisma.biome, req.params.id, res);
-    if (!existing) return;
+    const id = assertIdParam(req.params);
+    const existing = await findExistingByIdOrSlug(prisma.biome, id, res, 'Biome not found');
+    if (!existing) return null;
 
-    const name = (req.body.name || '').trim();
-    if (!name) return res.status(400).json({ error: 'Name is required' });
-    const slug = normalizeSlug(req.body.slug || name);
-    if (!slug) return res.status(400).json({ error: 'Slug is required' });
+    const validated = await validateBiomePayload(req.body, existing);
+    const { name, slug, parentId, description, climate } = validated;
+
     if (slug !== existing.slug) {
       const existingSlug = await prisma.biome.findUnique({ where: { slug } });
       if (existingSlug && existingSlug.id !== existing.id) {
-        return res.status(409).json({ error: 'Slug already exists' });
-      }
-    }
-
-    let parentId = existing.parentId;
-    if (Object.prototype.hasOwnProperty.call(req.body, 'parentId')) {
-      try {
-        parentId = await resolveParent(req.body.parentId, existing.id);
-      } catch (err) {
-        return res.status(400).json({ error: err.message });
+        return sendError(res, 409, 'CONFLICT', 'Slug already exists', { field: 'slug', value: slug });
       }
     }
 
@@ -121,8 +139,8 @@ router.put('/:id', requireTaxonomyWrite, async (req, res) => {
       data: {
         slug,
         name,
-        description: req.body.description ?? null,
-        climate: req.body.climate ?? null,
+        description,
+        climate,
         parentId,
       },
     });
@@ -130,27 +148,26 @@ router.put('/:id', requireTaxonomyWrite, async (req, res) => {
     await logAudit(req, 'Biome', updated.id, 'UPDATE', req.body);
 
     const payload = await fetchPaginatedBiomes(req);
-    res.json(payload);
-  } catch (e) {
-    console.error(e);
-    res.status(400).json({ error: 'Validation failed or bad input' });
+    return res.json(payload);
+  } catch (error) {
+    return handleError(res, error);
   }
 });
 
 router.delete('/:id', requireTaxonomyWrite, async (req, res) => {
   try {
-    const existing = await findExistingByIdOrSlug(prisma.biome, req.params.id, res);
-    if (!existing) return;
+    const id = assertIdParam(req.params);
+    const existing = await findExistingByIdOrSlug(prisma.biome, id, res, 'Biome not found');
+    if (!existing) return null;
 
     await prisma.biome.delete({ where: { id: existing.id } });
 
     await logAudit(req, 'Biome', existing.id, 'DELETE', existing);
 
     const payload = await fetchPaginatedBiomes(req);
-    res.json(payload);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Internal error' });
+    return res.json(payload);
+  } catch (error) {
+    return handleError(res, error);
   }
 });
 

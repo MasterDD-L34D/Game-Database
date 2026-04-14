@@ -29,3 +29,4 @@ server/.docker-prisma-bootstrapped
 # OS
 .DS_Store
 Thumbs.db
+*.git_acl_backup_*.txt

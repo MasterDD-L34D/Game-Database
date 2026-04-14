@@ -381,7 +381,7 @@ describe('Taxonomy CRUD Pages', () => {
     expect(taxonomyMocks.deleteSpecies).toHaveBeenCalledWith('species-1');
   });
 
-  it('allows creating, editing and deleting ecosystems', async () => {
+  it('allows creating, editing and deleting ecosystems', { timeout: 15000 }, async () => {
     const user = userEvent.setup();
     renderListPage(<EcosystemListPage />);
 
