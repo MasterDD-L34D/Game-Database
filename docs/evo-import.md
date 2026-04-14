@@ -82,4 +82,6 @@ Questo report vale sia in `dry-run` sia in import reale.
 - Il seed Prisma resta volutamente minimo e serve a bootstrap/test.
 - Il popolamento reale dei cataloghi passa dall'import del repository `Game`.
 - Il parser è tollerante verso shape eterogenee (`traits` come mappa, `biomi` in italiano, YAML `*.biome` / `*.ecosystem`).
+- Per le `species` con descrizione `i18n:*`, l'import genera una descrizione consultativa dai metadati disponibili (`role_trofico`, biomi, tag funzionali, hazard, playable flag).
+- Lo `status` specie può essere derivato da `balance.threat_tier`/`balance.rarity` quando il campo nativo non è presente.
 - I record evento vengono esclusi dal dominio `species` per evitare rumore nella tassonomia principale.

@@ -85,6 +85,13 @@ function humanizeIdentifier(value) {
   return normalized || null;
 }
 
+function normalizeLabelList(values, maxItems = 5) {
+  return asArray(values)
+    .map((value) => humanizeIdentifier(value))
+    .filter(Boolean)
+    .slice(0, maxItems);
+}
+
 function safeNumber(value) {
   if (value == null || value === '') return null;
   const numeric = Number(value);
@@ -123,6 +130,42 @@ function isEventSpecies(record) {
       (typeof record.role_trofico === 'string' && record.role_trofico.includes('evento')) ||
       (displayName && displayName.toLowerCase().startsWith('evento:')),
   );
+}
+
+function inferTaxonomyFromScientificName(scientificName) {
+  if (!scientificName || typeof scientificName !== 'string') return { genus: null, epithet: null };
+  const tokens = scientificName.trim().split(/\s+/);
+  if (tokens.length < 2) return { genus: null, epithet: null };
+  const [first, second] = tokens;
+  if (/^[A-Z][a-z-]+$/.test(first) && /^[a-z][a-z-]+$/.test(second)) {
+    return { genus: first, epithet: second };
+  }
+  return { genus: null, epithet: null };
+}
+
+function buildSpeciesDescription(record, scientificName) {
+  const rawDescription = pickText(record.description, record.descrizione, record.summary, record.story);
+  if (rawDescription && !rawDescription.startsWith('i18n:')) return rawDescription;
+
+  const parts = [];
+  const role = humanizeIdentifier(pickText(record.role_trofico));
+  const morphotype = humanizeIdentifier(pickText(record.morphotype));
+  const biomeLabels = normalizeLabelList(record.biomes || record.biomi, 3);
+  const tags = normalizeLabelList(record.functional_tags, 4);
+  const hazards = normalizeLabelList(record.hazards_expected, 3);
+
+  if (role) parts.push(`Ruolo trofico: ${role}`);
+  if (morphotype) parts.push(`Morfotipo: ${morphotype}`);
+  if (biomeLabels.length) parts.push(`Biomi: ${biomeLabels.join(', ')}`);
+  if (tags.length) parts.push(`Tag funzionali: ${tags.join(', ')}`);
+  if (hazards.length) parts.push(`Hazard attesi: ${hazards.join(', ')}`);
+  if (typeof record.playable_unit === 'boolean') {
+    parts.push(`Unità giocabile: ${record.playable_unit ? 'sì' : 'no'}`);
+  }
+
+  if (!parts.length && rawDescription) return rawDescription;
+  if (!parts.length) return scientificName ? `Specie importata dal catalogo Game: ${scientificName}.` : null;
+  return `${parts.join('. ')}.`;
 }
 
 function extractMapRecords(container, key) {
@@ -293,6 +336,7 @@ function normalizeSpecies(record) {
   const scientificName = pickText(record.scientificName, record.scientific_name, record.binomial, record.nomeScientifico, record.display_name, record.name, record.id);
   const slug = slugify(record.slug || record._id || record.id || scientificName);
   if (!slug || !scientificName) return null;
+  const inferredTaxonomy = inferTaxonomyFromScientificName(scientificName);
   const biomes = asArray(record.biomes || record.biomi || record.habitats || record.habitat).map((biome) => {
     if (!biome) return null;
     if (typeof biome === 'string') return { biomeSlug: slugify(biome), presence: 'resident', abundance: null };
@@ -304,6 +348,9 @@ function normalizeSpecies(record) {
     };
   }).filter(Boolean);
   if (!biomes.length && record.environment_affinity?.biome_class) biomes.push({ biomeSlug: slugify(record.environment_affinity.biome_class), presence: 'resident', abundance: null });
+  const threatTier = pickText(record.balance?.threat_tier);
+  const rarity = pickText(record.balance?.rarity);
+  const derivedStatus = [threatTier, rarity].filter(Boolean).join(' / ') || null;
   return {
     slug,
     scientificName,
@@ -313,10 +360,10 @@ function normalizeSpecies(record) {
     class: pickText(record.class, record.classe, record.taxonomy?.class, record.taxonomy?.classe),
     order: pickText(record.order, record.ordine, record.taxonomy?.order, record.taxonomy?.ordine),
     family: pickText(record.family, record.famiglia, record.taxonomy?.family, record.taxonomy?.famiglia),
-    genus: pickText(record.genus, record.taxonomy?.genus),
-    epithet: pickText(record.epithet, record.species, record.specie, record.taxonomy?.epithet, record.taxonomy?.species),
-    status: pickText(record.status, record.iucn, record.flags?.category),
-    description: pickText(record.description, record.descrizione, record.summary, record.story),
+    genus: pickText(record.genus, record.taxonomy?.genus, inferredTaxonomy.genus),
+    epithet: pickText(record.epithet, record.species, record.specie, record.taxonomy?.epithet, record.taxonomy?.species, inferredTaxonomy.epithet),
+    status: pickText(record.status, record.iucn, record.flags?.category, derivedStatus),
+    description: buildSpeciesDescription(record, scientificName),
     traits: collectSpeciesTraits(record),
     biomes,
   };
@@ -396,7 +443,8 @@ function assessCompleteness(domain, normalized) {
   }
   if (domain === 'species') {
     const hasTaxonomy = normalized.family || normalized.genus || normalized.order || normalized.class;
-    return normalized.commonName && normalized.description && hasTaxonomy ? 'complete' : 'partial';
+    const hasOperationalProfile = normalized.status || normalized.description;
+    return normalized.commonName && (hasTaxonomy || hasOperationalProfile) ? 'complete' : 'partial';
   }
   if (domain === 'ecosystems') {
     return normalized.description && normalized.region && normalized.climate ? 'complete' : 'partial';
