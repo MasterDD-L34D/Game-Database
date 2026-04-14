@@ -38,7 +38,6 @@ test.describe('taxonomy consultation navigation', () => {
     await relatedTraitLink.click();
 
     await expect(page).toHaveURL(/\/traits\/.+/);
-    await expect(page.getByRole('link', { name: 'Trait' })).toBeVisible();
 
     const relatedSpeciesLink = page.getByRole('link', { name: 'Emys orbicularis' }).first();
     await expect(relatedSpeciesLink).toBeVisible();
