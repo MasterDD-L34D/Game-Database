@@ -229,6 +229,58 @@ test('GET /api/ecosystems/:id returns 404 when ecosystem is missing', async () =
   }
 });
 
+test('POST /api/biomes validates pagination query before creating records', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    const createResponse = await fetch(`${baseUrl}/api/biomes?page=-1`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ name: 'Should Not Be Created' }),
+    });
+    assert.equal(createResponse.status, 400);
+    const createBody = await createResponse.json();
+    assert.deepEqual(createBody, {
+      code: 'VALIDATION_ERROR',
+      message: 'page must be an integer >= 0',
+      details: { field: 'page', location: 'query' },
+    });
+
+    const listResponse = await fetch(`${baseUrl}/api/biomes`);
+    assert.equal(listResponse.status, 200);
+    const listBody = await listResponse.json();
+    assert.equal(listBody.total, 0);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('POST /api/ecosystems validates pagination query before creating records', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    const createResponse = await fetch(`${baseUrl}/api/ecosystems?pageSize=101`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ name: 'Should Not Be Created' }),
+    });
+    assert.equal(createResponse.status, 400);
+    const createBody = await createResponse.json();
+    assert.deepEqual(createBody, {
+      code: 'VALIDATION_ERROR',
+      message: 'pageSize must be an integer between 1 and 100',
+      details: { field: 'pageSize', location: 'query' },
+    });
+
+    const listResponse = await fetch(`${baseUrl}/api/ecosystems`);
+    assert.equal(listResponse.status, 200);
+    const listBody = await listResponse.json();
+    assert.equal(listBody.total, 0);
+  } finally {
+    await closeServer(server);
+  }
+});
+
 test('POST /api/species returns 403 when user lacks taxonomy write permission', async () => {
   taxonomy.reset();
   const { server, baseUrl } = await startServer();

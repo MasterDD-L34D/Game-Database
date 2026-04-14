@@ -91,6 +91,7 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', requireTaxonomyWrite, async (req, res) => {
   try {
+    assertPagination(req.query);
     const validated = await validateBiomePayload(req.body);
     const { name, slug, parentId, description, climate } = validated;
 
@@ -120,6 +121,7 @@ router.post('/', requireTaxonomyWrite, async (req, res) => {
 
 router.put('/:id', requireTaxonomyWrite, async (req, res) => {
   try {
+    assertPagination(req.query);
     const id = assertIdParam(req.params);
     const existing = await findExistingByIdOrSlug(prisma.biome, id, res, 'Biome not found');
     if (!existing) return null;
@@ -156,6 +158,7 @@ router.put('/:id', requireTaxonomyWrite, async (req, res) => {
 
 router.delete('/:id', requireTaxonomyWrite, async (req, res) => {
   try {
+    assertPagination(req.query);
     const id = assertIdParam(req.params);
     const existing = await findExistingByIdOrSlug(prisma.biome, id, res, 'Biome not found');
     if (!existing) return null;

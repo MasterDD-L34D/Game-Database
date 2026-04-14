@@ -77,6 +77,7 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', requireTaxonomyWrite, async (req, res) => {
   try {
+    assertPagination(req.query);
     const validated = validateEcosystemPayload(req.body);
     const { slug } = validated;
 
@@ -98,6 +99,7 @@ router.post('/', requireTaxonomyWrite, async (req, res) => {
 
 router.put('/:id', requireTaxonomyWrite, async (req, res) => {
   try {
+    assertPagination(req.query);
     const id = assertIdParam(req.params);
     const existing = await findExistingByIdOrSlug(prisma.ecosystem, id, res, 'Ecosystem not found');
     if (!existing) return null;
@@ -128,6 +130,7 @@ router.put('/:id', requireTaxonomyWrite, async (req, res) => {
 
 router.delete('/:id', requireTaxonomyWrite, async (req, res) => {
   try {
+    assertPagination(req.query);
     const id = assertIdParam(req.params);
     const existing = await findExistingByIdOrSlug(prisma.ecosystem, id, res, 'Ecosystem not found');
     if (!existing) return null;
