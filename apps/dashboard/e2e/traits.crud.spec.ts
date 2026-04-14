@@ -12,8 +12,9 @@ test.describe('traits CRUD', () => {
     const tableSearch = page.locator('main').getByPlaceholder('Cerca');
 
     await page.goto('/traits');
+    const main = page.getByRole('main');
 
-    await expect(page.getByRole('heading', { name: 'Trait' })).toBeVisible();
+    await expect(main.getByRole('heading', { name: 'Trait' })).toBeVisible();
     await page.getByRole('button', { name: 'Nuovo trait' }).click();
 
     const createDialog = page.getByRole('dialog');

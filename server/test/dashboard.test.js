@@ -52,6 +52,49 @@ test('computeDashboardStats aggregates data and formats trends', async () => {
         throw new Error('Unexpected query shape');
       },
     },
+    trait: {
+      async count() {
+        return 12;
+      },
+    },
+    biome: {
+      async count(args = {}) {
+        if (args.where) return 1;
+        return 6;
+      },
+    },
+    species: {
+      async count(args = {}) {
+        if (args.where) return 2;
+        return 24;
+      },
+    },
+    ecosystem: {
+      async count(args = {}) {
+        if (args.where) return 1;
+        return 4;
+      },
+    },
+    speciesTrait: {
+      async count() {
+        return 41;
+      },
+    },
+    speciesBiome: {
+      async count() {
+        return 29;
+      },
+    },
+    ecosystemBiome: {
+      async count() {
+        return 16;
+      },
+    },
+    ecosystemSpecies: {
+      async count() {
+        return 31;
+      },
+    },
   };
 
   const stats = await computeDashboardStats(fakePrisma, {
@@ -63,11 +106,43 @@ test('computeDashboardStats aggregates data and formats trends', async () => {
     totalRecords: { value: 120, trend: '+10 rispetto a 7 giorni fa' },
     newRecords: { value: 15, trend: '+5 rispetto alla settimana precedente' },
     errorRecords: { value: 7, trend: '-2 rispetto alla settimana precedente' },
+    taxonomy: {
+      entities: {
+        traits: 12,
+        biomes: 6,
+        species: 24,
+        ecosystems: 4,
+        total: 46,
+      },
+      relations: {
+        speciesTraits: 41,
+        speciesBiomes: 29,
+        ecosystemBiomes: 16,
+        ecosystemSpecies: 31,
+        total: 117,
+      },
+      quality: {
+        orphanTraits: 12,
+        orphanBiomes: 1,
+        orphanSpecies: 2,
+        orphanEcosystems: 1,
+      },
+    },
   });
 });
 
 test('GET /stats responds with aggregated payload', async () => {
-  const zeroPrisma = { record: { async count() { return 0; } } };
+  const zeroPrisma = {
+    record: { async count() { return 0; } },
+    trait: { async count() { return 0; } },
+    biome: { async count() { return 0; } },
+    species: { async count() { return 0; } },
+    ecosystem: { async count() { return 0; } },
+    speciesTrait: { async count() { return 0; } },
+    speciesBiome: { async count() { return 0; } },
+    ecosystemBiome: { async count() { return 0; } },
+    ecosystemSpecies: { async count() { return 0; } },
+  };
   const router = createDashboardRouter(zeroPrisma);
   const app = express();
   app.use('/dashboard', router);
@@ -103,5 +178,27 @@ test('GET /stats responds with aggregated payload', async () => {
     totalRecords: { value: 0 },
     newRecords: { value: 0 },
     errorRecords: { value: 0 },
+    taxonomy: {
+      entities: {
+        traits: 0,
+        biomes: 0,
+        species: 0,
+        ecosystems: 0,
+        total: 0,
+      },
+      relations: {
+        speciesTraits: 0,
+        speciesBiomes: 0,
+        ecosystemBiomes: 0,
+        ecosystemSpecies: 0,
+        total: 0,
+      },
+      quality: {
+        orphanTraits: 0,
+        orphanBiomes: 0,
+        orphanSpecies: 0,
+        orphanEcosystems: 0,
+      },
+    },
   });
 });

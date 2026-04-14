@@ -8,7 +8,7 @@ import ListPage from '../../../pages/ListPage';
 import type { Ecosystem } from '../../../lib/taxonomy';
 import { createEcosystem, deleteEcosystem, listEcosystems, updateEcosystem } from '../../../lib/taxonomy';
 
-const DEFAULT_PAGE_SIZE = 25;
+const DEFAULT_PAGE_SIZE = 20;
 
 const h = createColumnHelper<Ecosystem>();
 function parseNumber(value: string | null, fallback: number) {
@@ -25,6 +25,7 @@ export default function EcosystemListPage() {
   const initialQuery = searchParams.get('q') ?? '';
   const initialPage = parseNumber(searchParams.get('page'), 0);
   const initialPageSize = parseNumber(searchParams.get('pageSize'), DEFAULT_PAGE_SIZE);
+  const initialSort = searchParams.get('sort') ?? '';
 
   const columns = useMemo<ColumnDef<Ecosystem, any>[]>(
     () => [
@@ -38,7 +39,7 @@ export default function EcosystemListPage() {
       }),
       h.accessor('region', { header: t('ecosystems.columns.region'), cell: (i) => i.getValue() ?? '' }),
       h.accessor('climate', { header: t('ecosystems.columns.climate'), cell: (i) => i.getValue() ?? '' }),
-      h.accessor('description', { header: t('ecosystems.columns.description'), cell: (i) => i.getValue() ?? '' }),
+      h.accessor('slug', { header: t('ecosystems.columns.slug'), cell: (i) => i.getValue() ?? '' }),
     ],
     [t],
   );
@@ -100,11 +101,12 @@ export default function EcosystemListPage() {
   }, []);
 
   const handleStateChange = useCallback(
-    (state: { query: string; page: number; pageSize: number }) => {
+    (state: { query: string; page: number; pageSize: number; sort: string }) => {
       const nextParams = new URLSearchParams();
       if (state.query) nextParams.set('q', state.query);
       if (state.page > 0) nextParams.set('page', String(state.page));
       if (state.pageSize !== DEFAULT_PAGE_SIZE) nextParams.set('pageSize', String(state.pageSize));
+      if (state.sort) nextParams.set('sort', state.sort);
       const current = searchParams.toString();
       const next = nextParams.toString();
       if (current === next) return;
@@ -122,6 +124,7 @@ export default function EcosystemListPage() {
       initialQuery={initialQuery}
       initialPage={initialPage}
       initialPageSize={initialPageSize}
+      initialSort={initialSort}
       autoloadOnMount
       onStateChange={handleStateChange}
       createConfig={{

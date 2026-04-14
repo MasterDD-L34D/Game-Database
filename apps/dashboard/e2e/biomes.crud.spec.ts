@@ -14,8 +14,9 @@ test.describe('biomes CRUD', () => {
     const updatedDescription = 'Bioma creato e modificato da smoke test Playwright.';
 
     await page.goto('/biomes');
+    const main = page.getByRole('main');
 
-    await expect(page.getByRole('heading', { name: 'Biomi' })).toBeVisible();
+    await expect(main.getByRole('heading', { name: 'Biomi' })).toBeVisible();
     await page.getByRole('button', { name: 'Nuovo bioma' }).click();
 
     const createDialog = page.getByRole('dialog');

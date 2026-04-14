@@ -13,7 +13,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { ColumnDef, type PaginationState } from '@tanstack/react-table';
+import { ColumnDef, type PaginationState, type SortingState } from '@tanstack/react-table';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Controller, useForm, type UseFormReturn } from 'react-hook-form';
 import type { z } from 'zod';
@@ -24,9 +24,14 @@ import { useSnackbar } from '../components/SnackbarProvider';
 import { useSearch } from '../providers/SearchProvider';
 import { createZodResolver } from '../lib/zodResolver';
 
-type Fetcher<T> = (q: string, page?: number, pageSize?: number) => Promise<{ items: T[]; page: number; pageSize: number; total: number }>;
+type Fetcher<T> = (
+  q: string,
+  page?: number,
+  pageSize?: number,
+  sort?: string,
+) => Promise<{ items: T[]; page: number; pageSize: number; total: number }>;
 
-type CriteriaState = { query: string; page: number; pageSize: number };
+type CriteriaState = { query: string; page: number; pageSize: number; sort: string };
 
 type FormFieldConfig<TValues extends Record<string, any>> = {
   name: keyof TValues & string;
@@ -79,6 +84,7 @@ type ListPageProps<TItem, TValues extends Record<string, any>> = {
   initialQuery?: string;
   initialPage?: number;
   initialPageSize?: number;
+  initialSort?: string;
   autoloadOnMount?: boolean;
   onStateChange?: (state: CriteriaState) => void;
   createConfig?: CreateConfig<TValues>;
@@ -151,6 +157,7 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
   initialQuery = '',
   initialPage = 0,
   initialPageSize = 25,
+  initialSort = '',
   autoloadOnMount = false,
   onStateChange,
   createConfig,
@@ -161,7 +168,26 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
   const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
-  const [criteria, setCriteria] = useState<CriteriaState>({ query: initialQuery, page: initialPage, pageSize: initialPageSize });
+  const parseSort = useCallback((sortValue: string): SortingState => {
+    if (!sortValue) return [];
+    const [id, direction] = sortValue.split(':', 2);
+    if (!id) return [];
+    return [{ id, desc: direction === 'desc' }];
+  }, []);
+
+  const toSortQuery = useCallback((sorting: SortingState): string => {
+    const [first] = sorting;
+    if (!first) return '';
+    return `${first.id}:${first.desc ? 'desc' : 'asc'}`;
+  }, []);
+
+  const [sorting, setSorting] = useState<SortingState>(() => parseSort(initialSort));
+  const [criteria, setCriteria] = useState<CriteriaState>({
+    query: initialQuery,
+    page: initialPage,
+    pageSize: initialPageSize,
+    sort: initialSort,
+  });
   const { query: searchValue, debouncedQuery, setQuery, commitQuery } = useSearch();
   const shouldFetchRef = useRef<boolean>(false);
   const [hasSearched, setHasSearched] = useState<boolean>(autoloadOnMount);
@@ -206,22 +232,28 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
 
   const baseKey = useMemo(() => queryKeyBase ?? ['list', title.toLowerCase()], [queryKeyBase, title]);
   const queryKey = useMemo(
-    () => [...baseKey, { q: criteria.query, page: criteria.page, pageSize: criteria.pageSize }],
-    [baseKey, criteria.page, criteria.pageSize, criteria.query],
+    () => [...baseKey, { q: criteria.query, page: criteria.page, pageSize: criteria.pageSize, sort: criteria.sort }],
+    [baseKey, criteria.page, criteria.pageSize, criteria.query, criteria.sort],
   );
 
   const { data, isFetching, isError, error, refetch } = useQuery({
     queryKey,
-    queryFn: () => fetcher(criteria.query, criteria.page, criteria.pageSize),
+    queryFn: () => fetcher(criteria.query, criteria.page, criteria.pageSize, criteria.sort),
     enabled: autoloadOnMount,
     placeholderData: keepPreviousData,
   });
 
   useEffect(() => {
-    const next = { query: initialQuery, page: initialPage, pageSize: initialPageSize };
+    const next = { query: initialQuery, page: initialPage, pageSize: initialPageSize, sort: initialSort };
     commitQuery(next.query);
+    setSorting(parseSort(next.sort));
     setCriteria((prev) => {
-      if (prev.query === next.query && prev.page === next.page && prev.pageSize === next.pageSize) {
+      if (
+        prev.query === next.query &&
+        prev.page === next.page &&
+        prev.pageSize === next.pageSize &&
+        prev.sort === next.sort
+      ) {
         return prev;
       }
       if (!autoloadOnMount) {
@@ -229,7 +261,7 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
       }
       return next;
     });
-  }, [initialQuery, initialPage, initialPageSize, commitQuery, autoloadOnMount]);
+  }, [initialQuery, initialPage, initialPageSize, initialSort, commitQuery, autoloadOnMount, parseSort]);
 
   useEffect(() => {
     onStateChange?.(criteria);
@@ -245,7 +277,7 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
   useEffect(() => {
     if (!autoloadOnMount) return;
     if (debouncedQuery === criteria.query) return;
-    triggerFetch((prev) => ({ ...prev, query: debouncedQuery, page: 0 }));
+    triggerFetch((prev) => ({ ...prev, query: debouncedQuery, page: 0, sort: prev.sort }));
   }, [autoloadOnMount, criteria.query, debouncedQuery]);
 
   const triggerFetch = useCallback(
@@ -297,12 +329,21 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
         const nextSize = next.pageSize;
         const nextPage = next.pageIndex;
         if (nextSize !== prev.pageSize) {
-          return { ...prev, page: 0, pageSize: nextSize };
+          return { ...prev, page: 0, pageSize: nextSize, sort: prev.sort };
         }
-        return { ...prev, page: nextPage };
+        return { ...prev, page: nextPage, sort: prev.sort };
       });
     },
     [triggerFetch],
+  );
+
+  const handleSortingChange = useCallback(
+    (nextSorting: SortingState) => {
+      setSorting(nextSorting);
+      const sortQuery = toSortQuery(nextSorting);
+      triggerFetch((prev) => ({ ...prev, page: 0, sort: sortQuery }));
+    },
+    [toSortQuery, triggerFetch],
   );
 
   const paginationState = useMemo<PaginationState>(() => ({ pageIndex: criteria.page, pageSize: criteria.pageSize }), [criteria.page, criteria.pageSize]);
@@ -543,6 +584,8 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
         loading={showSkeleton}
         pagination={paginationState}
         onPaginationChange={handlePaginationChange}
+        sorting={sorting}
+        onSortingChange={handleSortingChange}
       />
       {!autoloadOnMount && !hasSearched && !isFetching && (
         <Typography variant="caption" color="text.secondary" sx={(theme) => ({ display: 'block', mt: theme.spacing(2) })}>

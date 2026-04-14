@@ -1,6 +1,9 @@
 const express = require('express');
 const prisma = require('../db/prisma');
 const { requireTaxonomyWrite } = require('../middleware/permissions');
+const { AppError } = require('../utils/httpErrors');
+const { assertPagination } = require('../utils/validation');
+const { normalizeSearchQuery, normalizeSort, toPagedResult } = require('../utils/pagination');
 
 const router = express.Router();
 
@@ -72,6 +75,36 @@ function buildFilter(query = {}) {
   return { where };
 }
 
+const SORTABLE_FIELDS = ['ecosystemId', 'speciesId', 'role'];
+const DEFAULT_ORDER_BY = [{ ecosystemId: 'asc' }, { speciesId: 'asc' }, { role: 'asc' }];
+
+function buildOrderBy(query = {}) {
+  const primary = normalizeSort(query.sort, { allowedFields: SORTABLE_FIELDS, fallback: null });
+  if (!primary) return DEFAULT_ORDER_BY;
+  const primaryField = Object.keys(primary[0])[0];
+  return [...primary, ...DEFAULT_ORDER_BY.filter(entry => Object.keys(entry)[0] !== primaryField)];
+}
+
+function withSearch(where, query = {}) {
+  const search = normalizeSearchQuery(query);
+  if (!search) return where;
+
+  const or = [
+    { ecosystemId: { contains: search, mode: 'insensitive' } },
+    { speciesId: { contains: search, mode: 'insensitive' } },
+    { role: { contains: search, mode: 'insensitive' } },
+    { notes: { contains: search, mode: 'insensitive' } },
+  ];
+
+  if (!Object.keys(where).length) {
+    return { OR: or };
+  }
+
+  return {
+    AND: [where, { OR: or }],
+  };
+}
+
 async function ensureEcosystemAndSpecies(ecosystemId, speciesId) {
   const [ecosystem, species] = await Promise.all([
     prisma.ecosystem.findUnique({ where: { id: ecosystemId } }),
@@ -89,20 +122,28 @@ async function ensureEcosystemAndSpecies(ecosystemId, speciesId) {
 
 router.get('/', async (req, res) => {
   try {
+    const { page, pageSize } = assertPagination(req.query);
     const filter = buildFilter(req.query);
     if (filter.error) return res.status(400).json({ error: filter.error });
 
-    const where = filter.where;
-    const items = await prisma.ecosystemSpecies.findMany({
-      where,
-      orderBy: [
-        { ecosystemId: 'asc' },
-        { speciesId: 'asc' },
-        { role: 'asc' },
-      ],
-    });
-    res.json(items);
+    const where = withSearch(filter.where, req.query);
+    const orderBy = buildOrderBy(req.query);
+
+    const [total, items] = await Promise.all([
+      prisma.ecosystemSpecies.count({ where }),
+      prisma.ecosystemSpecies.findMany({
+        where,
+        orderBy,
+        skip: page * pageSize,
+        take: pageSize,
+      }),
+    ]);
+
+    res.json(toPagedResult(items, page, pageSize, total));
   } catch (error) {
+    if (error instanceof AppError) {
+      return res.status(error.status).json({ error: error.message, code: error.code, details: error.details });
+    }
     console.error(error);
     res.status(500).json({ error: 'Internal error' });
   }

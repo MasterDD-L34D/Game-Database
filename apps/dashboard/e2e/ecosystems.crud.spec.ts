@@ -13,8 +13,9 @@ test.describe('ecosystems CRUD', () => {
     const updatedRegion = 'Regione di collaudo';
 
     await page.goto('/ecosystems');
+    const main = page.getByRole('main');
 
-    await expect(page.getByRole('heading', { name: 'Ecosistemi' })).toBeVisible();
+    await expect(main.getByRole('heading', { name: 'Ecosistemi' })).toBeVisible();
     await page.getByRole('button', { name: 'Nuovo ecosistema' }).click();
 
     const createDialog = page.getByRole('dialog');

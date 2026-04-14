@@ -8,7 +8,7 @@ import ListPage from '../../../pages/ListPage';
 import type { Species } from '../../../lib/taxonomy';
 import { createSpecies, deleteSpecies, listSpecies, updateSpecies } from '../../../lib/taxonomy';
 
-const DEFAULT_PAGE_SIZE = 25;
+const DEFAULT_PAGE_SIZE = 20;
 
 const h = createColumnHelper<Species>();
 function parseNumber(value: string | null, fallback: number) {
@@ -25,6 +25,7 @@ export default function SpeciesListPage() {
   const initialQuery = searchParams.get('q') ?? '';
   const initialPage = parseNumber(searchParams.get('page'), 0);
   const initialPageSize = parseNumber(searchParams.get('pageSize'), DEFAULT_PAGE_SIZE);
+  const initialSort = searchParams.get('sort') ?? '';
 
   const columns = useMemo<ColumnDef<Species, any>[]>(
     () => [
@@ -142,11 +143,12 @@ export default function SpeciesListPage() {
   }, []);
 
   const handleStateChange = useCallback(
-    (state: { query: string; page: number; pageSize: number }) => {
+    (state: { query: string; page: number; pageSize: number; sort: string }) => {
       const nextParams = new URLSearchParams();
       if (state.query) nextParams.set('q', state.query);
       if (state.page > 0) nextParams.set('page', String(state.page));
       if (state.pageSize !== DEFAULT_PAGE_SIZE) nextParams.set('pageSize', String(state.pageSize));
+      if (state.sort) nextParams.set('sort', state.sort);
       const current = searchParams.toString();
       const next = nextParams.toString();
       if (current === next) return;
@@ -164,6 +166,7 @@ export default function SpeciesListPage() {
       initialQuery={initialQuery}
       initialPage={initialPage}
       initialPageSize={initialPageSize}
+      initialSort={initialSort}
       autoloadOnMount
       onStateChange={handleStateChange}
       createConfig={{

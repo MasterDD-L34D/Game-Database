@@ -7,6 +7,7 @@ const TAXONOMY_ROLE = 'taxonomy:write';
 
 const originalPrisma = {
   speciesTrait: {
+    count: prisma.speciesTrait?.count,
     findMany: prisma.speciesTrait?.findMany,
     findFirst: prisma.speciesTrait?.findFirst,
     findUnique: prisma.speciesTrait?.findUnique,
@@ -117,6 +118,11 @@ function mockPrisma() {
     return sortRecords(items).map(clone);
   };
 
+  prisma.speciesTrait.count = async ({ where } = {}) => {
+    const items = Array.from(speciesTraitStore.values()).filter(item => matchesWhere(item, where));
+    return items.length;
+  };
+
   prisma.speciesTrait.findFirst = async ({ where } = {}) => {
     const items = await prisma.speciesTrait.findMany({ where });
     return items[0] || null;
@@ -154,6 +160,7 @@ function mockPrisma() {
 }
 
 function restorePrisma() {
+  if (originalPrisma.speciesTrait.count) prisma.speciesTrait.count = originalPrisma.speciesTrait.count;
   if (originalPrisma.speciesTrait.findMany) prisma.speciesTrait.findMany = originalPrisma.speciesTrait.findMany;
   if (originalPrisma.speciesTrait.findFirst) prisma.speciesTrait.findFirst = originalPrisma.speciesTrait.findFirst;
   if (originalPrisma.speciesTrait.findUnique) prisma.speciesTrait.findUnique = originalPrisma.speciesTrait.findUnique;
@@ -207,9 +214,25 @@ test('GET /api/species-traits returns existing records', async () => {
 
   assert.equal(response.status, 200);
   const body = await response.json();
-  assert.ok(Array.isArray(body));
-  assert.equal(body.length, 1);
-  assert.equal(body[0].text, 'Initial trait');
+  assert.ok(Array.isArray(body.items));
+  assert.equal(body.items.length, 1);
+  assert.equal(body.items[0].text, 'Initial trait');
+  assert.deepEqual(body.pagination, {
+    page: 0,
+    pageSize: 25,
+    total: 1,
+    totalPages: 1,
+  });
+});
+
+test('GET /api/species-traits validates pagination query', async () => {
+  resetData();
+
+  const { server, baseUrl } = await startServer();
+  const response = await fetch(`${baseUrl}/api/species-traits?page=-1`);
+  await closeServer(server);
+
+  assert.equal(response.status, 400);
 });
 
 test('POST /api/species-traits creates a new entry for authorized users', async () => {

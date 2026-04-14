@@ -1,17 +1,11 @@
 import { useMemo } from 'react';
-import {
-  Alert,
-  Breadcrumbs,
-  Link as MuiLink,
-  Paper,
-  Stack,
-  Typography,
-} from '@mui/material';
+import { Alert, Breadcrumbs, Link as MuiLink, Stack, Typography } from '@mui/material';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { getBiome, listAllEcosystems, listAllSpecies } from '../../../lib/taxonomy';
 import { getEcosystemBiomes, getSpeciesBiomes } from '../../../lib/taxonomyRelations';
+import { EntityDetailCard, RelationListCard } from '../components/EntityDetailCard';
 
 export default function BiomeDetailsPage() {
   const { biomeId = '' } = useParams<{ biomeId: string }>();
@@ -80,67 +74,49 @@ export default function BiomeDetailsPage() {
       {isLoading ? <Typography color="text.secondary">{t('common:status.loading')}</Typography> : null}
 
       {biome ? (
-        <Paper sx={{ p: 3 }}>
-          <Stack spacing={1}>
-            <Typography variant="h5">{biome.name}</Typography>
-            <Typography variant="body2" color="text.secondary">
-              {biome.slug}
-            </Typography>
-            <Typography variant="body2">
-              {t('taxonomy:biomes.columns.climate')}: {biome.climate || t('common:generic.notAvailable')}
-            </Typography>
-            <Typography variant="body2">
-              {t('taxonomy:biomes.columns.description')}: {biome.description || t('common:generic.notAvailable')}
-            </Typography>
-          </Stack>
-        </Paper>
+        <EntityDetailCard
+          title={biome.name}
+          subtitle={biome.slug}
+          summary={[
+            { label: t('taxonomy:biomes.columns.climate'), value: biome.climate || t('common:generic.notAvailable') },
+            { label: t('taxonomy:biomes.form.parentId'), value: biome.parentId || t('common:generic.notAvailable') },
+            { label: t('taxonomy:biomes.columns.description'), value: biome.description || t('common:generic.notAvailable') },
+            { label: t('taxonomy:detail.speciesCount'), value: speciesRelations.length.toLocaleString('it-IT') },
+          ]}
+        />
       ) : null}
 
-      <Paper sx={{ p: 3 }}>
-        <Stack spacing={1}>
-          <Typography variant="h6">{t('taxonomy:species.title')}</Typography>
-          {speciesRelations.length === 0 ? (
-            <Typography color="text.secondary">{t('taxonomy:detail.empty')}</Typography>
-          ) : (
-            speciesRelations.map((relation) => {
-              const species = speciesById[relation.speciesId];
-              return (
-                <Stack key={relation.id} direction="row" spacing={1} alignItems="center">
-                  <MuiLink component={RouterLink} to={`/species/${relation.speciesId}`}>
-                    {species?.scientificName ?? relation.speciesId}
-                  </MuiLink>
-                  <Typography color="text.secondary">•</Typography>
-                  <Typography color="text.secondary">{relation.presence}</Typography>
-                </Stack>
-              );
-            })
-          )}
-        </Stack>
-      </Paper>
+      <RelationListCard title={t('taxonomy:species.title')} emptyLabel={t('taxonomy:detail.empty')}>
+        {speciesRelations.map((relation) => {
+          const species = speciesById[relation.speciesId];
+          return (
+            <Stack key={relation.id} direction="row" spacing={1} alignItems="center">
+              <MuiLink component={RouterLink} to={`/species/${relation.speciesId}`}>
+                {species?.scientificName ?? relation.speciesId}
+              </MuiLink>
+              <Typography color="text.secondary">-</Typography>
+              <Typography color="text.secondary">{relation.presence}</Typography>
+            </Stack>
+          );
+        })}
+      </RelationListCard>
 
-      <Paper sx={{ p: 3 }}>
-        <Stack spacing={1}>
-          <Typography variant="h6">{t('taxonomy:ecosystems.title')}</Typography>
-          {ecosystemRelations.length === 0 ? (
-            <Typography color="text.secondary">{t('taxonomy:detail.empty')}</Typography>
-          ) : (
-            ecosystemRelations.map((relation) => {
-              const ecosystem = ecosystemsById[relation.ecosystemId];
-              return (
-                <Stack key={relation.id} direction="row" spacing={1} alignItems="center">
-                  <MuiLink component={RouterLink} to={`/ecosystems/${relation.ecosystemId}`}>
-                    {ecosystem?.name ?? relation.ecosystemId}
-                  </MuiLink>
-                  <Typography color="text.secondary">•</Typography>
-                  <Typography color="text.secondary">
-                    {relation.proportion ?? t('common:generic.notAvailable')}
-                  </Typography>
-                </Stack>
-              );
-            })
-          )}
-        </Stack>
-      </Paper>
+      <RelationListCard title={t('taxonomy:ecosystems.title')} emptyLabel={t('taxonomy:detail.empty')}>
+        {ecosystemRelations.map((relation) => {
+          const ecosystem = ecosystemsById[relation.ecosystemId];
+          return (
+            <Stack key={relation.id} direction="row" spacing={1} alignItems="center">
+              <MuiLink component={RouterLink} to={`/ecosystems/${relation.ecosystemId}`}>
+                {ecosystem?.name ?? relation.ecosystemId}
+              </MuiLink>
+              <Typography color="text.secondary">-</Typography>
+              <Typography color="text.secondary">
+                {relation.proportion != null ? relation.proportion : t('common:generic.notAvailable')}
+              </Typography>
+            </Stack>
+          );
+        })}
+      </RelationListCard>
     </Stack>
   );
 }

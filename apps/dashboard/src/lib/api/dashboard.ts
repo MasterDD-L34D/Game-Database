@@ -16,8 +16,19 @@ function toMetric(value: DashboardStatsResponse[DashboardStatKey]) {
 export async function getDashboardStats(): Promise<DashboardStats> {
   const response = await client<DashboardStatsResponse>('/stats');
   const keys: DashboardStatKey[] = ['totalRecords', 'newRecords', 'errorRecords'];
-  return keys.reduce<DashboardStats>((acc, key) => {
+  const baseStats = keys.reduce<DashboardStats>((acc, key) => {
     acc[key] = toMetric(response[key]);
     return acc;
   }, {} as DashboardStats);
+
+  const taxonomy = response.taxonomy ?? {
+    entities: { traits: 0, biomes: 0, species: 0, ecosystems: 0, total: 0 },
+    relations: { speciesTraits: 0, speciesBiomes: 0, ecosystemBiomes: 0, ecosystemSpecies: 0, total: 0 },
+    quality: { orphanTraits: 0, orphanBiomes: 0, orphanSpecies: 0, orphanEcosystems: 0 },
+  };
+
+  return {
+    ...baseStats,
+    taxonomy,
+  };
 }

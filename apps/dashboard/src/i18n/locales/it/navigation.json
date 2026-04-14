@@ -9,6 +9,11 @@
   "speciesBiomes": "Specie-Biomi",
   "ecosystemBiomes": "Ecosistemi-Biomi",
   "ecosystemSpecies": "Ecosistemi-Specie",
+  "sections": {
+    "overview": "Overview",
+    "taxonomy": "Tassonomie",
+    "relations": "Relazioni"
+  },
   "toggleCollapse": "Comprimi sidebar",
   "toggleExpand": "Espandi sidebar"
 }

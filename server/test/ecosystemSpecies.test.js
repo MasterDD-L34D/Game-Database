@@ -7,6 +7,7 @@ const TAXONOMY_ROLE = 'taxonomy:write';
 
 const originalPrisma = {
   ecosystemSpecies: {
+    count: prisma.ecosystemSpecies?.count,
     findMany: prisma.ecosystemSpecies?.findMany,
     findUnique: prisma.ecosystemSpecies?.findUnique,
     create: prisma.ecosystemSpecies?.create,
@@ -115,6 +116,13 @@ function mockPrisma() {
     return sortRecords(items).map(clone);
   };
 
+  prisma.ecosystemSpecies.count = async ({ where } = {}) => {
+    const items = Array.from(ecosystemSpeciesStore.values()).filter(item =>
+      matchesWhere(item, where),
+    );
+    return items.length;
+  };
+
   prisma.ecosystemSpecies.findUnique = async ({ where }) => {
     if (!where || !where.id) return null;
     const found = ecosystemSpeciesStore.get(where.id);
@@ -164,6 +172,7 @@ function mockPrisma() {
 }
 
 function restorePrisma() {
+  if (originalPrisma.ecosystemSpecies.count) prisma.ecosystemSpecies.count = originalPrisma.ecosystemSpecies.count;
   if (originalPrisma.ecosystemSpecies.findMany) prisma.ecosystemSpecies.findMany = originalPrisma.ecosystemSpecies.findMany;
   if (originalPrisma.ecosystemSpecies.findUnique) prisma.ecosystemSpecies.findUnique = originalPrisma.ecosystemSpecies.findUnique;
   if (originalPrisma.ecosystemSpecies.create) prisma.ecosystemSpecies.create = originalPrisma.ecosystemSpecies.create;
@@ -206,6 +215,41 @@ async function startServer() {
 async function closeServer(server) {
   await new Promise(resolve => server.close(resolve));
 }
+
+test('GET /api/ecosystem-species returns paginated records and supports filters', async () => {
+  resetData();
+  await createEcosystemSpecies({
+    ecosystemId: 'ecosystem-1',
+    speciesId: 'species-1',
+    role: 'common',
+  });
+  await createEcosystemSpecies({
+    ecosystemId: 'ecosystem-2',
+    speciesId: 'species-2',
+    role: 'dominant',
+  });
+
+  const { server, baseUrl } = await startServer();
+  const response = await fetch(`${baseUrl}/api/ecosystem-species?role=dominant`);
+  const body = await response.json();
+  await closeServer(server);
+
+  assert.equal(response.status, 200);
+  assert.equal(Array.isArray(body.items), true);
+  assert.equal(body.items.length, 1);
+  assert.equal(body.items[0].role, 'dominant');
+  assert.equal(body.pagination.total, 1);
+});
+
+test('GET /api/ecosystem-species validates pagination query', async () => {
+  resetData();
+
+  const { server, baseUrl } = await startServer();
+  const response = await fetch(`${baseUrl}/api/ecosystem-species?pageSize=0`);
+  await closeServer(server);
+
+  assert.equal(response.status, 400);
+});
 
 test('POST /api/ecosystem-species creates a new entry for authorized users', async () => {
   resetData();

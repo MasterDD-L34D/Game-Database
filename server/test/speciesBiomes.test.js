@@ -7,6 +7,7 @@ const TAXONOMY_ROLE = 'taxonomy:write';
 
 const originalPrisma = {
   speciesBiome: {
+    count: prisma.speciesBiome?.count,
     findMany: prisma.speciesBiome?.findMany,
     findUnique: prisma.speciesBiome?.findUnique,
     create: prisma.speciesBiome?.create,
@@ -103,6 +104,11 @@ function mockPrisma() {
     return sortRecords(items).map(clone);
   };
 
+  prisma.speciesBiome.count = async ({ where } = {}) => {
+    const items = Array.from(speciesBiomeStore.values()).filter(item => matchesWhere(item, where));
+    return items.length;
+  };
+
   prisma.speciesBiome.findUnique = async ({ where }) => {
     if (!where || !where.id) return null;
     const found = speciesBiomeStore.get(where.id);
@@ -145,6 +151,7 @@ function mockPrisma() {
 }
 
 function restorePrisma() {
+  if (originalPrisma.speciesBiome.count) prisma.speciesBiome.count = originalPrisma.speciesBiome.count;
   if (originalPrisma.speciesBiome.findMany) prisma.speciesBiome.findMany = originalPrisma.speciesBiome.findMany;
   if (originalPrisma.speciesBiome.findUnique) prisma.speciesBiome.findUnique = originalPrisma.speciesBiome.findUnique;
   if (originalPrisma.speciesBiome.create) prisma.speciesBiome.create = originalPrisma.speciesBiome.create;
@@ -186,6 +193,33 @@ async function startServer() {
 async function closeServer(server) {
   await new Promise(resolve => server.close(resolve));
 }
+
+test('GET /api/species-biomes returns paginated records and supports filters', async () => {
+  resetData();
+  await createSpeciesBiome({ speciesId: 'species-1', biomeId: 'biome-1', presence: 'resident' });
+  await createSpeciesBiome({ speciesId: 'species-2', biomeId: 'biome-2', presence: 'migrant' });
+
+  const { server, baseUrl } = await startServer();
+  const response = await fetch(`${baseUrl}/api/species-biomes?speciesId=species-2`);
+  const body = await response.json();
+  await closeServer(server);
+
+  assert.equal(response.status, 200);
+  assert.equal(Array.isArray(body.items), true);
+  assert.equal(body.items.length, 1);
+  assert.equal(body.items[0].speciesId, 'species-2');
+  assert.equal(body.pagination.total, 1);
+});
+
+test('GET /api/species-biomes validates pagination query', async () => {
+  resetData();
+
+  const { server, baseUrl } = await startServer();
+  const response = await fetch(`${baseUrl}/api/species-biomes?page=-1`);
+  await closeServer(server);
+
+  assert.equal(response.status, 400);
+});
 
 test('POST /api/species-biomes creates a new entry for authorized users', async () => {
   resetData();

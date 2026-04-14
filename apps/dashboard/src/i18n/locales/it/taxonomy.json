@@ -1,6 +1,7 @@
 {
   "detail": {
-    "empty": "Nessuna relazione disponibile."
+    "empty": "Nessuna relazione disponibile.",
+    "speciesCount": "Specie collegate"
   },
   "biomes": {
     "title": "Biomi",
@@ -8,7 +9,8 @@
       "name": "Nome",
       "slug": "Slug",
       "climate": "Clima",
-      "description": "Descrizione"
+      "description": "Descrizione",
+      "parent": "Bioma padre"
     },
     "actions": {
       "create": "Nuovo bioma"
@@ -39,6 +41,7 @@
     "title": "Ecosistemi",
     "columns": {
       "name": "Nome",
+      "slug": "Slug",
       "region": "Regione",
       "climate": "Clima",
       "description": "Descrizione"

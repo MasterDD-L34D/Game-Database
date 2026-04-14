@@ -7,6 +7,7 @@ const TAXONOMY_ROLE = 'taxonomy:write';
 
 const originalPrisma = {
   ecosystemBiome: {
+    count: prisma.ecosystemBiome?.count,
     findMany: prisma.ecosystemBiome?.findMany,
     findUnique: prisma.ecosystemBiome?.findUnique,
     create: prisma.ecosystemBiome?.create,
@@ -103,6 +104,11 @@ function mockPrisma() {
     return sortRecords(items).map(clone);
   };
 
+  prisma.ecosystemBiome.count = async ({ where } = {}) => {
+    const items = Array.from(ecosystemBiomeStore.values()).filter(item => matchesWhere(item, where));
+    return items.length;
+  };
+
   prisma.ecosystemBiome.findUnique = async ({ where }) => {
     if (!where || !where.id) return null;
     const found = ecosystemBiomeStore.get(where.id);
@@ -145,6 +151,7 @@ function mockPrisma() {
 }
 
 function restorePrisma() {
+  if (originalPrisma.ecosystemBiome.count) prisma.ecosystemBiome.count = originalPrisma.ecosystemBiome.count;
   if (originalPrisma.ecosystemBiome.findMany) prisma.ecosystemBiome.findMany = originalPrisma.ecosystemBiome.findMany;
   if (originalPrisma.ecosystemBiome.findUnique) prisma.ecosystemBiome.findUnique = originalPrisma.ecosystemBiome.findUnique;
   if (originalPrisma.ecosystemBiome.create) prisma.ecosystemBiome.create = originalPrisma.ecosystemBiome.create;
@@ -198,10 +205,22 @@ test('GET /api/ecosystem-biomes filters by ecosystemId', async () => {
   await closeServer(server);
 
   assert.equal(response.status, 200);
-  assert.equal(Array.isArray(body), true);
-  assert.equal(body.length, 1);
-  assert.equal(body[0].ecosystemId, 'ecosystem-2');
-  assert.equal(body[0].biomeId, 'biome-2');
+  assert.equal(Array.isArray(body.items), true);
+  assert.equal(body.items.length, 1);
+  assert.equal(body.items[0].ecosystemId, 'ecosystem-2');
+  assert.equal(body.items[0].biomeId, 'biome-2');
+  assert.equal(body.pagination.total, 1);
+  assert.equal(body.pagination.page, 0);
+});
+
+test('GET /api/ecosystem-biomes validates pagination query', async () => {
+  resetData();
+
+  const { server, baseUrl } = await startServer();
+  const response = await fetch(`${baseUrl}/api/ecosystem-biomes?pageSize=101`);
+  await closeServer(server);
+
+  assert.equal(response.status, 400);
 });
 
 test('POST /api/ecosystem-biomes creates a new entry for authorized users', async () => {

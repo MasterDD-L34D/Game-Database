@@ -56,7 +56,7 @@ describe('Topbar search integration', () => {
       });
 
       await waitFor(() => {
-        expect(fetcher).toHaveBeenCalledWith('lince', 0, 25);
+        expect(fetcher).toHaveBeenCalledWith('lince', 0, 25, '');
       });
 
     },

@@ -1,6 +1,9 @@
 const express = require('express');
 const prisma = require('../db/prisma');
 const { requireTaxonomyWrite } = require('../middleware/permissions');
+const { AppError } = require('../utils/httpErrors');
+const { assertPagination } = require('../utils/validation');
+const { normalizeSearchQuery, normalizeSort, toPagedResult } = require('../utils/pagination');
 
 const router = express.Router();
 
@@ -198,6 +201,37 @@ function buildFilter(query = {}) {
   return where;
 }
 
+const SORTABLE_FIELDS = ['speciesId', 'traitId', 'category'];
+const DEFAULT_ORDER_BY = [{ speciesId: 'asc' }, { traitId: 'asc' }, { category: 'asc' }];
+
+function buildOrderBy(query = {}) {
+  const primary = normalizeSort(query.sort, { allowedFields: SORTABLE_FIELDS, fallback: null });
+  if (!primary) return DEFAULT_ORDER_BY;
+  const primaryField = Object.keys(primary[0])[0];
+  return [...primary, ...DEFAULT_ORDER_BY.filter(entry => Object.keys(entry)[0] !== primaryField)];
+}
+
+function withSearch(where, query = {}) {
+  const search = normalizeSearchQuery(query);
+  if (!search) return where;
+
+  const or = [
+    { speciesId: { contains: search, mode: 'insensitive' } },
+    { traitId: { contains: search, mode: 'insensitive' } },
+    { category: { contains: search, mode: 'insensitive' } },
+    { text: { contains: search, mode: 'insensitive' } },
+    { source: { contains: search, mode: 'insensitive' } },
+  ];
+
+  if (!Object.keys(where).length) {
+    return { OR: or };
+  }
+
+  return {
+    AND: [where, { OR: or }],
+  };
+}
+
 async function ensureSpeciesAndTrait(speciesId, traitId) {
   const [species, trait] = await Promise.all([
     prisma.species.findUnique({ where: { id: speciesId } }),
@@ -215,15 +249,29 @@ async function ensureSpeciesAndTrait(speciesId, traitId) {
 
 router.get('/', async (req, res) => {
   const where = buildFilter(req.query);
-  const items = await prisma.speciesTrait.findMany({
-    where,
-    orderBy: [
-      { speciesId: 'asc' },
-      { traitId: 'asc' },
-      { category: 'asc' },
-    ],
-  });
-  res.json(items);
+  try {
+    const { page, pageSize } = assertPagination(req.query);
+    const queryWhere = withSearch(where, req.query);
+    const orderBy = buildOrderBy(req.query);
+
+    const [total, items] = await Promise.all([
+      prisma.speciesTrait.count({ where: queryWhere }),
+      prisma.speciesTrait.findMany({
+        where: queryWhere,
+        orderBy,
+        skip: page * pageSize,
+        take: pageSize,
+      }),
+    ]);
+
+    res.json(toPagedResult(items, page, pageSize, total));
+  } catch (error) {
+    if (error instanceof AppError) {
+      return res.status(error.status).json({ error: error.message, code: error.code, details: error.details });
+    }
+    console.error(error);
+    return res.status(500).json({ error: 'Internal error' });
+  }
 });
 
 router.post('/', requireTaxonomyWrite, async (req, res) => {

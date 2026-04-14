@@ -31,6 +31,18 @@ async function computeDashboardStats(client, { now = new Date(), windowDays = 7 
     totalErrorRecords,
     errorRecordsCurrentWindow,
     errorRecordsPreviousWindow,
+    totalTraits,
+    totalBiomes,
+    totalSpecies,
+    totalEcosystems,
+    totalSpeciesTraits,
+    totalSpeciesBiomes,
+    totalEcosystemBiomes,
+    totalEcosystemSpecies,
+    orphanTraits,
+    orphanBiomes,
+    orphanSpecies,
+    orphanEcosystems,
   ] = await Promise.all([
     client.record.count(),
     client.record.count({ where: { createdAt: { lt: currentWindowStart } } }),
@@ -39,6 +51,18 @@ async function computeDashboardStats(client, { now = new Date(), windowDays = 7 
     client.record.count({ where: { stato: 'Bozza' } }),
     client.record.count({ where: { stato: 'Bozza', updatedAt: { gte: currentWindowStart } } }),
     client.record.count({ where: { stato: 'Bozza', updatedAt: { gte: previousWindowStart, lt: currentWindowStart } } }),
+    client.trait.count(),
+    client.biome.count(),
+    client.species.count(),
+    client.ecosystem.count(),
+    client.speciesTrait.count(),
+    client.speciesBiome.count(),
+    client.ecosystemBiome.count(),
+    client.ecosystemSpecies.count(),
+    client.trait.count({ where: { speciesValues: { none: {} } } }),
+    client.biome.count({ where: { species: { none: {} }, ecosystems: { none: {} } } }),
+    client.species.count({ where: { traits: { none: {} }, biomes: { none: {} }, ecosystems: { none: {} } } }),
+    client.ecosystem.count({ where: { biomes: { none: {} }, species: { none: {} } } }),
   ]);
 
   const totalTrend = formatTrend(totalRecords - previousTotalRecords, `rispetto a ${safeWindowDays} giorni fa`);
@@ -55,6 +79,28 @@ async function computeDashboardStats(client, { now = new Date(), windowDays = 7 
     totalRecords: toMetric(totalRecords, totalTrend),
     newRecords: toMetric(newRecordsCurrentWindow, newRecordsTrend),
     errorRecords: toMetric(totalErrorRecords, errorRecordsTrend),
+    taxonomy: {
+      entities: {
+        traits: totalTraits,
+        biomes: totalBiomes,
+        species: totalSpecies,
+        ecosystems: totalEcosystems,
+        total: totalTraits + totalBiomes + totalSpecies + totalEcosystems,
+      },
+      relations: {
+        speciesTraits: totalSpeciesTraits,
+        speciesBiomes: totalSpeciesBiomes,
+        ecosystemBiomes: totalEcosystemBiomes,
+        ecosystemSpecies: totalEcosystemSpecies,
+        total: totalSpeciesTraits + totalSpeciesBiomes + totalEcosystemBiomes + totalEcosystemSpecies,
+      },
+      quality: {
+        orphanTraits,
+        orphanBiomes,
+        orphanSpecies,
+        orphanEcosystems,
+      },
+    },
   };
 }
 

@@ -17,22 +17,24 @@ type Props<TData extends { id?: string }> = {
   columnPinning?: ColumnPinningState; onColumnPinningChange?: any;
   getRowId?: (originalRow: TData, index: number) => string;
   pagination?: PaginationState; onPaginationChange?: (pagination: PaginationState) => void;
-  totalCount?: number; onSortingChange?: (sorting: SortingState) => void;
+  totalCount?: number; onSortingChange?: (sorting: SortingState) => void; sorting?: SortingState;
 };
 
 export default function DataTable<TData extends { id?: string }>({
-  data, columns, loading, pageSizeOptions = [10,25,50], density = 'compact', selectable = true,
+  data, columns, loading, pageSizeOptions = [10,20,25,50], density = 'compact', selectable = true,
   rowSelection: extRowSel, onRowSelectionChange: setExtRowSel,
   columnVisibility: extColVis, onColumnVisibilityChange: setExtColVis,
   columnSizing: extColSize, onColumnSizingChange: setExtColSize,
   columnPinning: extColPin, onColumnPinningChange: setExtColPin,
   pagination: extPagination, onPaginationChange,
   totalCount,
+  sorting: extSorting,
   onSortingChange,
   getRowId,
 }: Props<TData>) {
   const { t } = useTranslation('table');
-  const [sorting, setSortingState] = useState<SortingState>([]);
+  const [intSorting, setIntSorting] = useState<SortingState>([]);
+  const sorting = extSorting ?? intSorting;
   const [intPagination, setIntPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: pageSizeOptions[0] });
   const pagination = extPagination ?? intPagination;
   const [intRowSel, setIntRowSel] = useState<RowSelectionState>({}); const rowSelection = extRowSel ?? intRowSel; const setRowSelection = setExtRowSel ?? setIntRowSel;
@@ -41,12 +43,17 @@ export default function DataTable<TData extends { id?: string }>({
   const [intColPin, setIntColPin] = useState<ColumnPinningState>({ left: [], right: [] }); const columnPinning = extColPin ?? intColPin; const setColumnPinning = setExtColPin ?? setIntColPin;
 
   const handleSortingChange = (updater: SortingState | ((prev: SortingState) => SortingState)) => {
-    setSortingState((prev) => {
+    setIntSorting((prev) => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
       onSortingChange?.(next);
       return next;
     });
   };
+
+  useEffect(() => {
+    if (!extSorting) return;
+    setIntSorting(extSorting);
+  }, [extSorting]);
 
   useEffect(() => {
     if (extPagination) {

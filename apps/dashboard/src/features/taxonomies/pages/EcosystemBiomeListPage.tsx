@@ -14,7 +14,7 @@ import {
   type EcosystemBiomeRelation,
 } from '../../../lib/taxonomyRelations';
 
-const DEFAULT_PAGE_SIZE = 25;
+const DEFAULT_PAGE_SIZE = 20;
 const h = createColumnHelper<EcosystemBiomeRelation>();
 
 function parseNumber(value: string | null, fallback: number) {
@@ -36,6 +36,7 @@ export default function EcosystemBiomeListPage() {
   const initialQuery = searchParams.get('q') ?? '';
   const initialPage = parseNumber(searchParams.get('page'), 0);
   const initialPageSize = parseNumber(searchParams.get('pageSize'), DEFAULT_PAGE_SIZE);
+  const initialSort = searchParams.get('sort') ?? '';
 
   const { data: ecosystemsData } = useQuery({
     queryKey: ['ecosystems', 'lookup'],
@@ -123,11 +124,12 @@ export default function EcosystemBiomeListPage() {
   );
 
   const handleStateChange = useCallback(
-    (state: { query: string; page: number; pageSize: number }) => {
+    (state: { query: string; page: number; pageSize: number; sort: string }) => {
       const nextParams = new URLSearchParams();
       if (state.query) nextParams.set('q', state.query);
       if (state.page > 0) nextParams.set('page', String(state.page));
       if (state.pageSize !== DEFAULT_PAGE_SIZE) nextParams.set('pageSize', String(state.pageSize));
+      if (state.sort) nextParams.set('sort', state.sort);
       if (searchParams.toString() === nextParams.toString()) return;
       setSearchParams(nextParams, { replace: true });
     },
@@ -143,6 +145,7 @@ export default function EcosystemBiomeListPage() {
       initialQuery={initialQuery}
       initialPage={initialPage}
       initialPageSize={initialPageSize}
+      initialSort={initialSort}
       autoloadOnMount
       onStateChange={handleStateChange}
       createConfig={{

@@ -1,7 +1,16 @@
 {
-  "appName": "Game",
+  "appName": "Game Database",
   "actions": {
     "add": "Aggiungi",
+    "addRecord": "Nuovo record",
+    "openTraits": "Apri trait",
+    "openBiomes": "Apri biomi",
+    "openSpecies": "Apri specie",
+    "openEcosystems": "Apri ecosistemi",
+    "openSpeciesTraits": "Apri specie-trait",
+    "openSpeciesBiomes": "Apri specie-biomi",
+    "openEcosystemBiomes": "Apri ecosistemi-biomi",
+    "openEcosystemSpecies": "Apri ecosistemi-specie",
     "cancel": "Annulla",
     "save": "Salva",
     "saveChanges": "Salva modifiche",
@@ -29,14 +38,14 @@
     "recordLoadError": "Impossibile caricare il record.",
     "saveError": "Errore durante il salvataggio.",
     "exportError": "Errore export: {{message}}",
-    "created": "Creato con successo",
+    "created": "Creato con successo.",
     "updated": "Record aggiornato con successo.",
     "deleted": "Eliminato con successo.",
     "deleteConfirm": "Sei sicuro di voler eliminare {{name}}?",
     "missingId": "Identificativo mancante."
   },
   "status": {
-    "loading": "Caricamento…"
+    "loading": "Caricamento..."
   },
   "validation": {
     "required": "Campo obbligatorio"
@@ -44,6 +53,6 @@
   "generic": {
     "total": "Totale",
     "any": "(qualsiasi)",
-    "notAvailable": "—"
+    "notAvailable": "-"
   }
 }

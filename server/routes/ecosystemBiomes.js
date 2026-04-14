@@ -1,6 +1,9 @@
 const express = require('express');
 const prisma = require('../db/prisma');
 const { requireTaxonomyWrite } = require('../middleware/permissions');
+const { AppError } = require('../utils/httpErrors');
+const { assertPagination } = require('../utils/validation');
+const { normalizeSearchQuery, normalizeSort, toPagedResult } = require('../utils/pagination');
 
 const router = express.Router();
 
@@ -37,6 +40,35 @@ function buildFilter(query = {}) {
   return where;
 }
 
+const SORTABLE_FIELDS = ['ecosystemId', 'biomeId', 'proportion'];
+const DEFAULT_ORDER_BY = [{ ecosystemId: 'asc' }, { biomeId: 'asc' }];
+
+function buildOrderBy(query = {}) {
+  const primary = normalizeSort(query.sort, { allowedFields: SORTABLE_FIELDS, fallback: null });
+  if (!primary) return DEFAULT_ORDER_BY;
+  const primaryField = Object.keys(primary[0])[0];
+  return [...primary, ...DEFAULT_ORDER_BY.filter(entry => Object.keys(entry)[0] !== primaryField)];
+}
+
+function withSearch(where, query = {}) {
+  const search = normalizeSearchQuery(query);
+  if (!search) return where;
+
+  const or = [
+    { ecosystemId: { contains: search, mode: 'insensitive' } },
+    { biomeId: { contains: search, mode: 'insensitive' } },
+    { notes: { contains: search, mode: 'insensitive' } },
+  ];
+
+  if (!Object.keys(where).length) {
+    return { OR: or };
+  }
+
+  return {
+    AND: [where, { OR: or }],
+  };
+}
+
 async function ensureEcosystemAndBiome(ecosystemId, biomeId) {
   const [ecosystem, biome] = await Promise.all([
     prisma.ecosystem.findUnique({ where: { id: ecosystemId } }),
@@ -54,16 +86,25 @@ async function ensureEcosystemAndBiome(ecosystemId, biomeId) {
 
 router.get('/', async (req, res) => {
   try {
-    const where = buildFilter(req.query);
-    const items = await prisma.ecosystemBiome.findMany({
-      where,
-      orderBy: [
-        { ecosystemId: 'asc' },
-        { biomeId: 'asc' },
-      ],
-    });
-    res.json(items);
+    const { page, pageSize } = assertPagination(req.query);
+    const where = withSearch(buildFilter(req.query), req.query);
+    const orderBy = buildOrderBy(req.query);
+
+    const [total, items] = await Promise.all([
+      prisma.ecosystemBiome.count({ where }),
+      prisma.ecosystemBiome.findMany({
+        where,
+        orderBy,
+        skip: page * pageSize,
+        take: pageSize,
+      }),
+    ]);
+
+    res.json(toPagedResult(items, page, pageSize, total));
   } catch (error) {
+    if (error instanceof AppError) {
+      return res.status(error.status).json({ error: error.message, code: error.code, details: error.details });
+    }
     console.error(error);
     res.status(500).json({ error: 'Internal error' });
   }

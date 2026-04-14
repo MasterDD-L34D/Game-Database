@@ -13,8 +13,9 @@ test.describe('species CRUD', () => {
     const updatedStatus = 'QA';
 
     await page.goto('/species');
+    const main = page.getByRole('main');
 
-    await expect(page.getByRole('heading', { name: 'Specie' })).toBeVisible();
+    await expect(main.getByRole('heading', { name: 'Specie' })).toBeVisible();
     await page.getByRole('button', { name: 'Nuova specie' }).click();
 
     const createDialog = page.getByRole('dialog');

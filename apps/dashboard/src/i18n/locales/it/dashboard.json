@@ -1,8 +1,37 @@
 {
   "metrics": {
     "totalRecords": "Record totali",
-    "newRecords": "Novità",
-    "errorRecords": "Errori"
+    "newRecords": "Nuovi record",
+    "errorRecords": "Record in bozza"
+  },
+  "headings": {
+    "overview": "Panoramica",
+    "title": "Controllo dati tassonomici",
+    "subtitle": "Monitora entità, relazioni e qualità del dataset da un punto unico."
+  },
+  "actions": {
+    "records": "Apri record",
+    "relations": "Apri relazioni",
+    "openModule": "Vai al modulo"
+  },
+  "taxonomy": {
+    "traits": "Trait",
+    "biomes": "Biomi",
+    "species": "Specie",
+    "ecosystems": "Ecosistemi"
+  },
+  "relations": {
+    "speciesTraits": "Relazioni specie-trait",
+    "speciesBiomes": "Relazioni specie-biomi",
+    "ecosystemBiomes": "Relazioni ecosistemi-biomi",
+    "ecosystemSpecies": "Relazioni ecosistemi-specie"
+  },
+  "quality": {
+    "title": "Qualità e completezza",
+    "orphanTraits": "Trait orfani",
+    "orphanBiomes": "Biomi orfani",
+    "orphanSpecies": "Specie orfane",
+    "orphanEcosystems": "Ecosistemi orfani"
   },
   "errors": {
     "loadFailed": "Caricamento statistiche non riuscito."
