@@ -79,6 +79,12 @@ function pickText(...values) {
   return null;
 }
 
+function humanizeIdentifier(value) {
+  if (value == null) return null;
+  const normalized = String(value).trim().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+  return normalized || null;
+}
+
 function safeNumber(value) {
   if (value == null || value === '') return null;
   const numeric = Number(value);
@@ -131,7 +137,28 @@ function expandDomainRecords(domain, filePath, data) {
   if (domain === 'traits') {
     const mapped = extractMapRecords(data, 'traits');
     if (mapped.length) return mapped;
-    if (Array.isArray(data.rules)) return data.rules.flatMap((rule, index) => asArray(rule?.suggest?.traits).map((traitSlug) => ({ slug: traitSlug, sourceRuleIndex: index })));
+    if (Array.isArray(data.rules)) {
+      return data.rules.flatMap((rule, index) =>
+        asArray(rule?.suggest?.traits)
+          .map((rawTrait) => {
+            if (typeof rawTrait === 'string') {
+              return { slug: rawTrait, name: humanizeIdentifier(rawTrait), sourceRuleIndex: index };
+            }
+            if (rawTrait && typeof rawTrait === 'object') {
+              const derivedSlug = pickText(rawTrait.slug, rawTrait.id, rawTrait.key, rawTrait.trait, rawTrait.name, rawTrait.label);
+              if (!derivedSlug) return null;
+              return {
+                ...rawTrait,
+                slug: derivedSlug,
+                name: pickText(rawTrait.name, rawTrait.label, rawTrait.nome, humanizeIdentifier(derivedSlug)),
+                sourceRuleIndex: index,
+              };
+            }
+            return null;
+          })
+          .filter(Boolean),
+      );
+    }
   }
   if (domain === 'biomes') {
     if (Array.isArray(data.biomi)) return data.biomi;
@@ -157,8 +184,9 @@ function expandDomainRecords(domain, filePath, data) {
 
 function normalizeTrait(record) {
   if (!record || typeof record !== 'object') return null;
-  const name = pickText(record.name, record.label, record.label_it, record.label_en, record.nome, record.title, record.trait);
-  const slug = slugify(record.slug || record._id || record.id || record.key || name);
+  const slugSource = pickText(record.slug, record._id, record.id, record.key, record.trait, record.name, record.label, record.label_it, record.label_en, record.nome, record.title);
+  const slug = slugify(slugSource);
+  const name = pickText(record.name, record.label, record.label_it, record.label_en, record.nome, record.title, record.trait, humanizeIdentifier(slugSource), humanizeIdentifier(slug));
   if (!slug || !name) return null;
   const allowedValues = Array.isArray(record.allowedValues || record.valori) ? record.allowedValues || record.valori : null;
   const rangeMin = safeNumber(record.min ?? record.rangeMin ?? record.range?.min ?? record.balance?.min);
@@ -342,11 +370,12 @@ function normalizeEcosystem(record, filePath) {
 }
 
 function createDomainReport(name, files) {
-  return { domain: name, files, read: 0, normalized: 0, upserted: 0, skipped: 0, errors: 0, skippedSamples: [] };
+  return { domain: name, files, read: 0, normalized: 0, complete: 0, partial: 0, upserted: 0, skipped: 0, errors: 0, skippedSamples: [], skipReasons: {} };
 }
 
-function noteSkip(report, message) {
+function noteSkip(report, message, reason = 'unclassified') {
   report.skipped += 1;
+  report.skipReasons[reason] = (report.skipReasons[reason] || 0) + 1;
   if (report.skippedSamples.length < 10) report.skippedSamples.push(message);
   if (verbose) console.log(`[skip:${report.domain}] ${message}`);
 }
@@ -357,6 +386,30 @@ function noteError(report, message) {
   console.error(`[error:${report.domain}] ${message}`);
 }
 
+function assessCompleteness(domain, normalized) {
+  if (!normalized || typeof normalized !== 'object') return 'partial';
+  if (domain === 'traits') {
+    return normalized.description && normalized.category ? 'complete' : 'partial';
+  }
+  if (domain === 'biomes') {
+    return normalized.description && normalized.climate ? 'complete' : 'partial';
+  }
+  if (domain === 'species') {
+    const hasTaxonomy = normalized.family || normalized.genus || normalized.order || normalized.class;
+    return normalized.commonName && normalized.description && hasTaxonomy ? 'complete' : 'partial';
+  }
+  if (domain === 'ecosystems') {
+    return normalized.description && normalized.region && normalized.climate ? 'complete' : 'partial';
+  }
+  return 'partial';
+}
+
+function noteCompleteness(report, domain, normalized) {
+  const bucket = assessCompleteness(domain, normalized);
+  if (bucket === 'complete') report.complete += 1;
+  else report.partial += 1;
+}
+
 async function processTraits(items) {
   const report = createDomainReport('traits', items.length);
   for (const item of items) {
@@ -364,25 +417,45 @@ async function processTraits(items) {
       report.read += 1;
       const normalized = normalizeTrait(record);
       if (!normalized) {
-        noteSkip(report, `${path.basename(item.file)}: trait non normalizzabile`);
+        noteSkip(report, `${path.basename(item.file)}: trait non normalizzabile`, 'trait_non_normalizzabile');
         continue;
       }
       report.normalized += 1;
+      noteCompleteness(report, 'traits', normalized);
       if (verbose) console.log(`Trait: ${normalized.slug}`);
       if (!dryRun) {
         try {
+          const isFallbackNameOnly =
+            slugify(normalized.name) === normalized.slug &&
+            !normalized.description &&
+            !normalized.category &&
+            !normalized.unit &&
+            !(normalized.allowedValues && normalized.allowedValues.length) &&
+            normalized.rangeMin == null &&
+            normalized.rangeMax == null;
+
           await prisma.trait.upsert({
             where: { slug: normalized.slug },
-            create: normalized,
-            update: {
+            create: {
+              slug: normalized.slug,
               name: normalized.name,
-              description: normalized.description,
-              category: normalized.category,
-              unit: normalized.unit,
+              description: normalized.description ?? null,
+              category: normalized.category ?? null,
+              unit: normalized.unit ?? null,
               dataType: normalized.dataType,
-              allowedValues: normalized.allowedValues,
-              rangeMin: normalized.rangeMin,
-              rangeMax: normalized.rangeMax,
+              allowedValues: normalized.allowedValues ?? null,
+              rangeMin: normalized.rangeMin ?? null,
+              rangeMax: normalized.rangeMax ?? null,
+            },
+            update: {
+              name: isFallbackNameOnly ? undefined : normalized.name,
+              description: normalized.description ?? undefined,
+              category: normalized.category ?? undefined,
+              unit: normalized.unit ?? undefined,
+              dataType: normalized.dataType,
+              allowedValues: normalized.allowedValues ?? undefined,
+              rangeMin: normalized.rangeMin ?? undefined,
+              rangeMax: normalized.rangeMax ?? undefined,
             },
           });
         } catch (error) {
@@ -404,10 +477,11 @@ async function processBiomes(items) {
       report.read += 1;
       const normalized = normalizeBiome(record, item.file);
       if (!normalized) {
-        noteSkip(report, `${path.basename(item.file)}: bioma non normalizzabile`);
+        noteSkip(report, `${path.basename(item.file)}: bioma non normalizzabile`, 'bioma_non_normalizzabile');
         continue;
       }
       report.normalized += 1;
+      noteCompleteness(report, 'biomes', normalized);
       if (verbose) console.log(`Biome: ${normalized.slug}`);
       if (!dryRun) {
         try {
@@ -443,15 +517,16 @@ async function processSpecies(items) {
     for (const record of expandDomainRecords('species', item.file, item.data)) {
       report.read += 1;
       if (isEventSpecies(record)) {
-        noteSkip(report, `${path.basename(item.file)}: specie evento ignorata`);
+        noteSkip(report, `${path.basename(item.file)}: specie evento ignorata`, 'specie_evento_ignorata');
         continue;
       }
       const normalized = normalizeSpecies(record);
       if (!normalized) {
-        noteSkip(report, `${path.basename(item.file)}: specie non normalizzabile`);
+        noteSkip(report, `${path.basename(item.file)}: specie non normalizzabile`, 'specie_non_normalizzabile');
         continue;
       }
       report.normalized += 1;
+      noteCompleteness(report, 'species', normalized);
       if (verbose) console.log(`Species: ${normalized.slug}`);
       if (!dryRun) {
         try {
@@ -536,10 +611,11 @@ async function processEcosystems(items) {
       report.read += 1;
       const normalized = normalizeEcosystem(record, item.file);
       if (!normalized) {
-        noteSkip(report, `${path.basename(item.file)}: ecosistema non normalizzabile`);
+        noteSkip(report, `${path.basename(item.file)}: ecosistema non normalizzabile`, 'ecosistema_non_normalizzabile');
         continue;
       }
       report.normalized += 1;
+      noteCompleteness(report, 'ecosystems', normalized);
       if (verbose) console.log(`Ecosystem: ${normalized.slug}`);
       if (!dryRun) {
         try {
@@ -603,6 +679,8 @@ async function main() {
     (acc, report) => {
       acc.totali_letti += report.read;
       acc.normalizzati += report.normalized;
+      acc.completi += report.complete;
+      acc.parziali += report.partial;
       acc.aggiornati_o_upsertati += report.upserted;
       acc.scartati += report.skipped;
       acc.errori += report.errors;
@@ -610,14 +688,17 @@ async function main() {
         files: report.files,
         letti: report.read,
         normalizzati: report.normalized,
+        completi: report.complete,
+        parziali: report.partial,
         aggiornati: report.upserted,
         scartati: report.skipped,
         errori: report.errors,
+        motivi_scarto: report.skipReasons,
         esempi_scarti: report.skippedSamples,
       };
       return acc;
     },
-    { mode: dryRun ? 'dry-run' : 'import', repo: repoRoot, totali_letti: 0, normalizzati: 0, aggiornati_o_upsertati: 0, scartati: 0, errori: 0, dettaglio: {} },
+    { mode: dryRun ? 'dry-run' : 'import', repo: repoRoot, totali_letti: 0, normalizzati: 0, completi: 0, parziali: 0, aggiornati_o_upsertati: 0, scartati: 0, errori: 0, dettaglio: {} },
   );
   console.log(JSON.stringify(summary, null, 2));
 }

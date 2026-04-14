@@ -62,10 +62,18 @@ L'importer produce un report JSON con:
 
 - `totali_letti`
 - `normalizzati`
+- `completi`
+- `parziali`
 - `aggiornati_o_upsertati`
 - `scartati`
 - `errori`
 - `dettaglio` per dominio (`traits`, `biomes`, `species`, `ecosystems`)
+
+Nel dettaglio per dominio sono inclusi anche:
+
+- `completi` / `parziali`
+- `motivi_scarto` con conteggio per causa
+- `esempi_scarti` (sample sintetico)
 
 Questo report vale sia in `dry-run` sia in import reale.
 
