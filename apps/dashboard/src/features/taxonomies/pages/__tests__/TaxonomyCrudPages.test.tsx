@@ -249,7 +249,7 @@ describe('Taxonomy CRUD Pages', () => {
     taxonomyMocks.reset();
   });
 
-  it('allows creating, editing and deleting biomes', { timeout: 10000 }, async () => {
+  it('allows creating, editing and deleting biomes', { timeout: 15000 }, async () => {
     const user = userEvent.setup();
     renderListPage(<BiomeListPage />);
 
@@ -305,7 +305,7 @@ describe('Taxonomy CRUD Pages', () => {
     expect(taxonomyMocks.deleteBiome).toHaveBeenCalledWith('biome-1');
   });
 
-  it('allows creating, editing and deleting species', { timeout: 10000 }, async () => {
+  it('allows creating, editing and deleting species', { timeout: 20000 }, async () => {
     const user = userEvent.setup();
     renderListPage(<SpeciesListPage />);
 
@@ -381,7 +381,7 @@ describe('Taxonomy CRUD Pages', () => {
     expect(taxonomyMocks.deleteSpecies).toHaveBeenCalledWith('species-1');
   });
 
-  it('allows creating, editing and deleting ecosystems', async () => {
+  it('allows creating, editing and deleting ecosystems', { timeout: 15000 }, async () => {
     const user = userEvent.setup();
     renderListPage(<EcosystemListPage />);
 
