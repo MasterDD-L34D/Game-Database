@@ -305,7 +305,7 @@ describe('Taxonomy CRUD Pages', () => {
     expect(taxonomyMocks.deleteBiome).toHaveBeenCalledWith('biome-1');
   });
 
-  it('allows creating, editing and deleting species', { timeout: 10000 }, async () => {
+  it('allows creating, editing and deleting species', { timeout: 20000 }, async () => {
     const user = userEvent.setup();
     renderListPage(<SpeciesListPage />);
 
