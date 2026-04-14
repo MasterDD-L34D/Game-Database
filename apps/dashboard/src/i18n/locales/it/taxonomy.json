@@ -1,4 +1,7 @@
 {
+  "detail": {
+    "empty": "Nessuna relazione disponibile."
+  },
   "biomes": {
     "title": "Biomi",
     "columns": {

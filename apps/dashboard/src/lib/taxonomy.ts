@@ -54,18 +54,38 @@ export const listTraits = (q = '', page=0, pageSize=25) => fetchJSON<Paged<Trait
 export const listBiomes = (q = '', page=0, pageSize=25) => fetchJSON<Paged<Biome>>(`/biomes?q=${encodeURIComponent(q)}&page=${page}&pageSize=${pageSize}`);
 export const listSpecies = (q = '', page=0, pageSize=25) => fetchJSON<Paged<Species>>(`/species?q=${encodeURIComponent(q)}&page=${page}&pageSize=${pageSize}`);
 export const listEcosystems = (q = '', page=0, pageSize=25) => fetchJSON<Paged<Ecosystem>>(`/ecosystems?q=${encodeURIComponent(q)}&page=${page}&pageSize=${pageSize}`);
+export const getTrait = (id: string) => fetchJSON<Trait>(`/traits/${id}`);
+export const getBiome = (id: string) => fetchJSON<Biome>(`/biomes/${id}`);
+export const getSpecies = (id: string) => fetchJSON<Species>(`/species/${id}`);
+export const getEcosystem = (id: string) => fetchJSON<Ecosystem>(`/ecosystems/${id}`);
 
-export async function listAllTraits(q = '', pageSize = 100) {
-  const items: Trait[] = [];
+async function listAllWithPager<T>(fetchPage: (page: number, pageSize: number) => Promise<Paged<T>>, pageSize = 100) {
+  const items: T[] = [];
   let page = 0;
   let total = 0;
   do {
-    const response = await listTraits(q, page, pageSize);
+    const response = await fetchPage(page, pageSize);
     items.push(...response.items);
     total = response.total;
     page += 1;
   } while (items.length < total);
   return items;
+}
+
+export async function listAllTraits(q = '', pageSize = 100) {
+  return listAllWithPager((page, localPageSize) => listTraits(q, page, localPageSize), pageSize);
+}
+
+export async function listAllBiomes(q = '', pageSize = 100) {
+  return listAllWithPager((page, localPageSize) => listBiomes(q, page, localPageSize), pageSize);
+}
+
+export async function listAllSpecies(q = '', pageSize = 100) {
+  return listAllWithPager((page, localPageSize) => listSpecies(q, page, localPageSize), pageSize);
+}
+
+export async function listAllEcosystems(q = '', pageSize = 100) {
+  return listAllWithPager((page, localPageSize) => listEcosystems(q, page, localPageSize), pageSize);
 }
 
 export type TraitInput = Omit<Trait, 'id'>;

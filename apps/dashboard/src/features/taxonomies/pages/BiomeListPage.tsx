@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { ColumnDef, createColumnHelper } from '@tanstack/react-table';
-import { useSearchParams } from 'react-router-dom';
+import { Link as MuiLink } from '@mui/material';
+import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import ListPage from '../../../pages/ListPage';
@@ -27,7 +28,14 @@ export default function BiomeListPage() {
 
   const columns = useMemo<ColumnDef<Biome, any>[]>(
     () => [
-      h.accessor('name', { header: t('biomes.columns.name'), cell: (i) => i.getValue() }),
+      h.accessor('name', {
+        header: t('biomes.columns.name'),
+        cell: (i) => (
+          <MuiLink component={RouterLink} to={`/biomes/${i.row.original.id}`}>
+            {i.getValue()}
+          </MuiLink>
+        ),
+      }),
       h.accessor('slug', { header: t('biomes.columns.slug'), cell: (i) => i.getValue() }),
       h.accessor('climate', { header: t('biomes.columns.climate'), cell: (i) => i.getValue() ?? '' }),
       h.accessor('description', { header: t('biomes.columns.description'), cell: (i) => i.getValue() ?? '' }),
