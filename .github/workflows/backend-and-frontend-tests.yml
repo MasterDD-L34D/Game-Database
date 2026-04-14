@@ -31,4 +31,4 @@ jobs:
         run: npm ci
       - name: Run dashboard targeted tests
         working-directory: apps/dashboard
-        run: npm test -- --run src/features/records/components/__tests__/RecordTable.test.tsx src/features/records/pages/__tests__/RecordDetailsPage.test.tsx src/features/records/pages/__tests__/RecordEditPage.test.tsx src/features/taxonomies/pages/__tests__/TraitListPage.test.tsx src/features/taxonomies/pages/__tests__/TaxonomyCrudPages.test.tsx src/features/taxonomies/pages/__tests__/TaxonomyDetailsPages.test.tsx src/components/data-table/__tests__/DataTable.test.tsx
+        run: npm test -- --run src/features/records/components/__tests__/RecordTable.test.tsx src/features/records/pages/__tests__/RecordDetailsPage.test.tsx src/features/records/pages/__tests__/RecordEditPage.test.tsx src/features/taxonomies/pages/__tests__/TraitListPage.test.tsx src/features/taxonomies/pages/__tests__/TaxonomyCrudPages.test.tsx src/features/taxonomies/pages/__tests__/TaxonomyDetailsPages.test.tsx src/features/taxonomies/pages/__tests__/TaxonomyRelationPages.test.tsx src/components/data-table/__tests__/DataTable.test.tsx

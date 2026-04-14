@@ -103,10 +103,10 @@ npm test -- --run src/features/records/components/__tests__/RecordTable.test.tsx
 | Biome | ✅ `server/test/taxonomyRouters.test.js` | ✅ `TaxonomyCrudPages.test.tsx` | ✅ smoke + CRUD live |
 | Species | ✅ `server/test/taxonomyRouters.test.js` | ✅ `TaxonomyCrudPages.test.tsx` | ✅ CRUD live |
 | Ecosystem | ✅ `server/test/taxonomyRouters.test.js` | ✅ `TaxonomyCrudPages.test.tsx` | ✅ CRUD live |
-| Species traits | ✅ `server/test/speciesTraits.test.js` | ⏳ non ancora coperto | ✅ CRUD live |
-| Species biomes | ✅ `server/test/speciesBiomes.test.js` | ⏳ non ancora coperto | ✅ CRUD live |
-| Ecosystem biomes | ✅ `server/test/ecosystemBiomes.test.js` | ⏳ non ancora coperto | ✅ CRUD live |
-| Ecosystem species | ✅ `server/test/ecosystemSpecies.test.js` | ⏳ non ancora coperto | ✅ CRUD live |
+| Species traits | ✅ `server/test/speciesTraits.test.js` | ✅ `TaxonomyRelationPages.test.tsx` | ✅ CRUD live |
+| Species biomes | ✅ `server/test/speciesBiomes.test.js` | ✅ `TaxonomyRelationPages.test.tsx` | ✅ CRUD live |
+| Ecosystem biomes | ✅ `server/test/ecosystemBiomes.test.js` | ✅ `TaxonomyRelationPages.test.tsx` | ✅ CRUD live |
+| Ecosystem species | ✅ `server/test/ecosystemSpecies.test.js` | ✅ `TaxonomyRelationPages.test.tsx` | ✅ CRUD live |
 
 Legenda:
 - `✅` verificato
