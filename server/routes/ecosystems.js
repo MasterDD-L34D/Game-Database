@@ -29,6 +29,35 @@ async function fetchPaginatedEcosystems(req) {
   return { items, page, pageSize, total };
 }
 
+async function fetchEcosystemDetail(identifier, res) {
+  const item = await findExistingByIdOrSlug(prisma.ecosystem, identifier, res);
+  if (!item) return null;
+
+  const [biomes, species] = await Promise.all([
+    prisma.ecosystemBiome.findMany({ where: { ecosystemId: item.id }, orderBy: [{ biomeId: 'asc' }] }),
+    prisma.ecosystemSpecies.findMany({ where: { ecosystemId: item.id }, orderBy: [{ role: 'asc' }, { speciesId: 'asc' }] }),
+  ]);
+
+  const biomeIds = [...new Set(biomes.map((entry) => entry.biomeId).filter(Boolean))];
+  const speciesIds = [...new Set(species.map((entry) => entry.speciesId).filter(Boolean))];
+  const [biomeRecords, speciesRecords] = await Promise.all([
+    biomeIds.length ? prisma.biome.findMany({ where: { id: { in: biomeIds } }, orderBy: { name: 'asc' } }) : [],
+    speciesIds.length ? prisma.species.findMany({ where: { id: { in: speciesIds } }, orderBy: { scientificName: 'asc' } }) : [],
+  ]);
+  const biomesById = new Map(biomeRecords.map((entry) => [entry.id, entry]));
+  const speciesById = new Map(speciesRecords.map((entry) => [entry.id, entry]));
+
+  return {
+    ...item,
+    biomes: biomes.map((entry) => ({ ...entry, biome: biomesById.get(entry.biomeId) ?? null })),
+    species: species.map((entry) => ({ ...entry, species: speciesById.get(entry.speciesId) ?? null })),
+    relationCounts: {
+      biomes: biomes.length,
+      species: species.length,
+    },
+  };
+}
+
 function normalizeSlug(input) {
   if (!input) return '';
   return input.toString().trim().toLowerCase().replace(/\s+/g, '-');
@@ -50,7 +79,7 @@ router.get('/', async (req, res) => {
 });
 
 router.get('/:id', async (req, res) => {
-  const item = await findExistingByIdOrSlug(prisma.ecosystem, req.params.id, res);
+  const item = await fetchEcosystemDetail(req.params.id, res);
   if (!item) return;
   res.json(item);
 });

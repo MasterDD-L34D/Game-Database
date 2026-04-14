@@ -63,6 +63,8 @@ L'importer produce un report JSON con:
 - `totali_letti`
 - `normalizzati`
 - `aggiornati_o_upsertati`
+- `importati_completi`
+- `importati_parziali`
 - `scartati`
 - `errori`
 - `dettaglio` per dominio (`traits`, `biomes`, `species`, `ecosystems`)
@@ -75,3 +77,5 @@ Questo report vale sia in `dry-run` sia in import reale.
 - Il popolamento reale dei cataloghi passa dall'import del repository `Game`.
 - Il parser è tollerante verso shape eterogenee (`traits` come mappa, `biomi` in italiano, YAML `*.biome` / `*.ecosystem`).
 - I record evento vengono esclusi dal dominio `species` per evitare rumore nella tassonomia principale.
+- I meta-record aggregati non consultabili vengono scartati e, se gia presenti nel DB, rimossi durante l'import reale.
+- Le descrizioni `i18n:` delle specie vengono convertite in riassunti diagnostici leggibili quando il sorgente non fornisce un testo narrativo.

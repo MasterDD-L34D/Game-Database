@@ -13,6 +13,9 @@ function normalizeSlug(value, fallback) {
 }
 
 function matchesValue(record, key, condition) {
+  if (condition && typeof condition === 'object' && Array.isArray(condition.in)) {
+    return condition.in.includes(record[key]);
+  }
   if (condition && typeof condition === 'object' && 'contains' in condition) {
     const recordValue = (record[key] ?? '').toString().toLowerCase();
     return recordValue.includes(condition.contains.toString().toLowerCase());
@@ -72,6 +75,10 @@ function createTaxonomyTestContext() {
     trait: new Map(),
     biome: new Map(),
     ecosystem: new Map(),
+    speciesTrait: new Map(),
+    speciesBiome: new Map(),
+    ecosystemBiome: new Map(),
+    ecosystemSpecies: new Map(),
   };
 
   const counters = {
@@ -79,6 +86,10 @@ function createTaxonomyTestContext() {
     trait: 1,
     biome: 1,
     ecosystem: 1,
+    speciesTrait: 1,
+    speciesBiome: 1,
+    ecosystemBiome: 1,
+    ecosystemSpecies: 1,
   };
 
   const original = {
@@ -105,6 +116,18 @@ function createTaxonomyTestContext() {
       findMany: prisma.ecosystem?.findMany,
       findFirst: prisma.ecosystem?.findFirst,
       findUnique: prisma.ecosystem?.findUnique,
+    },
+    speciesTrait: {
+      findMany: prisma.speciesTrait?.findMany,
+    },
+    speciesBiome: {
+      findMany: prisma.speciesBiome?.findMany,
+    },
+    ecosystemBiome: {
+      findMany: prisma.ecosystemBiome?.findMany,
+    },
+    ecosystemSpecies: {
+      findMany: prisma.ecosystemSpecies?.findMany,
     },
   };
 
@@ -193,6 +216,66 @@ function createTaxonomyTestContext() {
     return clone(record);
   }
 
+  function createSpeciesTrait(data = {}) {
+    const id = data.id ?? nextId('speciesTrait');
+    const record = {
+      id,
+      speciesId: data.speciesId ?? createSpecies().id,
+      traitId: data.traitId ?? createTrait().id,
+      value: data.value ?? null,
+      num: data.num ?? null,
+      bool: data.bool ?? null,
+      text: data.text ?? null,
+      category: data.category ?? null,
+      unit: data.unit ?? null,
+      source: data.source ?? null,
+      confidence: data.confidence ?? null,
+    };
+    stores.speciesTrait.set(id, clone(record));
+    return clone(record);
+  }
+
+  function createSpeciesBiome(data = {}) {
+    const id = data.id ?? nextId('speciesBiome');
+    const record = {
+      id,
+      speciesId: data.speciesId ?? createSpecies().id,
+      biomeId: data.biomeId ?? createBiome().id,
+      presence: data.presence ?? 'resident',
+      abundance: data.abundance ?? null,
+      notes: data.notes ?? null,
+    };
+    stores.speciesBiome.set(id, clone(record));
+    return clone(record);
+  }
+
+  function createEcosystemBiome(data = {}) {
+    const id = data.id ?? nextId('ecosystemBiome');
+    const record = {
+      id,
+      ecosystemId: data.ecosystemId ?? createEcosystem().id,
+      biomeId: data.biomeId ?? createBiome().id,
+      proportion: data.proportion ?? null,
+      notes: data.notes ?? null,
+    };
+    stores.ecosystemBiome.set(id, clone(record));
+    return clone(record);
+  }
+
+  function createEcosystemSpecies(data = {}) {
+    const id = data.id ?? nextId('ecosystemSpecies');
+    const record = {
+      id,
+      ecosystemId: data.ecosystemId ?? createEcosystem().id,
+      speciesId: data.speciesId ?? createSpecies().id,
+      role: data.role ?? 'common',
+      abundance: data.abundance ?? null,
+      notes: data.notes ?? null,
+    };
+    stores.ecosystemSpecies.set(id, clone(record));
+    return clone(record);
+  }
+
   function createModelMock(model, store, defaultOrderKey) {
     prisma[model].count = async ({ where } = {}) => filterRecords(store, where).length;
     prisma[model].findMany = async ({ where, skip = 0, take, orderBy } = {}) => {
@@ -226,6 +309,10 @@ function createTaxonomyTestContext() {
     createModelMock('trait', stores.trait, 'name');
     createModelMock('biome', stores.biome, 'name');
     createModelMock('ecosystem', stores.ecosystem, 'name');
+    prisma.speciesTrait.findMany = async ({ where, orderBy } = {}) => applyOrder(filterRecords(stores.speciesTrait, where), orderBy).map(clone);
+    prisma.speciesBiome.findMany = async ({ where, orderBy } = {}) => applyOrder(filterRecords(stores.speciesBiome, where), orderBy).map(clone);
+    prisma.ecosystemBiome.findMany = async ({ where, orderBy } = {}) => applyOrder(filterRecords(stores.ecosystemBiome, where), orderBy).map(clone);
+    prisma.ecosystemSpecies.findMany = async ({ where, orderBy } = {}) => applyOrder(filterRecords(stores.ecosystemSpecies, where), orderBy).map(clone);
   }
 
   function restore() {
@@ -248,6 +335,10 @@ function createTaxonomyTestContext() {
     if (original.ecosystem.findMany) prisma.ecosystem.findMany = original.ecosystem.findMany;
     if (original.ecosystem.findFirst) prisma.ecosystem.findFirst = original.ecosystem.findFirst;
     if (original.ecosystem.findUnique) prisma.ecosystem.findUnique = original.ecosystem.findUnique;
+    if (original.speciesTrait.findMany) prisma.speciesTrait.findMany = original.speciesTrait.findMany;
+    if (original.speciesBiome.findMany) prisma.speciesBiome.findMany = original.speciesBiome.findMany;
+    if (original.ecosystemBiome.findMany) prisma.ecosystemBiome.findMany = original.ecosystemBiome.findMany;
+    if (original.ecosystemSpecies.findMany) prisma.ecosystemSpecies.findMany = original.ecosystemSpecies.findMany;
   }
 
   function reset() {
@@ -259,6 +350,14 @@ function createTaxonomyTestContext() {
     counters.trait = 1;
     counters.biome = 1;
     counters.ecosystem = 1;
+    counters.speciesTrait = 1;
+    counters.speciesBiome = 1;
+    counters.ecosystemBiome = 1;
+    counters.ecosystemSpecies = 1;
+    stores.speciesTrait.clear();
+    stores.speciesBiome.clear();
+    stores.ecosystemBiome.clear();
+    stores.ecosystemSpecies.clear();
   }
 
   return {
@@ -269,6 +368,10 @@ function createTaxonomyTestContext() {
     createTrait,
     createBiome,
     createEcosystem,
+    createSpeciesTrait,
+    createSpeciesBiome,
+    createEcosystemBiome,
+    createEcosystemSpecies,
   };
 }
 

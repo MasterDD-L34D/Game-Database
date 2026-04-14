@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { ColumnDef, createColumnHelper } from '@tanstack/react-table';
 import { useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import ListPage from '../../../pages/ListPage';
@@ -27,7 +28,10 @@ export default function EcosystemListPage() {
 
   const columns = useMemo<ColumnDef<Ecosystem, any>[]>(
     () => [
-      h.accessor('name', { header: t('ecosystems.columns.name'), cell: (i) => i.getValue() }),
+      h.accessor('name', {
+        header: t('ecosystems.columns.name'),
+        cell: (i) => <Link to={`/ecosystems/${i.row.original.slug}`}>{i.getValue()}</Link>,
+      }),
       h.accessor('region', { header: t('ecosystems.columns.region'), cell: (i) => i.getValue() ?? '' }),
       h.accessor('climate', { header: t('ecosystems.columns.climate'), cell: (i) => i.getValue() ?? '' }),
       h.accessor('description', { header: t('ecosystems.columns.description'), cell: (i) => i.getValue() ?? '' }),
