@@ -132,15 +132,18 @@ IMPORT REPORT
 CONTEGGI
 - totali_letti: <n file/record sorgente>
 - normalizzati: <n>
+- completi: <n>
+- parziali: <n>
 - aggiornati_o_upsertati: <n>
 - scartati: <n>
 - errori: <n>
 
 DETTAGLIO PER DOMINIO
-- traits: letti=<n> normalizzati=<n> aggiornati=<n> scartati=<n> errori=<n>
-- biomes: letti=<n> normalizzati=<n> aggiornati=<n> scartati=<n> errori=<n>
-- species: letti=<n> normalizzati=<n> aggiornati=<n> scartati=<n> errori=<n>
-- ecosystems: letti=<n> normalizzati=<n> aggiornati=<n> scartati=<n> errori=<n>
+- traits: letti=<n> normalizzati=<n> completi=<n> parziali=<n> aggiornati=<n> scartati=<n> errori=<n>
+- biomes: letti=<n> normalizzati=<n> completi=<n> parziali=<n> aggiornati=<n> scartati=<n> errori=<n>
+- species: letti=<n> normalizzati=<n> completi=<n> parziali=<n> aggiornati=<n> scartati=<n> errori=<n>
+- ecosystems: letti=<n> normalizzati=<n> completi=<n> parziali=<n> aggiornati=<n> scartati=<n> errori=<n>
+- motivi_scarto: mappa causa->conteggio
 
 NOTE
 - anomalie_rilevate: <testo libero>
