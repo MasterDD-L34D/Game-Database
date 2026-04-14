@@ -47,6 +47,15 @@ type Paged<T> = {
   total: number;
 };
 
+function toQueryString(params: Record<string, string | number | null | undefined>) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') return;
+    query.set(key, String(value));
+  });
+  return query.toString();
+}
+
 function paginateLocally<T>(items: T[], page = 0, pageSize = 25, q = '', fields: (keyof T)[] = []): Paged<T> {
   const query = q.trim().toLowerCase();
   const filtered = !query
@@ -78,9 +87,21 @@ export async function listSpeciesTraits(q = '', page = 0, pageSize = 25) {
   ]);
 }
 
+export async function getSpeciesTraits(filters: { speciesId?: string; traitId?: string; category?: string } = {}) {
+  const qs = toQueryString(filters);
+  const path = qs ? `/species-traits?${qs}` : '/species-traits';
+  return fetchJSON<SpeciesTraitRelation[]>(path);
+}
+
 export async function listSpeciesBiomes(q = '', page = 0, pageSize = 25) {
   const items = await fetchJSON<SpeciesBiomeRelation[]>('/species-biomes');
   return paginateLocally(items, page, pageSize, q, ['speciesId', 'biomeId', 'presence', 'notes']);
+}
+
+export async function getSpeciesBiomes(filters: { speciesId?: string; biomeId?: string; presence?: string } = {}) {
+  const qs = toQueryString(filters);
+  const path = qs ? `/species-biomes?${qs}` : '/species-biomes';
+  return fetchJSON<SpeciesBiomeRelation[]>(path);
 }
 
 export async function listEcosystemBiomes(q = '', page = 0, pageSize = 25) {
@@ -88,9 +109,21 @@ export async function listEcosystemBiomes(q = '', page = 0, pageSize = 25) {
   return paginateLocally(items, page, pageSize, q, ['ecosystemId', 'biomeId', 'notes']);
 }
 
+export async function getEcosystemBiomes(filters: { ecosystemId?: string; biomeId?: string } = {}) {
+  const qs = toQueryString(filters);
+  const path = qs ? `/ecosystem-biomes?${qs}` : '/ecosystem-biomes';
+  return fetchJSON<EcosystemBiomeRelation[]>(path);
+}
+
 export async function listEcosystemSpecies(q = '', page = 0, pageSize = 25) {
   const items = await fetchJSON<EcosystemSpeciesRelation[]>('/ecosystem-species');
   return paginateLocally(items, page, pageSize, q, ['ecosystemId', 'speciesId', 'role', 'notes']);
+}
+
+export async function getEcosystemSpecies(filters: { ecosystemId?: string; speciesId?: string; role?: string } = {}) {
+  const qs = toQueryString(filters);
+  const path = qs ? `/ecosystem-species?${qs}` : '/ecosystem-species';
+  return fetchJSON<EcosystemSpeciesRelation[]>(path);
 }
 
 export const createSpeciesTrait = (body: Omit<SpeciesTraitRelation, 'id'>) =>

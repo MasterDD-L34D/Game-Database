@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { ColumnDef, createColumnHelper } from '@tanstack/react-table';
-import { useSearchParams } from 'react-router-dom';
+import { Link as MuiLink } from '@mui/material';
+import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import ListPage from '../../../pages/ListPage';
@@ -27,7 +28,14 @@ export default function TraitListPage() {
 
   const columns = useMemo<ColumnDef<Trait, any>[]>(
     () => [
-      h.accessor('name', { header: t('traits.columns.name'), cell: (i) => i.getValue() }),
+      h.accessor('name', {
+        header: t('traits.columns.name'),
+        cell: (i) => (
+          <MuiLink component={RouterLink} to={`/traits/${i.row.original.id}`}>
+            {i.getValue()}
+          </MuiLink>
+        ),
+      }),
       h.accessor('slug', { header: t('traits.columns.slug'), cell: (i) => i.getValue() }),
       h.accessor('category', { header: t('traits.columns.category'), cell: (i) => i.getValue() ?? '' }),
       h.accessor('dataType', { header: t('traits.columns.dataType'), cell: (i) => i.getValue() }),
