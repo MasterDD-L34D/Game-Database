@@ -1,0 +1,71 @@
+# Unified dev compose: Game + Game-Database
+# Usage: docker compose -f docker-compose.dev.yml up -d
+# Requires: ../Game repo cloned alongside this repo
+
+services:
+  db-game:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: game
+      POSTGRES_PASSWORD: game
+      POSTGRES_DB: game
+      TZ: UTC
+    ports: ["5432:5432"]
+    volumes: ["pgdata-game:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U game -d game"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  db-game-database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: game
+      TZ: UTC
+    ports: ["5433:5432"]
+    volumes: ["pgdata-game-database:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d game"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  game-backend:
+    image: node:20
+    working_dir: /app
+    command: ["bash", "-c", "npm install --prefer-offline && npm run dev:setup 2>/dev/null; npm run start:api"]
+    environment:
+      DATABASE_URL: postgresql://game:game@db-game:5432/game?schema=public
+      PORT: 3334
+      HOST: 0.0.0.0
+      GAME_DATABASE_ENABLED: "true"
+      GAME_DATABASE_URL: http://game-database-backend:3333
+    volumes:
+      - ../Game:/app
+    ports: ["3334:3334"]
+    depends_on:
+      db-game:
+        condition: service_healthy
+
+  game-database-backend:
+    image: node:18-bullseye
+    working_dir: /app
+    command: ["bash", "-c", "npm install --prefer-offline && npm run dev:setup 2>/dev/null; npm run dev"]
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db-game-database:5432/game?schema=public
+      PORT: 3333
+      HOST: 0.0.0.0
+      GAME_INVALIDATE_URL: http://game-backend:3334/api/catalog/invalidate
+    volumes:
+      - ./server:/app
+    ports: ["3333:3333"]
+    depends_on:
+      db-game-database:
+        condition: service_healthy
+
+volumes:
+  pgdata-game:
+  pgdata-game-database:

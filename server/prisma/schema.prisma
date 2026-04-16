@@ -127,6 +127,18 @@ model Trait {
   allowedValues Json?
   rangeMin      Float?
   rangeMax      Float?
+  tier                      String?
+  familyType                String?
+  energyMaintenance         String?
+  slotProfile               Json?
+  usageTags                 Json?
+  synergies                 Json?
+  conflicts                 Json?
+  environmentalRequirements Json?
+  inducedMutation           String?
+  functionalUse             String?
+  selectiveDrive            String?
+  weakness                  String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -134,37 +146,56 @@ model Trait {
 }
 
 model Biome {
-  id          String   @id @default(cuid())
-  slug        String   @unique
-  name        String
-  description String?
-  climate     String?
-  parentId    String?
-  parent      Biome?   @relation("BiomeChildren", fields: [parentId], references: [id])
-  children    Biome[]  @relation("BiomeChildren")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  name           String
+  description    String?
+  climate        String?
+  parentId       String?
+  parent         Biome?   @relation("BiomeChildren", fields: [parentId], references: [id])
+  children       Biome[]  @relation("BiomeChildren")
+  summary        String?
+  climateTags    Json?
+  hazard         Json?
+  ecology        Json?
+  roleTemplates  Json?
+  sizeMin        Int?
+  sizeMax        Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   species     SpeciesBiome[]
   ecosystems  EcosystemBiome[]
 }
 
 model Species {
-  id             String        @id @default(cuid())
-  slug           String        @unique
-  scientificName String
-  commonName     String?
-  kingdom        String?
-  phylum         String?
-  class          String?
-  order          String?
-  family         String?
-  genus          String?
-  epithet        String?
-  status         String?
-  description    String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  id                  String        @id @default(cuid())
+  slug                String        @unique
+  scientificName      String
+  commonName          String?
+  kingdom             String?
+  phylum              String?
+  class               String?
+  order               String?
+  family              String?
+  genus               String?
+  epithet             String?
+  status              String?
+  description         String?
+  displayName         String?
+  trophicRole         String?
+  functionalTags      Json?
+  flags               Json?
+  balance             Json?
+  playableUnit        Boolean?
+  morphotype          String?
+  vcCoefficients      Json?
+  spawnRules          Json?
+  environmentAffinity Json?
+  jobsBias            Json?
+  telemetry           Json?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
 
   traits         SpeciesTrait[]
   biomes         SpeciesBiome[]

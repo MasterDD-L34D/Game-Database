@@ -6,12 +6,49 @@ const matter = require('gray-matter');
 const yaml = require('js-yaml');
 const { parse: parseCsv } = require('csv-parse/sync');
 const { PrismaClient } = require('@prisma/client');
+const Ajv = require('ajv');
 
 const prisma = new PrismaClient();
+const ajv = new Ajv({ allErrors: true, coerceTypes: false });
 const args = process.argv.slice(2);
 const ROLE_VALUES = ['keystone', 'dominant', 'engineer', 'common', 'invasive', 'other'];
 const PRESENCE_VALUES = ['resident', 'migrant', 'introduced', 'endemic', 'unknown'];
 const TRAIT_TYPES = ['BOOLEAN', 'NUMERIC', 'CATEGORICAL', 'TEXT'];
+const BATCH_SIZE = 50;
+
+const validateNormalizedTrait = ajv.compile({
+  type: 'object',
+  required: ['slug', 'name', 'dataType'],
+  properties: {
+    slug: { type: 'string', minLength: 1 },
+    name: { type: 'string', minLength: 1 },
+    dataType: { type: 'string', enum: TRAIT_TYPES },
+  },
+});
+const validateNormalizedBiome = ajv.compile({
+  type: 'object',
+  required: ['slug', 'name'],
+  properties: {
+    slug: { type: 'string', minLength: 1 },
+    name: { type: 'string', minLength: 1 },
+  },
+});
+const validateNormalizedSpecies = ajv.compile({
+  type: 'object',
+  required: ['slug', 'scientificName'],
+  properties: {
+    slug: { type: 'string', minLength: 1 },
+    scientificName: { type: 'string', minLength: 1 },
+  },
+});
+const validateNormalizedEcosystem = ajv.compile({
+  type: 'object',
+  required: ['slug', 'name'],
+  properties: {
+    slug: { type: 'string', minLength: 1 },
+    name: { type: 'string', minLength: 1 },
+  },
+});
 
 function arg(name, def) {
   const index = args.indexOf(`--${name}`);
@@ -242,6 +279,9 @@ function normalizeTrait(record) {
     else if (typeof record.default === 'boolean') dataType = 'BOOLEAN';
     else dataType = 'TEXT';
   }
+  const usageTags = asArray(record.usage_tags || record.tags).filter(Boolean);
+  const synergies = asArray(record.sinergie || record.synergies).filter(Boolean);
+  const conflicts = asArray(record.conflitti || record.conflicts).filter(Boolean);
   return {
     slug,
     name,
@@ -252,6 +292,36 @@ function normalizeTrait(record) {
     allowedValues,
     rangeMin,
     rangeMax,
+    tier: pickText(record.tier),
+    familyType: pickText(record.famiglia_tipologia, record.familyType),
+    energyMaintenance: pickText(record.fattore_mantenimento_energetico, record.energyMaintenance),
+    slotProfile: record.slot_profile && typeof record.slot_profile === 'object' ? record.slot_profile : null,
+    usageTags: usageTags.length ? usageTags : null,
+    synergies: synergies.length ? synergies : null,
+    conflicts: conflicts.length ? conflicts : null,
+    environmentalRequirements: Array.isArray(record.requisiti_ambientali) ? record.requisiti_ambientali : null,
+    inducedMutation: pickText(record.mutazione_indotta, record.inducedMutation),
+    functionalUse: pickText(record.uso_funzione, record.functionalUse),
+    selectiveDrive: pickText(record.spinta_selettiva, record.selectiveDrive),
+    weakness: pickText(record.debolezza, record.weakness),
+  };
+}
+
+function extractBiomeRichFields(record) {
+  const ecosystem = record.ecosistema || record;
+  const climateTags = asArray(ecosystem.climate_tags || record.climate_tags).filter(Boolean);
+  const hazardRaw = ecosystem.hazard || record.hazard;
+  const ecologyRaw = ecosystem.ecology || ecosystem.ecologia || record.ecology;
+  const roleTemplatesRaw = asArray(ecosystem.role_templates || record.role_templates).filter(Boolean);
+  const size = ecosystem.size || record.size;
+  return {
+    summary: pickText(ecosystem.summary, record.summary),
+    climateTags: climateTags.length ? climateTags : null,
+    hazard: hazardRaw && typeof hazardRaw === 'object' ? hazardRaw : null,
+    ecology: ecologyRaw && typeof ecologyRaw === 'object' ? ecologyRaw : null,
+    roleTemplates: roleTemplatesRaw.length ? roleTemplatesRaw : null,
+    sizeMin: safeNumber(size?.min),
+    sizeMax: safeNumber(size?.max),
   };
 }
 
@@ -268,6 +338,7 @@ function normalizeBiome(record, filePath) {
       description: buildBiomeDescription(record),
       climate: summarizeClimate(ecosystem.clima || ecosystem.climate),
       parentSlug: null,
+      ...extractBiomeRichFields(record),
     };
   }
   const slug = slugify(record.slug || record._id || record.id || record.network_id || record.label || record.name);
@@ -279,6 +350,7 @@ function normalizeBiome(record, filePath) {
     description: buildBiomeDescription(record),
     climate: summarizeClimate(record.climate || record.clima || record.profile) || pickText(record.biome_profile),
     parentSlug: null,
+    ...extractBiomeRichFields(record),
   };
 }
 
@@ -364,6 +436,18 @@ function normalizeSpecies(record) {
     epithet: pickText(record.epithet, record.species, record.specie, record.taxonomy?.epithet, record.taxonomy?.species, inferredTaxonomy.epithet),
     status: pickText(record.status, record.iucn, record.flags?.category, derivedStatus),
     description: buildSpeciesDescription(record, scientificName),
+    displayName: pickText(record.display_name, record.displayName),
+    trophicRole: pickText(record.role_trofico, record.trophicRole),
+    functionalTags: asArray(record.functional_tags || record.functionalTags).filter(Boolean) || null,
+    flags: record.flags && typeof record.flags === 'object' ? record.flags : null,
+    balance: record.balance && typeof record.balance === 'object' ? record.balance : null,
+    playableUnit: typeof record.playable_unit === 'boolean' ? record.playable_unit : (typeof record.playableUnit === 'boolean' ? record.playableUnit : null),
+    morphotype: pickText(record.morphotype),
+    vcCoefficients: record.vc && typeof record.vc === 'object' ? record.vc : null,
+    spawnRules: record.spawn_rules && typeof record.spawn_rules === 'object' ? record.spawn_rules : null,
+    environmentAffinity: record.environment_affinity && typeof record.environment_affinity === 'object' ? record.environment_affinity : null,
+    jobsBias: asArray(record.jobs_bias || record.jobsBias).filter(Boolean) || null,
+    telemetry: record.telemetry && typeof record.telemetry === 'object' ? record.telemetry : null,
     traits: collectSpeciesTraits(record),
     biomes,
   };
@@ -458,8 +542,130 @@ function noteCompleteness(report, domain, normalized) {
   else report.partial += 1;
 }
 
+function buildTraitUpsertArgs(normalized) {
+  const isFallbackNameOnly =
+    slugify(normalized.name) === normalized.slug &&
+    !normalized.description &&
+    !normalized.category &&
+    !normalized.unit &&
+    !(normalized.allowedValues && normalized.allowedValues.length) &&
+    normalized.rangeMin == null &&
+    normalized.rangeMax == null;
+  const richCreate = {
+    tier: normalized.tier ?? null,
+    familyType: normalized.familyType ?? null,
+    energyMaintenance: normalized.energyMaintenance ?? null,
+    slotProfile: normalized.slotProfile ?? undefined,
+    usageTags: normalized.usageTags ?? undefined,
+    synergies: normalized.synergies ?? undefined,
+    conflicts: normalized.conflicts ?? undefined,
+    environmentalRequirements: normalized.environmentalRequirements ?? undefined,
+    inducedMutation: normalized.inducedMutation ?? null,
+    functionalUse: normalized.functionalUse ?? null,
+    selectiveDrive: normalized.selectiveDrive ?? null,
+    weakness: normalized.weakness ?? null,
+  };
+  const richUpdate = {
+    tier: normalized.tier ?? undefined,
+    familyType: normalized.familyType ?? undefined,
+    energyMaintenance: normalized.energyMaintenance ?? undefined,
+    slotProfile: normalized.slotProfile ?? undefined,
+    usageTags: normalized.usageTags ?? undefined,
+    synergies: normalized.synergies ?? undefined,
+    conflicts: normalized.conflicts ?? undefined,
+    environmentalRequirements: normalized.environmentalRequirements ?? undefined,
+    inducedMutation: normalized.inducedMutation ?? undefined,
+    functionalUse: normalized.functionalUse ?? undefined,
+    selectiveDrive: normalized.selectiveDrive ?? undefined,
+    weakness: normalized.weakness ?? undefined,
+  };
+  return prisma.trait.upsert({
+    where: { slug: normalized.slug },
+    create: {
+      slug: normalized.slug,
+      name: normalized.name,
+      description: normalized.description ?? null,
+      category: normalized.category ?? null,
+      unit: normalized.unit ?? null,
+      dataType: normalized.dataType,
+      allowedValues: normalized.allowedValues ?? null,
+      rangeMin: normalized.rangeMin ?? null,
+      rangeMax: normalized.rangeMax ?? null,
+      ...richCreate,
+    },
+    update: {
+      name: isFallbackNameOnly ? undefined : normalized.name,
+      description: normalized.description ?? undefined,
+      category: normalized.category ?? undefined,
+      unit: normalized.unit ?? undefined,
+      dataType: normalized.dataType,
+      allowedValues: normalized.allowedValues ?? undefined,
+      rangeMin: normalized.rangeMin ?? undefined,
+      rangeMax: normalized.rangeMax ?? undefined,
+      ...richUpdate,
+    },
+  });
+}
+
+function buildBiomeUpsertArgs(normalized) {
+  return prisma.biome.upsert({
+    where: { slug: normalized.slug },
+    create: {
+      slug: normalized.slug, name: normalized.name, description: normalized.description, climate: normalized.climate,
+      summary: normalized.summary ?? null, climateTags: normalized.climateTags ?? undefined,
+      hazard: normalized.hazard ?? undefined, ecology: normalized.ecology ?? undefined,
+      roleTemplates: normalized.roleTemplates ?? undefined,
+      sizeMin: normalized.sizeMin ?? null, sizeMax: normalized.sizeMax ?? null,
+    },
+    update: {
+      name: normalized.name, description: normalized.description, climate: normalized.climate,
+      summary: normalized.summary ?? undefined, climateTags: normalized.climateTags ?? undefined,
+      hazard: normalized.hazard ?? undefined, ecology: normalized.ecology ?? undefined,
+      roleTemplates: normalized.roleTemplates ?? undefined,
+      sizeMin: normalized.sizeMin ?? undefined, sizeMax: normalized.sizeMax ?? undefined,
+    },
+  });
+}
+
+function buildSpeciesUpsertArgs(normalized) {
+  return prisma.species.upsert({
+    where: { slug: normalized.slug },
+    create: {
+      slug: normalized.slug, scientificName: normalized.scientificName,
+      commonName: normalized.commonName, kingdom: normalized.kingdom, phylum: normalized.phylum,
+      class: normalized.class, order: normalized.order, family: normalized.family,
+      genus: normalized.genus, epithet: normalized.epithet,
+      status: normalized.status, description: normalized.description,
+      displayName: normalized.displayName ?? null, trophicRole: normalized.trophicRole ?? null,
+      functionalTags: normalized.functionalTags?.length ? normalized.functionalTags : undefined,
+      flags: normalized.flags ?? undefined, balance: normalized.balance ?? undefined,
+      playableUnit: normalized.playableUnit ?? null, morphotype: normalized.morphotype ?? null,
+      vcCoefficients: normalized.vcCoefficients ?? undefined, spawnRules: normalized.spawnRules ?? undefined,
+      environmentAffinity: normalized.environmentAffinity ?? undefined,
+      jobsBias: normalized.jobsBias?.length ? normalized.jobsBias : undefined,
+      telemetry: normalized.telemetry ?? undefined,
+    },
+    update: {
+      scientificName: normalized.scientificName, commonName: normalized.commonName,
+      kingdom: normalized.kingdom, phylum: normalized.phylum, class: normalized.class,
+      order: normalized.order, family: normalized.family, genus: normalized.genus,
+      epithet: normalized.epithet, status: normalized.status, description: normalized.description,
+      displayName: normalized.displayName ?? undefined, trophicRole: normalized.trophicRole ?? undefined,
+      functionalTags: normalized.functionalTags?.length ? normalized.functionalTags : undefined,
+      flags: normalized.flags ?? undefined, balance: normalized.balance ?? undefined,
+      playableUnit: normalized.playableUnit ?? undefined, morphotype: normalized.morphotype ?? undefined,
+      vcCoefficients: normalized.vcCoefficients ?? undefined, spawnRules: normalized.spawnRules ?? undefined,
+      environmentAffinity: normalized.environmentAffinity ?? undefined,
+      jobsBias: normalized.jobsBias?.length ? normalized.jobsBias : undefined,
+      telemetry: normalized.telemetry ?? undefined,
+    },
+  });
+}
+
 async function processTraits(items) {
+  const t0 = performance.now();
   const report = createDomainReport('traits', items.length);
+  const pending = [];
   for (const item of items) {
     for (const record of expandDomainRecords('traits', item.file, item.data)) {
       report.read += 1;
@@ -468,57 +674,47 @@ async function processTraits(items) {
         noteSkip(report, `${path.basename(item.file)}: trait non normalizzabile`, 'trait_non_normalizzabile');
         continue;
       }
+      if (!validateNormalizedTrait(normalized)) {
+        noteSkip(report, `${path.basename(item.file)}: ${normalized.slug || '?'} schema validation failed`, 'schema_validation');
+        continue;
+      }
       report.normalized += 1;
       noteCompleteness(report, 'traits', normalized);
       if (verbose) console.log(`Trait: ${normalized.slug}`);
-      if (!dryRun) {
-        try {
-          const isFallbackNameOnly =
-            slugify(normalized.name) === normalized.slug &&
-            !normalized.description &&
-            !normalized.category &&
-            !normalized.unit &&
-            !(normalized.allowedValues && normalized.allowedValues.length) &&
-            normalized.rangeMin == null &&
-            normalized.rangeMax == null;
-
-          await prisma.trait.upsert({
-            where: { slug: normalized.slug },
-            create: {
-              slug: normalized.slug,
-              name: normalized.name,
-              description: normalized.description ?? null,
-              category: normalized.category ?? null,
-              unit: normalized.unit ?? null,
-              dataType: normalized.dataType,
-              allowedValues: normalized.allowedValues ?? null,
-              rangeMin: normalized.rangeMin ?? null,
-              rangeMax: normalized.rangeMax ?? null,
-            },
-            update: {
-              name: isFallbackNameOnly ? undefined : normalized.name,
-              description: normalized.description ?? undefined,
-              category: normalized.category ?? undefined,
-              unit: normalized.unit ?? undefined,
-              dataType: normalized.dataType,
-              allowedValues: normalized.allowedValues ?? undefined,
-              rangeMin: normalized.rangeMin ?? undefined,
-              rangeMax: normalized.rangeMax ?? undefined,
-            },
-          });
-        } catch (error) {
-          noteError(report, `${normalized.slug}: ${error.message}`);
-          continue;
-        }
-      }
-      report.upserted += 1;
+      pending.push(normalized);
     }
   }
+  if (!dryRun) {
+    for (let i = 0; i < pending.length; i += BATCH_SIZE) {
+      const batch = pending.slice(i, i + BATCH_SIZE);
+      try {
+        await prisma.$transaction(batch.map(buildTraitUpsertArgs));
+        report.upserted += batch.length;
+      } catch (error) {
+        for (const normalized of batch) {
+          try {
+            await buildTraitUpsertArgs(normalized);
+            report.upserted += 1;
+          } catch (innerError) {
+            noteError(report, `${normalized.slug}: ${innerError.message}`);
+          }
+        }
+      }
+      if (verbose && pending.length > BATCH_SIZE) {
+        console.log(`[progress:traits] ${Math.min(i + BATCH_SIZE, pending.length)}/${pending.length} records`);
+      }
+    }
+  } else {
+    report.upserted = pending.length;
+  }
+  report.elapsed_ms = Math.round(performance.now() - t0);
   return report;
 }
 
 async function processBiomes(items) {
+  const t0 = performance.now();
   const report = createDomainReport('biomes', items.length);
+  const pending = [];
   const parentLinks = [];
   for (const item of items) {
     for (const record of expandDomainRecords('biomes', item.file, item.data)) {
@@ -528,26 +724,40 @@ async function processBiomes(items) {
         noteSkip(report, `${path.basename(item.file)}: bioma non normalizzabile`, 'bioma_non_normalizzabile');
         continue;
       }
+      if (!validateNormalizedBiome(normalized)) {
+        noteSkip(report, `${path.basename(item.file)}: ${normalized.slug || '?'} schema validation failed`, 'schema_validation');
+        continue;
+      }
       report.normalized += 1;
       noteCompleteness(report, 'biomes', normalized);
       if (verbose) console.log(`Biome: ${normalized.slug}`);
-      if (!dryRun) {
-        try {
-          await prisma.biome.upsert({
-            where: { slug: normalized.slug },
-            create: { slug: normalized.slug, name: normalized.name, description: normalized.description, climate: normalized.climate },
-            update: { name: normalized.name, description: normalized.description, climate: normalized.climate },
-          });
-          if (normalized.parentSlug) parentLinks.push(normalized);
-        } catch (error) {
-          noteError(report, `${normalized.slug}: ${error.message}`);
-          continue;
-        }
-      }
-      report.upserted += 1;
+      pending.push(normalized);
     }
   }
   if (!dryRun) {
+    for (let i = 0; i < pending.length; i += BATCH_SIZE) {
+      const batch = pending.slice(i, i + BATCH_SIZE);
+      try {
+        await prisma.$transaction(batch.map(buildBiomeUpsertArgs));
+        report.upserted += batch.length;
+        for (const normalized of batch) {
+          if (normalized.parentSlug) parentLinks.push(normalized);
+        }
+      } catch (error) {
+        for (const normalized of batch) {
+          try {
+            await buildBiomeUpsertArgs(normalized);
+            report.upserted += 1;
+            if (normalized.parentSlug) parentLinks.push(normalized);
+          } catch (innerError) {
+            noteError(report, `${normalized.slug}: ${innerError.message}`);
+          }
+        }
+      }
+      if (verbose && pending.length > BATCH_SIZE) {
+        console.log(`[progress:biomes] ${Math.min(i + BATCH_SIZE, pending.length)}/${pending.length} records`);
+      }
+    }
     for (const normalized of parentLinks) {
       const parent = await prisma.biome.findUnique({ where: { slug: normalized.parentSlug } });
       const current = await prisma.biome.findUnique({ where: { slug: normalized.slug } });
@@ -555,12 +765,17 @@ async function processBiomes(items) {
         await prisma.biome.update({ where: { id: current.id }, data: { parentId: parent.id } });
       }
     }
+  } else {
+    report.upserted = pending.length;
   }
+  report.elapsed_ms = Math.round(performance.now() - t0);
   return report;
 }
 
 async function processSpecies(items) {
+  const t0 = performance.now();
   const report = createDomainReport('species', items.length);
+  const pending = [];
   for (const item of items) {
     for (const record of expandDomainRecords('species', item.file, item.data)) {
       report.read += 1;
@@ -573,87 +788,94 @@ async function processSpecies(items) {
         noteSkip(report, `${path.basename(item.file)}: specie non normalizzabile`, 'specie_non_normalizzabile');
         continue;
       }
+      if (!validateNormalizedSpecies(normalized)) {
+        noteSkip(report, `${path.basename(item.file)}: ${normalized.slug || '?'} schema validation failed`, 'schema_validation');
+        continue;
+      }
       report.normalized += 1;
       noteCompleteness(report, 'species', normalized);
       if (verbose) console.log(`Species: ${normalized.slug}`);
-      if (!dryRun) {
-        try {
-          const species = await prisma.species.upsert({
-            where: { slug: normalized.slug },
-            create: {
-              slug: normalized.slug,
-              scientificName: normalized.scientificName,
-              commonName: normalized.commonName,
-              kingdom: normalized.kingdom,
-              phylum: normalized.phylum,
-              class: normalized.class,
-              order: normalized.order,
-              family: normalized.family,
-              genus: normalized.genus,
-              epithet: normalized.epithet,
-              status: normalized.status,
-              description: normalized.description,
-            },
-            update: {
-              scientificName: normalized.scientificName,
-              commonName: normalized.commonName,
-              kingdom: normalized.kingdom,
-              phylum: normalized.phylum,
-              class: normalized.class,
-              order: normalized.order,
-              family: normalized.family,
-              genus: normalized.genus,
-              epithet: normalized.epithet,
-              status: normalized.status,
-              description: normalized.description,
-            },
-          });
-          for (const traitValue of normalized.traits) {
-            const trait = await prisma.trait.upsert({
-              where: { slug: traitValue.traitSlug },
-              create: { slug: traitValue.traitSlug, name: traitValue.traitName, dataType: traitValue.kind || 'TEXT', category: traitValue.category || null },
-              update: { name: traitValue.traitName, category: traitValue.category || undefined },
-            });
-            const payload = {
-              speciesId: species.id,
-              traitId: trait.id,
-              unit: traitValue.unit || null,
-              category: traitValue.category || null,
-              source: traitValue.source || null,
-              confidence: traitValue.confidence ?? null,
-              value: traitValue.value != null ? traitValue.value : null,
-              num: typeof traitValue.value === 'number' ? traitValue.value : null,
-              bool: typeof traitValue.value === 'boolean' ? traitValue.value : null,
-              text: typeof traitValue.value === 'string' ? traitValue.value : null,
-            };
-            await prisma.speciesTrait.upsert({
-              where: { speciesId_traitId_category: { speciesId: species.id, traitId: trait.id, category: payload.category } },
-              create: payload,
-              update: payload,
-            });
-          }
-          for (const biomeEntry of normalized.biomes) {
-            if (!biomeEntry.biomeSlug) continue;
-            const biome = await prisma.biome.upsert({ where: { slug: biomeEntry.biomeSlug }, create: { slug: biomeEntry.biomeSlug, name: biomeEntry.biomeSlug }, update: {} });
-            await prisma.speciesBiome.upsert({
-              where: { speciesId_biomeId: { speciesId: species.id, biomeId: biome.id } },
-              create: { speciesId: species.id, biomeId: biome.id, presence: biomeEntry.presence || 'resident', abundance: biomeEntry.abundance },
-              update: { presence: biomeEntry.presence || 'resident', abundance: biomeEntry.abundance },
-            });
-          }
-        } catch (error) {
-          noteError(report, `${normalized.slug}: ${error.message}`);
-          continue;
-        }
-      }
-      report.upserted += 1;
+      pending.push(normalized);
     }
   }
+  if (!dryRun) {
+    // Phase A: batch upsert species master records
+    for (let i = 0; i < pending.length; i += BATCH_SIZE) {
+      const batch = pending.slice(i, i + BATCH_SIZE);
+      try {
+        const results = await prisma.$transaction(batch.map(buildSpeciesUpsertArgs));
+        for (let j = 0; j < batch.length; j++) {
+          batch[j]._resolvedId = results[j].id;
+        }
+        report.upserted += batch.length;
+      } catch (error) {
+        for (const normalized of batch) {
+          try {
+            const result = await buildSpeciesUpsertArgs(normalized);
+            normalized._resolvedId = result.id;
+            report.upserted += 1;
+          } catch (innerError) {
+            noteError(report, `${normalized.slug}: ${innerError.message}`);
+          }
+        }
+      }
+      if (verbose && pending.length > BATCH_SIZE) {
+        console.log(`[progress:species] ${Math.min(i + BATCH_SIZE, pending.length)}/${pending.length} master records`);
+      }
+    }
+    // Phase B: junction records (traits + biomes) per species
+    for (const normalized of pending) {
+      if (!normalized._resolvedId) continue;
+      const speciesId = normalized._resolvedId;
+      try {
+        for (const traitValue of normalized.traits) {
+          const trait = await prisma.trait.upsert({
+            where: { slug: traitValue.traitSlug },
+            create: { slug: traitValue.traitSlug, name: traitValue.traitName, dataType: traitValue.kind || 'TEXT', category: traitValue.category || null },
+            update: { name: traitValue.traitName, category: traitValue.category || undefined },
+          });
+          const payload = {
+            speciesId,
+            traitId: trait.id,
+            unit: traitValue.unit || null,
+            category: traitValue.category || null,
+            source: traitValue.source || null,
+            confidence: traitValue.confidence ?? null,
+            value: traitValue.value != null ? traitValue.value : null,
+            num: typeof traitValue.value === 'number' ? traitValue.value : null,
+            bool: typeof traitValue.value === 'boolean' ? traitValue.value : null,
+            text: typeof traitValue.value === 'string' ? traitValue.value : null,
+          };
+          await prisma.speciesTrait.upsert({
+            where: { speciesId_traitId_category: { speciesId, traitId: trait.id, category: payload.category } },
+            create: payload,
+            update: payload,
+          });
+        }
+        for (const biomeEntry of normalized.biomes) {
+          if (!biomeEntry.biomeSlug) continue;
+          const biome = await prisma.biome.upsert({ where: { slug: biomeEntry.biomeSlug }, create: { slug: biomeEntry.biomeSlug, name: biomeEntry.biomeSlug }, update: {} });
+          await prisma.speciesBiome.upsert({
+            where: { speciesId_biomeId: { speciesId, biomeId: biome.id } },
+            create: { speciesId, biomeId: biome.id, presence: biomeEntry.presence || 'resident', abundance: biomeEntry.abundance },
+            update: { presence: biomeEntry.presence || 'resident', abundance: biomeEntry.abundance },
+          });
+        }
+      } catch (error) {
+        noteError(report, `${normalized.slug} junctions: ${error.message}`);
+      }
+    }
+  } else {
+    report.upserted = pending.length;
+  }
+  report.elapsed_ms = Math.round(performance.now() - t0);
   return report;
 }
 
 async function processEcosystems(items) {
+  const t0 = performance.now();
   const report = createDomainReport('ecosystems', items.length);
+  const pending = [];
   for (const item of items) {
     for (const record of expandDomainRecords('ecosystems', item.file, item.data)) {
       report.read += 1;
@@ -662,47 +884,90 @@ async function processEcosystems(items) {
         noteSkip(report, `${path.basename(item.file)}: ecosistema non normalizzabile`, 'ecosistema_non_normalizzabile');
         continue;
       }
+      if (!validateNormalizedEcosystem(normalized)) {
+        noteSkip(report, `${path.basename(item.file)}: ${normalized.slug || '?'} schema validation failed`, 'schema_validation');
+        continue;
+      }
       report.normalized += 1;
       noteCompleteness(report, 'ecosystems', normalized);
       if (verbose) console.log(`Ecosystem: ${normalized.slug}`);
-      if (!dryRun) {
-        try {
-          const ecosystem = await prisma.ecosystem.upsert({
-            where: { slug: normalized.slug },
-            create: { slug: normalized.slug, name: normalized.name, description: normalized.description, region: normalized.region, climate: normalized.climate },
-            update: { name: normalized.name, description: normalized.description, region: normalized.region, climate: normalized.climate },
-          });
-          for (const biomeEntry of normalized.biomes) {
-            if (!biomeEntry.biomeSlug) continue;
-            const biome = await prisma.biome.upsert({ where: { slug: biomeEntry.biomeSlug }, create: { slug: biomeEntry.biomeSlug, name: biomeEntry.notes || biomeEntry.biomeSlug }, update: {} });
-            await prisma.ecosystemBiome.upsert({
-              where: { ecosystemId_biomeId: { ecosystemId: ecosystem.id, biomeId: biome.id } },
-              create: { ecosystemId: ecosystem.id, biomeId: biome.id, proportion: biomeEntry.proportion, notes: biomeEntry.notes || null },
-              update: { proportion: biomeEntry.proportion, notes: biomeEntry.notes || null },
-            });
-          }
-          for (const speciesEntry of normalized.species) {
-            if (!speciesEntry.speciesSlug) continue;
-            const species = await prisma.species.upsert({ where: { slug: speciesEntry.speciesSlug }, create: { slug: speciesEntry.speciesSlug, scientificName: speciesEntry.speciesSlug }, update: {} });
-            const role = ROLE_VALUES.includes(speciesEntry.role) ? speciesEntry.role : 'common';
-            await prisma.ecosystemSpecies.upsert({
-              where: { ecosystemId_speciesId_role: { ecosystemId: ecosystem.id, speciesId: species.id, role } },
-              create: { ecosystemId: ecosystem.id, speciesId: species.id, role, abundance: speciesEntry.abundance, notes: speciesEntry.notes || null },
-              update: { abundance: speciesEntry.abundance, notes: speciesEntry.notes || null },
-            });
-          }
-        } catch (error) {
-          noteError(report, `${normalized.slug}: ${error.message}`);
-          continue;
-        }
-      }
-      report.upserted += 1;
+      pending.push(normalized);
     }
   }
+  if (!dryRun) {
+    // Phase A: batch upsert ecosystem master records
+    for (let i = 0; i < pending.length; i += BATCH_SIZE) {
+      const batch = pending.slice(i, i + BATCH_SIZE);
+      try {
+        const results = await prisma.$transaction(
+          batch.map((normalized) =>
+            prisma.ecosystem.upsert({
+              where: { slug: normalized.slug },
+              create: { slug: normalized.slug, name: normalized.name, description: normalized.description, region: normalized.region, climate: normalized.climate },
+              update: { name: normalized.name, description: normalized.description, region: normalized.region, climate: normalized.climate },
+            }),
+          ),
+        );
+        for (let j = 0; j < batch.length; j++) {
+          batch[j]._resolvedId = results[j].id;
+        }
+        report.upserted += batch.length;
+      } catch (error) {
+        for (const normalized of batch) {
+          try {
+            const ecosystem = await prisma.ecosystem.upsert({
+              where: { slug: normalized.slug },
+              create: { slug: normalized.slug, name: normalized.name, description: normalized.description, region: normalized.region, climate: normalized.climate },
+              update: { name: normalized.name, description: normalized.description, region: normalized.region, climate: normalized.climate },
+            });
+            normalized._resolvedId = ecosystem.id;
+            report.upserted += 1;
+          } catch (innerError) {
+            noteError(report, `${normalized.slug}: ${innerError.message}`);
+          }
+        }
+      }
+      if (verbose && pending.length > BATCH_SIZE) {
+        console.log(`[progress:ecosystems] ${Math.min(i + BATCH_SIZE, pending.length)}/${pending.length} master records`);
+      }
+    }
+    // Phase B: junction records (biomes + species) per ecosystem
+    for (const normalized of pending) {
+      if (!normalized._resolvedId) continue;
+      const ecosystemId = normalized._resolvedId;
+      try {
+        for (const biomeEntry of normalized.biomes) {
+          if (!biomeEntry.biomeSlug) continue;
+          const biome = await prisma.biome.upsert({ where: { slug: biomeEntry.biomeSlug }, create: { slug: biomeEntry.biomeSlug, name: biomeEntry.notes || biomeEntry.biomeSlug }, update: {} });
+          await prisma.ecosystemBiome.upsert({
+            where: { ecosystemId_biomeId: { ecosystemId, biomeId: biome.id } },
+            create: { ecosystemId, biomeId: biome.id, proportion: biomeEntry.proportion, notes: biomeEntry.notes || null },
+            update: { proportion: biomeEntry.proportion, notes: biomeEntry.notes || null },
+          });
+        }
+        for (const speciesEntry of normalized.species) {
+          if (!speciesEntry.speciesSlug) continue;
+          const species = await prisma.species.upsert({ where: { slug: speciesEntry.speciesSlug }, create: { slug: speciesEntry.speciesSlug, scientificName: speciesEntry.speciesSlug }, update: {} });
+          const role = ROLE_VALUES.includes(speciesEntry.role) ? speciesEntry.role : 'common';
+          await prisma.ecosystemSpecies.upsert({
+            where: { ecosystemId_speciesId_role: { ecosystemId, speciesId: species.id, role } },
+            create: { ecosystemId, speciesId: species.id, role, abundance: speciesEntry.abundance, notes: speciesEntry.notes || null },
+            update: { abundance: speciesEntry.abundance, notes: speciesEntry.notes || null },
+          });
+        }
+      } catch (error) {
+        noteError(report, `${normalized.slug} junctions: ${error.message}`);
+      }
+    }
+  } else {
+    report.upserted = pending.length;
+  }
+  report.elapsed_ms = Math.round(performance.now() - t0);
   return report;
 }
 
 async function main() {
+  const mainT0 = performance.now();
   const config = configPath ? JSON.parse(fs.readFileSync(configPath, 'utf-8')) : defaultConfig;
   console.log(`Repo: ${repoRoot}${dryRun ? ' (dry-run)' : ''}`);
   const globOptions = {
@@ -741,6 +1006,7 @@ async function main() {
         aggiornati: report.upserted,
         scartati: report.skipped,
         errori: report.errors,
+        elapsed_ms: report.elapsed_ms || 0,
         motivi_scarto: report.skipReasons,
         esempi_scarti: report.skippedSamples,
       };
@@ -748,6 +1014,7 @@ async function main() {
     },
     { mode: dryRun ? 'dry-run' : 'import', repo: repoRoot, totali_letti: 0, normalizzati: 0, completi: 0, parziali: 0, aggiornati_o_upsertati: 0, scartati: 0, errori: 0, dettaglio: {} },
   );
+  summary.elapsed_ms = Math.round(performance.now() - mainT0);
   console.log(JSON.stringify(summary, null, 2));
 }
 

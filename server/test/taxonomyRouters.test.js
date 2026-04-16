@@ -82,6 +82,30 @@ test('GET /api/traits/:id resolves slugs', async () => {
   }
 });
 
+test('GET /api/traits/glossary returns all traits in glossary format', async () => {
+  taxonomy.reset();
+  taxonomy.createTrait({ name: 'Ali Ioniche', slug: 'ali-ioniche', dataType: 'TEXT', description: 'Volo ionico' });
+  taxonomy.createTrait({ name: 'Coda Frusta', slug: 'coda-frusta', dataType: 'NUMERIC', description: 'Attacco coda' });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/traits/glossary`);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.ok(Array.isArray(body.traits));
+    assert.equal(body.traits.length, 2);
+    const first = body.traits[0];
+    assert.ok(first._id, 'glossary entry must have _id');
+    assert.ok(first.labels && first.labels.it, 'glossary entry must have labels.it');
+    assert.ok(first.descriptions, 'glossary entry must have descriptions');
+    const ali = body.traits.find(t => t._id === 'ali-ioniche');
+    assert.equal(ali.labels.it, 'Ali Ioniche');
+    assert.equal(ali.descriptions.it, 'Volo ionico');
+  } finally {
+    await closeServer(server);
+  }
+});
+
 test('GET /api/biomes returns paginated biomes', async () => {
   taxonomy.reset();
   taxonomy.createBiome({ name: 'Temperate Forest' });

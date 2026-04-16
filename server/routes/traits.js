@@ -10,6 +10,17 @@ const router = express.Router();
 
 const ALLOWED_DATA_TYPES = ['BOOLEAN', 'NUMERIC', 'CATEGORICAL', 'TEXT'];
 
+const GAME_INVALIDATE_URL = process.env.GAME_INVALIDATE_URL || '';
+const GAME_INVALIDATE_TOKEN = process.env.GAME_INVALIDATE_TOKEN || '';
+
+function notifyGameCacheInvalidation() {
+  if (!GAME_INVALIDATE_URL) return;
+  const headers = { 'Content-Type': 'application/json' };
+  if (GAME_INVALIDATE_TOKEN) headers.Authorization = `Bearer ${GAME_INVALIDATE_TOKEN}`;
+  fetch(GAME_INVALIDATE_URL, { method: 'POST', headers, signal: AbortSignal.timeout(5000) })
+    .catch((err) => console.warn('[game-invalidate] fire-and-forget failed:', err.message));
+}
+
 function buildWhere(req) {
   const q = (req.query.q || '').trim();
   return q
@@ -96,6 +107,23 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/glossary', async (req, res) => {
+  try {
+    const allTraits = await prisma.trait.findMany({
+      select: { slug: true, name: true, description: true },
+      orderBy: { name: 'asc' },
+    });
+    const traits = allTraits.map((t) => ({
+      _id: t.slug,
+      labels: { it: t.name, en: t.name },
+      descriptions: { it: t.description || null, en: t.description || null },
+    }));
+    return res.json({ traits });
+  } catch (error) {
+    return handleError(res, error);
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const id = assertIdParam(req.params);
@@ -123,6 +151,7 @@ router.post('/', requireTaxonomyWrite, async (req, res) => {
     });
 
     await logAudit(req, 'Trait', created.id, 'CREATE', created);
+    notifyGameCacheInvalidation();
     const payload = await fetchPaginatedTraits(req);
     return res.status(201).json(payload);
   } catch (error) {
@@ -155,6 +184,7 @@ router.put('/:id', requireTaxonomyWrite, async (req, res) => {
     });
 
     await logAudit(req, 'Trait', updated.id, 'UPDATE', req.body);
+    notifyGameCacheInvalidation();
     const payload = await fetchPaginatedTraits(req);
     return res.json(payload);
   } catch (error) {
@@ -170,6 +200,7 @@ router.delete('/:id', requireTaxonomyWrite, async (req, res) => {
 
     await prisma.trait.delete({ where: { id: existing.id } });
     await logAudit(req, 'Trait', existing.id, 'DELETE', existing);
+    notifyGameCacheInvalidation();
 
     const payload = await fetchPaginatedTraits(req);
     return res.json(payload);

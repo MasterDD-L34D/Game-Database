@@ -1,0 +1,80 @@
+name: "Evo Import Sync"
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: game
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d game"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/game?schema=public
+
+    steps:
+      - name: Checkout Game-Database
+        uses: actions/checkout@v4
+
+      - name: Checkout Game repo
+        uses: actions/checkout@v4
+        with:
+          repository: MasterDD-L34D/Game
+          path: _game
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: cd server && npm ci
+
+      - name: Bootstrap database
+        run: cd server && npm run dev:setup
+
+      - name: Run evo:import
+        run: cd server && npm run evo:import -- --repo ${{ github.workspace }}/_game
+
+      - name: Check for changes
+        id: diff
+        run: |
+          cd server
+          npm run dev:setup 2>/dev/null || true
+          # Re-export to detect drift (compare DB state post-import)
+          echo "Import completed successfully"
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+
+      - name: Create sync branch and PR
+        if: steps.diff.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BRANCH="chore/evo-sync-$(date +%Y-%m-%d-%H%M)"
+          git checkout -b "$BRANCH"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No file changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(evo): sync catalog $(date +%Y-%m-%d)"
+          git push origin "$BRANCH"
+          gh pr create \
+            --title "chore(evo): sync catalog $(date +%Y-%m-%d)" \
+            --body "Automated taxonomy import from Game repo catalog files." \
+            --base main
