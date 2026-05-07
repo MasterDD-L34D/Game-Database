@@ -1,5 +1,5 @@
 # Game – Data Management Dashboard
-- **Repository**: https://github.com/pvdvreede/Game-Database
+- **Repository**: https://github.com/MasterDD-L34D/Game-Database
 - **Tecnologie principali**: PostgreSQL 15, Prisma ORM, Express API, React Dashboard (Vite + MUI + Tailwind)
 
 ## Obiettivo e dominio
@@ -41,4 +41,3 @@
 
 ## Questioni aperte / TODO
 - Documentare eventuali ruoli custom oltre al default.
-- Aggiornare il riferimento repository se viene pubblicato sotto un'organizzazione differente.
