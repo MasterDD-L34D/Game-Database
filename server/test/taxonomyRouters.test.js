@@ -413,3 +413,81 @@ test('DELETE /api/species/:id removes existing species', async () => {
     await closeServer(server);
   }
 });
+
+
+test('PUT /api/ecosystems/:id updates an existing ecosystem', async () => {
+  taxonomy.reset();
+  const eco = taxonomy.createEcosystem({ name: 'Old Name', description: 'Old Description' });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/ecosystems/${eco.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ name: 'New Name', description: 'New Description' }),
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.id, eco.id);
+    assert.equal(body.name, 'New Name');
+    assert.equal(body.description, 'New Description');
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('PUT /api/ecosystems/:id returns 409 for slug conflict', async () => {
+  taxonomy.reset();
+  taxonomy.createEcosystem({ name: 'Ecosystem One', slug: 'eco-1' });
+  const eco2 = taxonomy.createEcosystem({ name: 'Ecosystem Two', slug: 'eco-2' });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/ecosystems/${eco2.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ name: 'Ecosystem One', slug: 'eco-1' }),
+    });
+    assert.equal(response.status, 409);
+    const body = await response.json();
+    assert.equal(body.code, 'CONFLICT');
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('PUT /api/ecosystems/:id returns 404 for missing ecosystem', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/ecosystems/missing-id`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ name: 'Whatever', slug: 'whatever' }),
+    });
+    assert.equal(response.status, 404);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('PUT /api/ecosystems/:id returns 403 when user lacks taxonomy:write permission', async () => {
+  taxonomy.reset();
+  const eco = taxonomy.createEcosystem({ name: 'Permission Test' });
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/ecosystems/${eco.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'viewer' },
+      body: JSON.stringify({ name: 'Should fail' }),
+    });
+    assert.equal(response.status, 403);
+    const body = await response.json();
+    assert.deepEqual(body, {
+      code: 'FORBIDDEN',
+      message: 'Insufficient permissions',
+    });
+  } finally {
+    await closeServer(server);
+  }
+});
