@@ -99,7 +99,6 @@ router.post('/', requireTaxonomyWrite, async (req, res) => {
 
 router.put('/:id', requireTaxonomyWrite, async (req, res) => {
   try {
-    assertPagination(req.query);
     const id = assertIdParam(req.params);
     const existing = await findExistingByIdOrSlug(prisma.ecosystem, id, res, 'Ecosystem not found');
     if (!existing) return null;
@@ -121,8 +120,7 @@ router.put('/:id', requireTaxonomyWrite, async (req, res) => {
 
     await logAudit(req, 'Ecosystem', updated.id, 'UPDATE', req.body);
 
-    const payload = await fetchPaginatedEcosystems(req);
-    return res.json(payload);
+    return res.json(updated);
   } catch (error) {
     return handleError(res, error);
   }

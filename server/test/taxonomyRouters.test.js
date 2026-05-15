@@ -49,9 +49,9 @@ test('PUT /api/ecosystems/:id updates an existing ecosystem', async () => {
     });
     assert.equal(response.status, 200);
     const body = await response.json();
-    const updated = body.items.find(i => i.id === eco.id);
-    assert.equal(updated.name, 'New Name');
-    assert.equal(updated.description, 'New Description');
+    assert.equal(body.id, eco.id);
+    assert.equal(body.name, 'New Name');
+    assert.equal(body.description, 'New Description');
   } finally {
     await closeServer(server);
   }
