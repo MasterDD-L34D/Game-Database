@@ -87,24 +87,36 @@ function createTaxonomyTestContext() {
       findMany: prisma.species?.findMany,
       findFirst: prisma.species?.findFirst,
       findUnique: prisma.species?.findUnique,
+      create: prisma.species?.create,
+      update: prisma.species?.update,
+      delete: prisma.species?.delete,
     },
     trait: {
       count: prisma.trait?.count,
       findMany: prisma.trait?.findMany,
       findFirst: prisma.trait?.findFirst,
       findUnique: prisma.trait?.findUnique,
+      create: prisma.trait?.create,
+      update: prisma.trait?.update,
+      delete: prisma.trait?.delete,
     },
     biome: {
       count: prisma.biome?.count,
       findMany: prisma.biome?.findMany,
       findFirst: prisma.biome?.findFirst,
       findUnique: prisma.biome?.findUnique,
+      create: prisma.biome?.create,
+      update: prisma.biome?.update,
+      delete: prisma.biome?.delete,
     },
     ecosystem: {
       count: prisma.ecosystem?.count,
       findMany: prisma.ecosystem?.findMany,
       findFirst: prisma.ecosystem?.findFirst,
       findUnique: prisma.ecosystem?.findUnique,
+      create: prisma.ecosystem?.create,
+      update: prisma.ecosystem?.update,
+      delete: prisma.ecosystem?.delete,
     },
   };
 
@@ -219,6 +231,30 @@ function createTaxonomyTestContext() {
       }
       return null;
     };
+    prisma[model].create = async ({ data }) => {
+      const id = data.id ?? nextId(model);
+      const slug = data.slug || normalizeSlug(data.name || data.scientificName, id);
+      ensureUniqueSlug(store, slug, id);
+      const record = { id, ...data, slug };
+      store.set(id, clone(record));
+      return clone(record);
+    };
+    prisma[model].update = async ({ where, data }) => {
+      const existing = await prisma[model].findUnique({ where });
+      if (!existing) throw new Error(`${model} not found`);
+      if (data.slug) {
+        ensureUniqueSlug(store, data.slug, existing.id);
+      }
+      const updated = { ...existing, ...data };
+      store.set(existing.id, clone(updated));
+      return clone(updated);
+    };
+    prisma[model].delete = async ({ where }) => {
+      const existing = await prisma[model].findUnique({ where });
+      if (!existing) throw new Error(`${model} not found`);
+      store.delete(existing.id);
+      return clone(existing);
+    };
   }
 
   function mock() {
@@ -229,25 +265,13 @@ function createTaxonomyTestContext() {
   }
 
   function restore() {
-    if (original.species.count) prisma.species.count = original.species.count;
-    if (original.species.findMany) prisma.species.findMany = original.species.findMany;
-    if (original.species.findFirst) prisma.species.findFirst = original.species.findFirst;
-    if (original.species.findUnique) prisma.species.findUnique = original.species.findUnique;
-
-    if (original.trait.count) prisma.trait.count = original.trait.count;
-    if (original.trait.findMany) prisma.trait.findMany = original.trait.findMany;
-    if (original.trait.findFirst) prisma.trait.findFirst = original.trait.findFirst;
-    if (original.trait.findUnique) prisma.trait.findUnique = original.trait.findUnique;
-
-    if (original.biome.count) prisma.biome.count = original.biome.count;
-    if (original.biome.findMany) prisma.biome.findMany = original.biome.findMany;
-    if (original.biome.findFirst) prisma.biome.findFirst = original.biome.findFirst;
-    if (original.biome.findUnique) prisma.biome.findUnique = original.biome.findUnique;
-
-    if (original.ecosystem.count) prisma.ecosystem.count = original.ecosystem.count;
-    if (original.ecosystem.findMany) prisma.ecosystem.findMany = original.ecosystem.findMany;
-    if (original.ecosystem.findFirst) prisma.ecosystem.findFirst = original.ecosystem.findFirst;
-    if (original.ecosystem.findUnique) prisma.ecosystem.findUnique = original.ecosystem.findUnique;
+    Object.keys(original).forEach(model => {
+      Object.keys(original[model]).forEach(method => {
+        if (original[model][method] !== undefined) {
+          prisma[model][method] = original[model][method];
+        }
+      });
+    });
   }
 
   function reset() {

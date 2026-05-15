@@ -36,6 +36,84 @@ test('GET /api/species returns paginated species', async () => {
   }
 });
 
+test('PUT /api/ecosystems/:id updates an existing ecosystem', async () => {
+  taxonomy.reset();
+  const eco = taxonomy.createEcosystem({ name: 'Old Name', description: 'Old Description' });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/ecosystems/${eco.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ name: 'New Name', description: 'New Description' }),
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    const updated = body.items.find(i => i.id === eco.id);
+    assert.equal(updated.name, 'New Name');
+    assert.equal(updated.description, 'New Description');
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('PUT /api/ecosystems/:id returns 409 for slug conflict', async () => {
+  taxonomy.reset();
+  const eco1 = taxonomy.createEcosystem({ name: 'Ecosystem One', slug: 'eco-1' });
+  const eco2 = taxonomy.createEcosystem({ name: 'Ecosystem Two', slug: 'eco-2' });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/ecosystems/${eco2.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ name: 'Ecosystem One', slug: 'eco-1' }),
+    });
+    assert.equal(response.status, 409);
+    const body = await response.json();
+    assert.equal(body.code, 'CONFLICT');
+    assert.equal(body.details.value, 'eco-1');
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('PUT /api/ecosystems/:id returns 404 for missing ecosystem', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/ecosystems/missing-id`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ name: 'New Name' }),
+    });
+    assert.equal(response.status, 404);
+    const body = await response.json();
+    assert.equal(body.code, 'NOT_FOUND');
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('PUT /api/ecosystems/:id returns 403 for unauthorized users', async () => {
+  taxonomy.reset();
+  const eco = taxonomy.createEcosystem({ name: 'Unauthorized Update' });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/ecosystems/${eco.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'viewer' },
+      body: JSON.stringify({ name: 'Trying to Update' }),
+    });
+    assert.equal(response.status, 403);
+    const body = await response.json();
+    assert.equal(body.code, 'FORBIDDEN');
+  } finally {
+    await closeServer(server);
+  }
+});
+
 test('GET /api/species/:id resolves slugs', async () => {
   taxonomy.reset();
   const species = taxonomy.createSpecies({ scientificName: 'Specimen Slug', slug: 'specimen-slug' });
