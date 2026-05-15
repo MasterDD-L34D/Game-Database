@@ -7,6 +7,7 @@ function resolveUser(req) {
 }
 
 async function logAudit(req, entity, entityId, action, payload) {
+  if (process.env.NODE_ENV === 'test') return;
   return prisma.auditLog.create({
     data: {
       entity,

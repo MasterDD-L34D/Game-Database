@@ -349,3 +349,68 @@ test('POST /api/traits returns 400 for invalid input', async () => {
     await closeServer(server);
   }
 });
+
+test('DELETE /api/species/:id returns 403 when user lacks taxonomy write permission', async () => {
+  taxonomy.reset();
+  const species = taxonomy.createSpecies({ scientificName: 'Delete Me' });
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/species/${species.id}`, {
+      method: 'DELETE',
+      headers: { 'X-Roles': 'viewer' },
+    });
+    assert.equal(response.status, 403);
+    const body = await response.json();
+    assert.deepEqual(body, {
+      code: 'FORBIDDEN',
+      message: 'Insufficient permissions',
+    });
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('DELETE /api/species/:id returns 404 for missing species', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/species/missing-id`, {
+      method: 'DELETE',
+      headers: { 'X-Roles': 'taxonomy:write' },
+    });
+    assert.equal(response.status, 404);
+    const body = await response.json();
+    assert.deepEqual(body, {
+      code: 'NOT_FOUND',
+      message: 'Species not found',
+      details: { identifier: 'missing-id' },
+    });
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('DELETE /api/species/:id removes existing species', async () => {
+  taxonomy.reset();
+  const species = taxonomy.createSpecies({ scientificName: 'Species to delete' });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/species/${species.id}`, {
+      method: 'DELETE',
+      headers: { 'X-Roles': 'taxonomy:write' },
+    });
+    assert.equal(response.status, 200);
+
+    // Deletion responds with fetchPaginatedSpecies which should now be empty
+    const body = await response.json();
+    assert.equal(body.total, 0);
+    assert.deepEqual(body.items, []);
+
+    // Verify it's actually deleted by doing a GET
+    const getResponse = await fetch(`${baseUrl}/api/species/${species.id}`);
+    assert.equal(getResponse.status, 404);
+  } finally {
+    await closeServer(server);
+  }
+});
