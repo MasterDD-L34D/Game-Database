@@ -135,8 +135,7 @@ router.delete('/:id', requireTaxonomyWrite, async (req, res) => {
     await prisma.species.delete({ where: { id: existing.id } });
     await logAudit(req, 'Species', existing.id, 'DELETE', existing);
 
-    const payload = await fetchPaginatedSpecies(req);
-    return res.json(payload);
+    return res.json({ success: true, id: existing.id });
   } catch (error) {
     return handleError(res, error);
   }

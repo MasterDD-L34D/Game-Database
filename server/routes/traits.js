@@ -202,8 +202,7 @@ router.delete('/:id', requireTaxonomyWrite, async (req, res) => {
     await logAudit(req, 'Trait', existing.id, 'DELETE', existing);
     notifyGameCacheInvalidation();
 
-    const payload = await fetchPaginatedTraits(req);
-    return res.json(payload);
+    return res.json({ success: true, id: existing.id });
   } catch (error) {
     return handleError(res, error);
   }

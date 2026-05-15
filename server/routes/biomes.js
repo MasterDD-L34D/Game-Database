@@ -167,8 +167,7 @@ router.delete('/:id', requireTaxonomyWrite, async (req, res) => {
 
     await logAudit(req, 'Biome', existing.id, 'DELETE', existing);
 
-    const payload = await fetchPaginatedBiomes(req);
-    return res.json(payload);
+    return res.json({ success: true, id: existing.id });
   } catch (error) {
     return handleError(res, error);
   }

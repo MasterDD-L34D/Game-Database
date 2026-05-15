@@ -139,8 +139,7 @@ router.delete('/:id', requireTaxonomyWrite, async (req, res) => {
 
     await logAudit(req, 'Ecosystem', existing.id, 'DELETE', existing);
 
-    const payload = await fetchPaginatedEcosystems(req);
-    return res.json(payload);
+    return res.json({ success: true, id: existing.id });
   } catch (error) {
     return handleError(res, error);
   }
