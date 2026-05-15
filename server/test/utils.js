@@ -91,6 +91,7 @@ function createTaxonomyTestContext() {
       findFirst: prisma.species?.findFirst,
       findUnique: prisma.species?.findUnique,
       delete: prisma.species?.delete,
+      update: prisma.species?.update,
     },
     trait: {
       count: prisma.trait?.count,
@@ -224,6 +225,23 @@ function createTaxonomyTestContext() {
       return null;
     };
 
+    prisma[model].update = async ({ where, data } = {}) => {
+      if (!where || !where.id) return null;
+      const found = store.get(where.id);
+      if (!found) {
+        const err = new Error('Record to update not found.');
+        err.code = 'P2025';
+        throw err;
+      }
+      const updated = { ...found, ...data };
+      if (data && Object.prototype.hasOwnProperty.call(data, 'slug')) {
+        ensureUniqueSlug(store, data.slug, where.id);
+        updated.slug = data.slug;
+      }
+      store.set(where.id, updated);
+      return clone(updated);
+    };
+
     prisma[model].delete = async ({ where } = {}) => {
       if (!where || !where.id) return null;
       const found = store.get(where.id);
@@ -252,6 +270,7 @@ function createTaxonomyTestContext() {
     if (original.species.findMany) prisma.species.findMany = original.species.findMany;
     if (original.species.findFirst) prisma.species.findFirst = original.species.findFirst;
     if (original.species.findUnique) prisma.species.findUnique = original.species.findUnique;
+    if (original.species.update) prisma.species.update = original.species.update;
     if (original.species.delete) prisma.species.delete = original.species.delete;
 
     if (original.trait.count) prisma.trait.count = original.trait.count;
