@@ -82,11 +82,15 @@ function createTaxonomyTestContext() {
   };
 
   const original = {
+    auditLog: {
+      create: prisma.auditLog?.create,
+    },
     species: {
       count: prisma.species?.count,
       findMany: prisma.species?.findMany,
       findFirst: prisma.species?.findFirst,
       findUnique: prisma.species?.findUnique,
+      delete: prisma.species?.delete,
     },
     trait: {
       count: prisma.trait?.count,
@@ -219,9 +223,22 @@ function createTaxonomyTestContext() {
       }
       return null;
     };
+
+    prisma[model].delete = async ({ where } = {}) => {
+      if (!where || !where.id) return null;
+      const found = store.get(where.id);
+      if (found) {
+        store.delete(where.id);
+        return clone(found);
+      }
+      return null;
+    };
   }
 
+
   function mock() {
+    prisma.auditLog = prisma.auditLog || {};
+    prisma.auditLog.create = async () => ({ id: 'audit-mock-id' });
     createModelMock('species', stores.species, 'scientificName');
     createModelMock('trait', stores.trait, 'name');
     createModelMock('biome', stores.biome, 'name');
@@ -229,10 +246,13 @@ function createTaxonomyTestContext() {
   }
 
   function restore() {
+    if (original.auditLog && original.auditLog.create) prisma.auditLog.create = original.auditLog.create;
+    else if (prisma.auditLog) delete prisma.auditLog.create;
     if (original.species.count) prisma.species.count = original.species.count;
     if (original.species.findMany) prisma.species.findMany = original.species.findMany;
     if (original.species.findFirst) prisma.species.findFirst = original.species.findFirst;
     if (original.species.findUnique) prisma.species.findUnique = original.species.findUnique;
+    if (original.species.delete) prisma.species.delete = original.species.delete;
 
     if (original.trait.count) prisma.trait.count = original.trait.count;
     if (original.trait.findMany) prisma.trait.findMany = original.trait.findMany;
