@@ -402,10 +402,9 @@ test('DELETE /api/species/:id removes existing species', async () => {
     });
     assert.equal(response.status, 200);
 
-    // Deletion responds with fetchPaginatedSpecies which should now be empty
     const body = await response.json();
-    assert.equal(body.total, 0);
-    assert.deepEqual(body.items, []);
+    assert.equal(body.success, true);
+    assert.equal(body.id, species.id);
 
     // Verify it's actually deleted by doing a GET
     const getResponse = await fetch(`${baseUrl}/api/species/${species.id}`);
