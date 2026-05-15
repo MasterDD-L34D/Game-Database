@@ -758,11 +758,27 @@ async function processBiomes(items) {
         console.log(`[progress:biomes] ${Math.min(i + BATCH_SIZE, pending.length)}/${pending.length} records`);
       }
     }
+    const slugsToFetch = new Set();
     for (const normalized of parentLinks) {
-      const parent = await prisma.biome.findUnique({ where: { slug: normalized.parentSlug } });
-      const current = await prisma.biome.findUnique({ where: { slug: normalized.slug } });
+      slugsToFetch.add(normalized.slug);
+      slugsToFetch.add(normalized.parentSlug);
+    }
+
+    const allRelevantBiomes = await prisma.biome.findMany({
+      where: { slug: { in: Array.from(slugsToFetch) } },
+    });
+
+    const biomeMap = new Map();
+    for (const b of allRelevantBiomes) {
+      biomeMap.set(b.slug, b);
+    }
+
+    for (const normalized of parentLinks) {
+      const parent = biomeMap.get(normalized.parentSlug);
+      const current = biomeMap.get(normalized.slug);
       if (parent && current && current.parentId !== parent.id) {
         await prisma.biome.update({ where: { id: current.id }, data: { parentId: parent.id } });
+        current.parentId = parent.id;
       }
     }
   } else {
