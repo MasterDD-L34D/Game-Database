@@ -1,4 +1,5 @@
-const test = require('node:test');
+const test = require("node:test");
+
 const assert = require('node:assert/strict');
 const { startServer, closeServer, createTaxonomyTestContext } = require('./utils');
 
@@ -35,7 +36,6 @@ test('GET /api/species returns paginated species', async () => {
     await closeServer(server);
   }
 });
-
 test('PUT /api/ecosystems/:id updates an existing ecosystem', async () => {
   taxonomy.reset();
   const eco = taxonomy.createEcosystem({ name: 'Old Name', description: 'Old Description' });
@@ -113,6 +113,7 @@ test('PUT /api/ecosystems/:id returns 403 for unauthorized users', async () => {
     await closeServer(server);
   }
 });
+
 
 test('GET /api/species/:id resolves slugs', async () => {
   taxonomy.reset();
