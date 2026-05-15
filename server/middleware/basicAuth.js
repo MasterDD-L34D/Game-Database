@@ -1,5 +1,14 @@
+const crypto = require('node:crypto');
+
 function timingSafeEqualString(a, b) {
-  return typeof a === 'string' && typeof b === 'string' && a === b;
+  if (typeof a !== 'string' || typeof b !== 'string') {
+    return false;
+  }
+
+  const aHash = crypto.createHash('sha256').update(a).digest();
+  const bHash = crypto.createHash('sha256').update(b).digest();
+
+  return crypto.timingSafeEqual(aHash, bHash);
 }
 
 function parseBasicAuthHeader(headerValue) {
