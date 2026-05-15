@@ -121,8 +121,7 @@ router.put('/:id', requireTaxonomyWrite, async (req, res) => {
 
     await logAudit(req, 'Ecosystem', updated.id, 'UPDATE', req.body);
 
-    const payload = await fetchPaginatedEcosystems(req);
-    return res.json(payload);
+    return res.json(updated);
   } catch (error) {
     return handleError(res, error);
   }
