@@ -55,9 +55,15 @@ function assertIdParam(params, field = 'id') {
   return raw;
 }
 
+function normalizeId(value) {
+  if (value == null) return '';
+  return String(value).trim();
+}
+
 module.exports = {
   assertString,
   assertEnum,
   assertPagination,
   assertIdParam,
+  normalizeId,
 };

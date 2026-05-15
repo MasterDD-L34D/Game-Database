@@ -2,15 +2,10 @@ const express = require('express');
 const prisma = require('../db/prisma');
 const { requireTaxonomyWrite } = require('../middleware/permissions');
 const { AppError } = require('../utils/httpErrors');
-const { assertPagination } = require('../utils/validation');
+const { assertPagination, normalizeId } = require('../utils/validation');
 const { normalizeSearchQuery, normalizeSort, toPagedResult } = require('../utils/pagination');
 
 const router = express.Router();
-
-function normalizeId(value) {
-  if (value == null) return '';
-  return String(value).trim();
-}
 
 function normalizeProportion(value) {
   if (value === undefined) return { ok: true, value: undefined };
