@@ -82,6 +82,9 @@ function createTaxonomyTestContext() {
   };
 
   const original = {
+    auditLog: {
+      create: prisma.auditLog?.create,
+    },
     species: {
       count: prisma.species?.count,
       findMany: prisma.species?.findMany,
@@ -234,6 +237,8 @@ function createTaxonomyTestContext() {
 
 
   function mock() {
+    prisma.auditLog = prisma.auditLog || {};
+    prisma.auditLog.create = async () => ({ id: 'audit-mock-id' });
     createModelMock('species', stores.species, 'scientificName');
     createModelMock('trait', stores.trait, 'name');
     createModelMock('biome', stores.biome, 'name');
@@ -241,6 +246,8 @@ function createTaxonomyTestContext() {
   }
 
   function restore() {
+    if (original.auditLog && original.auditLog.create) prisma.auditLog.create = original.auditLog.create;
+    else if (prisma.auditLog) delete prisma.auditLog.create;
     if (original.species.count) prisma.species.count = original.species.count;
     if (original.species.findMany) prisma.species.findMany = original.species.findMany;
     if (original.species.findFirst) prisma.species.findFirst = original.species.findFirst;
