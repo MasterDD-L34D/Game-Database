@@ -72,6 +72,7 @@ function createTaxonomyTestContext() {
     trait: new Map(),
     biome: new Map(),
     ecosystem: new Map(),
+    auditLog: new Map(),
   };
 
   const counters = {
@@ -79,6 +80,7 @@ function createTaxonomyTestContext() {
     trait: 1,
     biome: 1,
     ecosystem: 1,
+    auditLog: 1,
   };
 
   const original = {
@@ -117,6 +119,9 @@ function createTaxonomyTestContext() {
       create: prisma.ecosystem?.create,
       update: prisma.ecosystem?.update,
       delete: prisma.ecosystem?.delete,
+    },
+    auditLog: {
+      create: prisma.auditLog?.create,
     },
   };
 
@@ -262,6 +267,13 @@ function createTaxonomyTestContext() {
     createModelMock('trait', stores.trait, 'name');
     createModelMock('biome', stores.biome, 'name');
     createModelMock('ecosystem', stores.ecosystem, 'name');
+
+    prisma.auditLog.create = async ({ data }) => {
+      const id = nextId('auditLog');
+      const record = { id, ...data, timestamp: new Date() };
+      stores.auditLog.set(id, clone(record));
+      return clone(record);
+    };
   }
 
   function restore() {
@@ -279,10 +291,12 @@ function createTaxonomyTestContext() {
     stores.trait.clear();
     stores.biome.clear();
     stores.ecosystem.clear();
+    stores.auditLog.clear();
     counters.species = 1;
     counters.trait = 1;
     counters.biome = 1;
     counters.ecosystem = 1;
+    counters.auditLog = 1;
   }
 
   return {
