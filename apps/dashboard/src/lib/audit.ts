@@ -56,3 +56,22 @@ export interface RevertResponse {
 export async function revertAudit(logId: string): Promise<RevertResponse> {
   return postJSON<Record<string, never>, RevertResponse>(`/audit/${encodeURIComponent(logId)}/revert`, {});
 }
+
+/**
+ * Build the audit endpoint URL with current filters + ?format=csv.
+ * Used by the dashboard "Esporta CSV" button to trigger a browser
+ * download via window.open or anchor click — bypasses the JSON fetch
+ * client because the response is a streamed file.
+ */
+export function buildAuditCsvUrl(query: AuditQuery = {}): string {
+  const BASE = (import.meta.env?.VITE_API_BASE_URL as string | undefined) || '/api';
+  const params = new URLSearchParams();
+  if (query.entity) params.set('entity', query.entity);
+  if (query.entityId) params.set('entityId', query.entityId);
+  if (query.action) params.set('action', query.action);
+  if (query.user) params.set('user', query.user);
+  if (query.since) params.set('since', query.since);
+  if (query.until) params.set('until', query.until);
+  params.set('format', 'csv');
+  return `${BASE}/audit?${params.toString()}`;
+}

@@ -38,6 +38,10 @@
     "preset30d": "Ultimi 30 giorni",
     "presetCustom": "Personalizzato"
   },
+  "export": {
+    "csvButton": "Esporta CSV",
+    "csvAriaLabel": "Esporta cronologia in formato CSV con filtri correnti"
+  },
   "revert": {
     "button": "Ripristina",
     "inProgress": "Ripristino...",

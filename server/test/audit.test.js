@@ -45,18 +45,43 @@ function seedAuditLog(data = {}) {
   return clone(record);
 }
 
+function compareForRange(recordValue, condition) {
+  const toMs = (v) => (v instanceof Date ? v.getTime() : new Date(v).getTime());
+  const recordMs = toMs(recordValue);
+  if (condition.gte !== undefined && recordMs < toMs(condition.gte)) return false;
+  if (condition.lte !== undefined && recordMs > toMs(condition.lte)) return false;
+  if (condition.lt !== undefined && recordMs >= toMs(condition.lt)) return false;
+  if (condition.gt !== undefined && recordMs <= toMs(condition.gt)) return false;
+  return true;
+}
+
+function compareIdRange(recordId, condition) {
+  if (condition.lt !== undefined && !(recordId < condition.lt)) return false;
+  if (condition.gt !== undefined && !(recordId > condition.gt)) return false;
+  if (condition.lte !== undefined && !(recordId <= condition.lte)) return false;
+  if (condition.gte !== undefined && !(recordId >= condition.gte)) return false;
+  return true;
+}
+
 function matchesWhere(record, where = {}) {
+  if (!where || typeof where !== 'object') return true;
   for (const [key, value] of Object.entries(where)) {
+    if (key === 'AND') {
+      if (!Array.isArray(value)) continue;
+      if (!value.every((sub) => matchesWhere(record, sub))) return false;
+      continue;
+    }
+    if (key === 'OR') {
+      if (!Array.isArray(value)) continue;
+      if (!value.some((sub) => matchesWhere(record, sub))) return false;
+      continue;
+    }
     if (key === 'createdAt' && value && typeof value === 'object') {
-      const recordTime = record.createdAt instanceof Date ? record.createdAt.getTime() : new Date(record.createdAt).getTime();
-      if (value.gte !== undefined) {
-        const gteTime = value.gte instanceof Date ? value.gte.getTime() : new Date(value.gte).getTime();
-        if (recordTime < gteTime) return false;
-      }
-      if (value.lte !== undefined) {
-        const lteTime = value.lte instanceof Date ? value.lte.getTime() : new Date(value.lte).getTime();
-        if (recordTime > lteTime) return false;
-      }
+      if (!compareForRange(record.createdAt, value)) return false;
+      continue;
+    }
+    if (key === 'id' && value && typeof value === 'object') {
+      if (!compareIdRange(record.id, value)) return false;
       continue;
     }
     if (record[key] !== value) return false;
@@ -66,9 +91,11 @@ function matchesWhere(record, where = {}) {
 
 function applyOrder(items, orderBy) {
   if (!orderBy) return items.slice();
-  const entries = Object.entries(orderBy);
+  // Accept either {key: 'asc'} object OR [{key: 'asc'}, ...] array form
+  const arr = Array.isArray(orderBy) ? orderBy : [orderBy];
+  const directives = arr.flatMap((entry) => Object.entries(entry));
   return items.slice().sort((a, b) => {
-    for (const [key, direction] of entries) {
+    for (const [key, direction] of directives) {
       const factor = direction === 'desc' ? -1 : 1;
       const av = a[key];
       const bv = b[key];
@@ -585,6 +612,128 @@ test('GET /api/audit returns 400 when until lacks explicit timezone', async () =
     assert.equal(response.status, 400);
     const body = await response.json();
     assert.match(body.message, /until must include an explicit timezone offset/);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+// ---- CSV export (Fase 2 11/N) -------------------------------------------
+
+test('GET /api/audit?format=csv returns text/csv with header row', async () => {
+  resetStore();
+  seedAuditLog({
+    id: 'a1', entity: 'Trait', entityId: 't-1', action: 'CREATE',
+    user: 'alice@example.com', createdAt: new Date('2026-01-01T00:00:00Z'),
+  });
+  seedAuditLog({
+    id: 'a2', entity: 'Trait', entityId: 't-1', action: 'UPDATE',
+    user: 'bob@example.com', createdAt: new Date('2026-02-01T00:00:00Z'),
+  });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit?format=csv`);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-type') || '', /text\/csv/);
+    assert.match(response.headers.get('content-disposition') || '', /attachment; filename=".*\.csv"/);
+
+    const body = await response.text();
+    const lines = body.trim().split('\n');
+    // header + 2 data rows
+    assert.equal(lines.length, 3);
+    assert.equal(lines[0], 'id,entity,entityId,action,user,createdAt,payload');
+    // newest-first ordering
+    assert.match(lines[1], /a2,Trait,t-1,UPDATE,bob@example.com/);
+    assert.match(lines[2], /a1,Trait,t-1,CREATE,alice@example.com/);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('GET /api/audit?format=csv respects entity/action filters', async () => {
+  resetStore();
+  seedAuditLog({ id: 'a1', entity: 'Trait', entityId: 't-1', action: 'CREATE' });
+  seedAuditLog({ id: 'a2', entity: 'Trait', entityId: 't-1', action: 'UPDATE' });
+  seedAuditLog({ id: 'a3', entity: 'Biome', entityId: 'b-1', action: 'CREATE' });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit?format=csv&entity=Trait&action=UPDATE`);
+    assert.equal(response.status, 200);
+    const body = await response.text();
+    const lines = body.trim().split('\n');
+    // header + only a2 (Trait UPDATE)
+    assert.equal(lines.length, 2);
+    assert.match(lines[1], /a2,Trait/);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('GET /api/audit?format=csv escapes payload JSON containing commas and quotes', async () => {
+  resetStore();
+  seedAuditLog({
+    id: 'a1',
+    entity: 'Trait',
+    entityId: 't-1',
+    action: 'CREATE',
+    payload: { description: 'Has, comma "and" quotes', count: 5 },
+  });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit?format=csv`);
+    const body = await response.text();
+    // The payload cell must be quoted + internal quotes doubled
+    assert.match(body, /"\{""description"":""Has, comma \\""and\\"" quotes""/);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+// Codex P2 regression (PR #139): CSV stream must use stable keyset
+// pagination. Simulate large dataset (> batchSize) and verify all rows
+// emitted exactly once with no skip/dup.
+test('GET /api/audit?format=csv keyset pagination handles >1000 rows without skip/dup', async () => {
+  resetStore();
+  // Seed 1200 rows with distinct ids + createdAt
+  const total = 1200;
+  for (let i = 0; i < total; i++) {
+    seedAuditLog({
+      id: `bulk-${String(i).padStart(4, '0')}`,
+      entity: 'Trait',
+      entityId: 't-x',
+      action: 'CREATE',
+      // Reverse chronological so newest first matches DESC ordering
+      createdAt: new Date(2026, 0, 1 + Math.floor(i / 60), 0, i % 60, 0),
+    });
+  }
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit?format=csv&entity=Trait&entityId=t-x`);
+    assert.equal(response.status, 200);
+    const body = await response.text();
+    const lines = body.trim().split('\n');
+    // header + 1200 data rows
+    assert.equal(lines.length, total + 1);
+    // Extract ids from CSV (first column) and check uniqueness
+    const dataIds = lines.slice(1).map((line) => line.split(',')[0]);
+    const uniq = new Set(dataIds);
+    assert.equal(uniq.size, total, 'every row id should appear exactly once');
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('GET /api/audit?format=csv with no results returns header-only file', async () => {
+  resetStore();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit?format=csv&entity=Trait`);
+    assert.equal(response.status, 200);
+    const body = await response.text();
+    assert.equal(body, 'id,entity,entityId,action,user,createdAt,payload\n');
   } finally {
     await closeServer(server);
   }

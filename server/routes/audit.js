@@ -233,11 +233,83 @@ router.post('/:logId/revert', requireTaxonomyWrite, async (req, res) => {
   }
 });
 
+// Codex/RFC2180 CSV escape helper (mirrors records.js pattern). Quote
+// values containing comma, quote, or newline; escape internal quotes by
+// doubling.
+function csvEscape(value) {
+  if (value === null || value === undefined) return '';
+  const s = typeof value === 'string' ? value : String(value);
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function audtCsvFilename(entity, entityId) {
+  const slug = [entity, entityId].filter(Boolean).join('-').toLowerCase().replace(/[^a-z0-9-]+/g, '-');
+  const ts = new Date().toISOString().slice(0, 19).replace(/[:]/g, '');
+  return `audit-${slug || 'export'}-${ts}.csv`;
+}
+
 router.get('/', requireAuditRead, async (req, res) => {
   try {
-    const { page, pageSize } = assertPagination(req.query);
     const where = buildAuditWhere(req.query);
 
+    // CSV export branch (Fase 2 11/N): streams ALL rows matching filters
+    // (no client pagination) when ?format=csv present. Useful for audit
+    // analytics + offline review. Filters (entity/entityId/action/user/
+    // since/until) are respected via the same buildAuditWhere.
+    //
+    // Codex P2 fix from PR #139 review: skip+take offset pagination is
+    // UNSTABLE when rows are inserted/deleted mid-export — offsets shift
+    // between iterations and rows can be skipped or duplicated. Switch
+    // to keyset/cursor pagination on (createdAt DESC, id DESC) so each
+    // batch query is filtered to "strictly older than last seen" tuple.
+    // Guarantees no skip/dup even if writes happen during the stream.
+    const format = typeof req.query.format === 'string' ? req.query.format.toLowerCase() : '';
+    if (format === 'csv') {
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${audtCsvFilename(req.query.entity, req.query.entityId)}"`,
+      );
+      const header = ['id', 'entity', 'entityId', 'action', 'user', 'createdAt', 'payload'];
+      res.write(`${header.join(',')}\n`);
+
+      const batchSize = 1000;
+      let cursor = null; // { createdAt: Date, id: string } from previous batch's tail
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const cursorWhere = cursor
+          ? {
+              OR: [
+                { createdAt: { lt: cursor.createdAt } },
+                { AND: [{ createdAt: cursor.createdAt }, { id: { lt: cursor.id } }] },
+              ],
+            }
+          : null;
+        const effectiveWhere = cursorWhere
+          ? (Object.keys(where).length > 0 ? { AND: [where, cursorWhere] } : cursorWhere)
+          : where;
+
+        const batch = await prisma.auditLog.findMany({
+          where: effectiveWhere,
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          take: batchSize,
+        });
+        if (!batch.length) break;
+        for (const r of batch) {
+          const createdAt = r.createdAt instanceof Date ? r.createdAt.toISOString() : r.createdAt || '';
+          const payload = r.payload === null || r.payload === undefined ? '' : JSON.stringify(r.payload);
+          const row = [r.id, r.entity, r.entityId, r.action, r.user, createdAt, payload];
+          res.write(`${row.map(csvEscape).join(',')}\n`);
+        }
+        const last = batch[batch.length - 1];
+        cursor = { createdAt: last.createdAt, id: last.id };
+        if (batch.length < batchSize) break; // last partial page → done
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+      return res.end();
+    }
+
+    const { page, pageSize } = assertPagination(req.query);
     const [total, items] = await Promise.all([
       prisma.auditLog.count({ where }),
       prisma.auditLog.findMany({
