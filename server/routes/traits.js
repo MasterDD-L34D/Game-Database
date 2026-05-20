@@ -5,6 +5,7 @@ const { logAudit } = require('../utils/audit');
 const { findExistingByIdOrSlug } = require('../utils/taxonomyValidation');
 const { AppError, sendError, handleError } = require('../utils/httpErrors');
 const { assertPagination, assertIdParam, assertString, assertEnum } = require('../utils/validation');
+const { normalizeSlug } = require('../utils/slug');
 
 const router = express.Router();
 
@@ -36,11 +37,6 @@ async function fetchPaginatedTraits(req) {
     prisma.trait.findMany({ where, skip: page * pageSize, take: pageSize, orderBy: { name: 'asc' } }),
   ]);
   return { items, page, pageSize, total };
-}
-
-function normalizeSlug(input) {
-  if (!input) return '';
-  return input.toString().trim().toLowerCase().replace(/\s+/g, '-');
 }
 
 function toNumber(value) {
