@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Box,
@@ -14,7 +14,9 @@ import {
   DialogTitle,
   Divider,
   IconButton,
+  MenuItem,
   Stack,
+  TextField,
   Typography,
 } from '@mui/material';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -129,10 +131,25 @@ export interface AuditHistoryPanelProps {
   entityId: string;
 }
 
+const FILTER_DEBOUNCE_MS = 300;
+
 export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPanelProps) {
   const { t } = useTranslation('audit');
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
+
+  // Filter state (Fase 2 8/N): action select + user text (debounced).
+  // Backend params already supported by PR #122 GET /api/audit.
+  const [actionFilter, setActionFilter] = useState<AuditAction | ''>('');
+  const [userFilterInput, setUserFilterInput] = useState('');
+  const [userFilter, setUserFilter] = useState('');
+
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setUserFilter(userFilterInput.trim());
+    }, FILTER_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
+  }, [userFilterInput]);
 
   // Codex P2 fix from PR #127 review: previous `useQuery` + `page` state
   // replaced visible items on `Carica altri` because the panel only
@@ -140,9 +157,16 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
   // pages across "load more" clicks while keeping pagination + total
   // wiring intact.
   const query = useInfiniteQuery<AuditPage>({
-    queryKey: ['audit', entity, entityId],
+    queryKey: ['audit', entity, entityId, actionFilter, userFilter],
     queryFn: ({ pageParam = 0 }) =>
-      listAudit({ entity, entityId, page: pageParam as number, pageSize: PAGE_SIZE }),
+      listAudit({
+        entity,
+        entityId,
+        action: actionFilter || undefined,
+        user: userFilter || undefined,
+        page: pageParam as number,
+        pageSize: PAGE_SIZE,
+      }),
     enabled: Boolean(entity && entityId),
     getNextPageParam: (lastPage) => {
       const loadedSoFar = (lastPage.page + 1) * lastPage.pageSize;
@@ -150,6 +174,14 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
     },
     initialPageParam: 0,
   });
+
+  const handleClearFilters = () => {
+    setActionFilter('');
+    setUserFilterInput('');
+    setUserFilter('');
+  };
+
+  const hasActiveFilters = Boolean(actionFilter || userFilter);
 
   const items = useMemo<AuditEntry[]>(
     () => (query.data?.pages ?? []).flatMap((p) => p.items),
@@ -215,6 +247,41 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
           <Typography variant="body2" color="text.secondary">
             {t('subtitle')}
           </Typography>
+        </Stack>
+
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} mb={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
+          <TextField
+            select
+            size="small"
+            label={t('aria.filterAction')}
+            value={actionFilter}
+            onChange={(e) => setActionFilter(e.target.value as AuditAction | '')}
+            sx={{ minWidth: 160 }}
+            inputProps={{ 'aria-label': t('aria.filterAction') }}
+          >
+            <MenuItem value="">{t('filter.actionAll')}</MenuItem>
+            <MenuItem value="CREATE">{t('actions.CREATE')}</MenuItem>
+            <MenuItem value="UPDATE">{t('actions.UPDATE')}</MenuItem>
+            <MenuItem value="DELETE">{t('actions.DELETE')}</MenuItem>
+          </TextField>
+          <TextField
+            size="small"
+            placeholder={t('filter.userPlaceholder')}
+            value={userFilterInput}
+            onChange={(e) => setUserFilterInput(e.target.value)}
+            sx={{ minWidth: 220, flex: 1 }}
+            inputProps={{ 'aria-label': t('aria.filterUser') }}
+          />
+          {hasActiveFilters ? (
+            <Button
+              size="small"
+              variant="text"
+              onClick={handleClearFilters}
+              aria-label={t('aria.filterClear')}
+            >
+              {t('filter.clear')}
+            </Button>
+          ) : null}
         </Stack>
 
         {query.isError ? (

@@ -320,6 +320,98 @@ describe('AuditHistoryPanel', () => {
     );
   });
 
+  // ---- Filter UI (Fase 2 8/N) ----
+
+  it('renders Italian action filter labels + "Tutte le azioni" default option', async () => {
+    vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: [],
+      page: 0,
+      pageSize: 10,
+      total: 0,
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    // Action filter label rendered as form label (MUI TextField select)
+    expect(screen.getByLabelText('Filtra per azione')).toBeInTheDocument();
+    expect(screen.getByLabelText('Filtra per utente')).toBeInTheDocument();
+  });
+
+  it('debounces user filter input + passes trimmed value to listAudit', async () => {
+    const listSpy = vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: [],
+      page: 0,
+      pageSize: 10,
+      total: 0,
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    // Initial call: no user filter
+    await waitFor(() =>
+      expect(listSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ user: undefined }),
+      ),
+    );
+
+    const userInput = screen.getByLabelText('Filtra per utente');
+    fireEvent.change(userInput, { target: { value: '  alice@example.com  ' } });
+
+    // Debounce 300ms — must wait > debounce window
+    await waitFor(
+      () =>
+        expect(listSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ user: 'alice@example.com' }),
+        ),
+      { timeout: 1500 },
+    );
+  });
+
+  it('hides Pulisci button when no filters active', async () => {
+    vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: [],
+      page: 0,
+      pageSize: 10,
+      total: 0,
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    // Wait for initial render
+    await waitFor(() => expect(screen.getByLabelText('Filtra per azione')).toBeInTheDocument());
+
+    // No active filters → no Pulisci button
+    expect(screen.queryByLabelText('Pulisci filtri')).not.toBeInTheDocument();
+  });
+
+  it('shows Pulisci button when user filter is set, clears state on click', async () => {
+    const listSpy = vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: [],
+      page: 0,
+      pageSize: 10,
+      total: 0,
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    const userInput = screen.getByLabelText('Filtra per utente');
+    fireEvent.change(userInput, { target: { value: 'alice@example.com' } });
+
+    // Wait for debounce → Pulisci button appears
+    const clearBtn = await screen.findByLabelText('Pulisci filtri', {}, { timeout: 1500 });
+
+    fireEvent.click(clearBtn);
+
+    // After clear: input emptied + button hidden + listAudit called with undefined user
+    await waitFor(() => expect(userInput).toHaveValue(''));
+    expect(screen.queryByLabelText('Pulisci filtri')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(listSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ user: undefined }),
+      ),
+    );
+  });
+
   // Codex P2 regression (PR #127): "Carica altri" must APPEND new page entries,
   // not replace the visible list.
   it('preserves previously rendered entries when "Carica altri" loads next page', async () => {

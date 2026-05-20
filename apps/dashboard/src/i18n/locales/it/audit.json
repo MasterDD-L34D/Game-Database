@@ -18,7 +18,15 @@
   "aria": {
     "panel": "Cronologia modifiche entità",
     "entry": "Voce cronologia {{action}} del {{date}}",
-    "revertButton": "Ripristina entità {{entity}}:{{entityId}} dalla cronologia"
+    "revertButton": "Ripristina entità {{entity}}:{{entityId}} dalla cronologia",
+    "filterAction": "Filtra per azione",
+    "filterUser": "Filtra per utente",
+    "filterClear": "Pulisci filtri"
+  },
+  "filter": {
+    "actionAll": "Tutte le azioni",
+    "userPlaceholder": "Filtra per utente (email)",
+    "clear": "Pulisci"
   },
   "revert": {
     "button": "Ripristina",
