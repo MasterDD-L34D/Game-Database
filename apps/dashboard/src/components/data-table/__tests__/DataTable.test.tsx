@@ -59,7 +59,7 @@ describe('DataTable', () => {
       />,
     );
 
-    const nextButton = screen.getByLabelText('Go to next page');
+    const nextButton = screen.getByLabelText('Vai alla pagina successiva');
     fireEvent.click(nextButton);
 
     await waitFor(() => {
