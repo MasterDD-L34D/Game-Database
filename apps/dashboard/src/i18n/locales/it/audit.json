@@ -31,5 +31,18 @@
     "confirmBody": "Stai per ripristinare l'entità {{entity}} (id {{entityId}}) dalla cronologia. Questo ricrea l'entità nel database con i valori originali. Vuoi continuare?",
     "confirmAction": "Conferma ripristino",
     "confirmCancel": "Annulla"
+  },
+  "payload": {
+    "captionCreate": "Campi dell'entità creata",
+    "captionUpdate": "Campi modificati (patch)",
+    "captionDelete": "Campi dell'entità eliminata",
+    "captionGeneric": "Dettagli payload",
+    "columnField": "Campo",
+    "columnValue": "Valore",
+    "revertedFrom": "Ripristino dalla voce {{logId}}",
+    "valueNull": "(nullo)",
+    "valueEmpty": "(vuoto)",
+    "valueObject": "(oggetto)",
+    "valueArray": "(array, {{count}} elementi)"
   }
 }
