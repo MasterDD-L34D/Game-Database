@@ -26,6 +26,8 @@
     "prisma:generate": "prisma generate",
     "prisma:seed": "prisma db seed",
     "audit:slug": "node ./scripts/audit-slug.js",
+    "schema:doc": "node ./scripts/generate-schema-doc.js",
+    "schema:doc:check": "node ./scripts/generate-schema-doc.js --check",
     "prisma:studio": "prisma studio",
     "start:lan": "node scripts/start-lan.js",
     "test": "node ./test/run-tests.js",

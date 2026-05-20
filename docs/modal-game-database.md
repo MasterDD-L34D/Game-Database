@@ -1,6 +1,6 @@
 # Game – Data Management Dashboard
 - **Repository**: https://github.com/MasterDD-L34D/Game-Database
-- **Tecnologie principali**: PostgreSQL 15, Prisma ORM, Express API, React Dashboard (Vite + MUI + Tailwind)
+- **Tecnologie principali**: PostgreSQL 16, Prisma ORM, Express API, React Dashboard (Vite + MUI + Tailwind)
 
 ## Obiettivo e dominio
 - **Descrizione sintetica**: Dashboard e API per gestire schede di ricerca artistiche e tassonomia ecologica (trait, biomi, specie, ecosistemi), con audit e strumenti di import da repository esterni.
@@ -13,18 +13,20 @@
   - Tabelle ponte per relazioni (`SpeciesTrait`, `SpeciesBiome`, `EcosystemBiome`, `EcosystemSpecies`).
 
 ## Schema
-| Entità | Campi principali | Relazioni |
-| ------ | ---------------- | --------- |
-| `Record` | `id`, `nome`, `stato`, metadati (stile, pattern, peso, curvatura), audit `createdBy/updatedBy`, timestamp | Nessuna relazione diretta; tabelle indicizzate per ricerca rapida |
-| `AuditLog` | `entity`, `entityId`, `action`, `user`, `payload`, `createdAt` | Log di mutazioni su tutte le entità applicative |
-| `Trait` | `slug`, `name`, `dataType`, `allowedValues`, `rangeMin/Max`, `unit` | Relazione 1:N con `SpeciesTrait` |
-| `Biome` | `slug`, `name`, `description`, `climate`, `parentId` | Relazioni gerarchiche (parent/children), bridge con `SpeciesBiome` e `EcosystemBiome` |
-| `Species` | `slug`, `scientificName`, tassonomia completa, `status`, `description` | Bridge con `SpeciesTrait`, `SpeciesBiome`, `EcosystemSpecies` |
-| `SpeciesTrait` | `value` JSON, campi normalizzati (`num`, `bool`, `text`, `category`, `unit`, `confidence`) | Molti-a-uno verso `Species` e `Trait` |
-| `SpeciesBiome` | `presence`, `abundance`, `notes` | Molti-a-uno verso `Species` e `Biome` |
-| `Ecosystem` | `slug`, `name`, `description`, `region`, `climate` | Bridge con `EcosystemBiome` e `EcosystemSpecies` |
-| `EcosystemBiome` | `proportion`, `notes` | Molti-a-uno verso `Ecosystem` e `Biome` |
-| `EcosystemSpecies` | `role`, `abundance`, `notes` | Molti-a-uno verso `Ecosystem` e `Species` |
+
+Lo schema completo (modelli, campi, tipi, modifiers, relazioni, indici, enum) è **auto-generato** in [`schema-reference.md`](./schema-reference.md) dal sorgente Prisma `server/prisma/schema.prisma`. Quel file è la fonte canonica — questo documento mantiene solo dominio/runtime context.
+
+Per rigenerarlo:
+
+```bash
+cd server && npm run schema:doc
+```
+
+Verifica drift in CI:
+
+```bash
+cd server && npm run schema:doc:check
+```
 
 ## Processi di popolamento
 - **Seed o migrazioni**: `npm run dev:setup` esegue `prisma generate`, `prisma migrate deploy` e `prisma db seed`. Il seed crea 200 record demo e una tassonomia coerente; è idempotente.
@@ -35,7 +37,7 @@
 - **Permessi/ruoli**: variabile `TAXONOMY_WRITE_ROLES` (default `taxonomy:write,admin`) delimita chi può modificare la tassonomia.
 
 ## Note operative
-- **Prerequisiti**: Node.js 18+, npm, Docker Desktop (o PostgreSQL 15 locale), PowerShell 7+ su Windows.
+- **Prerequisiti**: Node.js 18+, npm, Docker Desktop (o PostgreSQL 16 locale), PowerShell 7+ su Windows.
 - **Comandi utili**: `docker compose up -d` per Postgres, `npm run dev` (backend), `npm run dev` in `apps/dashboard` (frontend), `npm run prisma:migrate`, `npm run prisma:seed`.
 - **Variabili d'ambiente**: `DATABASE_URL`, `PORT` (opzionale), `TAXONOMY_WRITE_ROLES`, `VITE_API_BASE_URL`, `VITE_API_USER`.
 

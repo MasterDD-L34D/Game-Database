@@ -1,0 +1,33 @@
+name: Verify schema-reference.md is up-to-date
+
+on:
+  push:
+    paths:
+      - 'server/prisma/schema.prisma'
+      - 'server/scripts/generate-schema-doc.js'
+      - 'docs/schema-reference.md'
+      - '.github/workflows/schema-doc-check.yml'
+  pull_request:
+    paths:
+      - 'server/prisma/schema.prisma'
+      - 'server/scripts/generate-schema-doc.js'
+      - 'docs/schema-reference.md'
+      - '.github/workflows/schema-doc-check.yml'
+
+jobs:
+  schema-doc-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Verify schema-reference.md matches schema.prisma
+        working-directory: server
+        run: node ./scripts/generate-schema-doc.js --check
+      - name: Helpful message on drift
+        if: failure()
+        run: |
+          echo "::error::docs/schema-reference.md is out of sync with server/prisma/schema.prisma"
+          echo "Run locally: cd server && npm run schema:doc"
+          echo "Then commit the regenerated docs/schema-reference.md"
