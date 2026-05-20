@@ -109,44 +109,45 @@ function buildAuditWhere(query) {
   }
 
   // Date range filter (Fase 2 9/N): ?since= and/or ?until= as ISO8601
-  // strings (e.g. "2026-05-20T10:00:00Z" or HTML datetime-local
-  // "2026-05-20T10:00"). Both bounds optional, combined when present.
+  // strings WITH EXPLICIT TIMEZONE (e.g. "2026-05-20T10:00:00Z" or
+  // "2026-05-20T10:00:00+02:00"). Both bounds optional, combined when
+  // present.
+  //
+  // Codex P1 fix from PR #137 review: the prior implementation accepted
+  // tz-naive strings like "2026-05-20T10:00" and parsed them via new
+  // Date() which applies the SERVER's local timezone — different from
+  // the browser's tz, causing boundary rows to leak/miss. Now we require
+  // explicit tz offset and reject naive datetime-local strings to make
+  // the wire contract unambiguous. The dashboard converts datetime-local
+  // → UTC ISO before sending (see AuditHistoryPanel.toUtcIso).
+  const TZ_REGEX = /(Z|[+-]\d{2}:?\d{2})$/;
+  function parseDateBound(value, field) {
+    const v = String(value ?? '').trim();
+    if (!v) {
+      throw new AppError(400, 'VALIDATION_ERROR', `${field} must be non-empty`, {
+        field,
+        location: 'query',
+      });
+    }
+    if (!TZ_REGEX.test(v)) {
+      throw new AppError(400, 'VALIDATION_ERROR',
+        `${field} must include an explicit timezone offset (e.g. Z or +02:00)`,
+        { field, location: 'query', value: v });
+    }
+    const parsed = new Date(v);
+    if (Number.isNaN(parsed.getTime())) {
+      throw new AppError(400, 'VALIDATION_ERROR', `${field} must be a valid ISO date`, {
+        field, location: 'query', value: v,
+      });
+    }
+    return parsed;
+  }
   const createdAtFilter = {};
   if (Object.prototype.hasOwnProperty.call(query, 'since')) {
-    const since = String(query.since ?? '').trim();
-    if (!since) {
-      throw new AppError(400, 'VALIDATION_ERROR', 'since must be non-empty', {
-        field: 'since',
-        location: 'query',
-      });
-    }
-    const sinceDate = new Date(since);
-    if (Number.isNaN(sinceDate.getTime())) {
-      throw new AppError(400, 'VALIDATION_ERROR', 'since must be a valid ISO date', {
-        field: 'since',
-        location: 'query',
-        value: since,
-      });
-    }
-    createdAtFilter.gte = sinceDate;
+    createdAtFilter.gte = parseDateBound(query.since, 'since');
   }
   if (Object.prototype.hasOwnProperty.call(query, 'until')) {
-    const until = String(query.until ?? '').trim();
-    if (!until) {
-      throw new AppError(400, 'VALIDATION_ERROR', 'until must be non-empty', {
-        field: 'until',
-        location: 'query',
-      });
-    }
-    const untilDate = new Date(until);
-    if (Number.isNaN(untilDate.getTime())) {
-      throw new AppError(400, 'VALIDATION_ERROR', 'until must be a valid ISO date', {
-        field: 'until',
-        location: 'query',
-        value: until,
-      });
-    }
-    createdAtFilter.lte = untilDate;
+    createdAtFilter.lte = parseDateBound(query.until, 'until');
   }
   if (createdAtFilter.gte && createdAtFilter.lte && createdAtFilter.gte > createdAtFilter.lte) {
     throw new AppError(400, 'VALIDATION_ERROR', 'since must be <= until', {

@@ -156,8 +156,20 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
   }, [userFilterInput]);
 
   // datetime-local emits "YYYY-MM-DDTHH:mm" (no seconds, no timezone).
-  // Backend treats as local; we forward verbatim so users see what they
-  // picked. Could be normalized to UTC server-side later if needed.
+  // Codex P1 fix from PR #137 review: parsing such strings with new Date()
+  // on the server applies the SERVER's local tz, which may differ from the
+  // BROWSER's tz → boundary rows leak/miss by that offset. Fix: client
+  // converts to absolute UTC ISO via the browser's local-tz Date() before
+  // sending, so the wire contract is unambiguous.
+  function toUtcIso(localDateTime: string): string {
+    // Empty input → empty (caller treats as undefined)
+    if (!localDateTime) return '';
+    const parsed = new Date(localDateTime);
+    if (Number.isNaN(parsed.getTime())) return '';
+    return parsed.toISOString();
+  }
+  const sinceIso = toUtcIso(sinceFilter);
+  const untilIso = toUtcIso(untilFilter);
 
   // Codex P2 fix from PR #127 review: previous `useQuery` + `page` state
   // replaced visible items on `Carica altri` because the panel only
@@ -165,15 +177,15 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
   // pages across "load more" clicks while keeping pagination + total
   // wiring intact.
   const query = useInfiniteQuery<AuditPage>({
-    queryKey: ['audit', entity, entityId, actionFilter, userFilter, sinceFilter, untilFilter],
+    queryKey: ['audit', entity, entityId, actionFilter, userFilter, sinceIso, untilIso],
     queryFn: ({ pageParam = 0 }) =>
       listAudit({
         entity,
         entityId,
         action: actionFilter || undefined,
         user: userFilter || undefined,
-        since: sinceFilter || undefined,
-        until: untilFilter || undefined,
+        since: sinceIso || undefined,
+        until: untilIso || undefined,
         page: pageParam as number,
         pageSize: PAGE_SIZE,
       }),

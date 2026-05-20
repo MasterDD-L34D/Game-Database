@@ -384,7 +384,9 @@ describe('AuditHistoryPanel', () => {
     expect(screen.queryByLabelText('Pulisci filtri')).not.toBeInTheDocument();
   });
 
-  it('passes since/until to listAudit when date inputs change', async () => {
+  it('passes since/until to listAudit as UTC ISO strings (tz-normalized)', async () => {
+    // Codex P1 fix from PR #137: datetime-local is tz-naive; client must
+    // convert to absolute UTC ISO via browser tz before sending.
     const listSpy = vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
       items: [],
       page: 0,
@@ -400,14 +402,16 @@ describe('AuditHistoryPanel', () => {
     fireEvent.change(sinceInput, { target: { value: '2026-03-01T00:00' } });
     fireEvent.change(untilInput, { target: { value: '2026-05-01T00:00' } });
 
-    await waitFor(() =>
-      expect(listSpy).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          since: '2026-03-01T00:00',
-          until: '2026-05-01T00:00',
-        }),
-      ),
-    );
+    // Expected: forwarded as ISO with explicit tz (Z suffix because UTC).
+    // Don't pin exact value — depends on the test env's local tz, but
+    // must end with Z and be valid ISO.
+    await waitFor(() => {
+      const lastCall = listSpy.mock.lastCall?.[0];
+      expect(lastCall?.since).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/);
+      expect(lastCall?.until).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/);
+      // Order preserved: since corresponds to earlier wall-clock value
+      expect(new Date(lastCall!.since!).getTime()).toBeLessThan(new Date(lastCall!.until!).getTime());
+    });
   });
 
   it('shows Pulisci button when only since filter is set', async () => {

@@ -506,11 +506,12 @@ test('GET /api/audit combines since + until for a window', async () => {
   }
 });
 
-test('GET /api/audit returns 400 for invalid since', async () => {
+test('GET /api/audit returns 400 for invalid since (tz-suffixed but unparseable)', async () => {
   resetStore();
   const { server, baseUrl } = await startServer();
   try {
-    const response = await fetch(`${baseUrl}/api/audit?since=not-a-date`);
+    // "not-a-dateZ" passes TZ_REGEX (ends with Z) but Date.parse → NaN
+    const response = await fetch(`${baseUrl}/api/audit?since=not-a-dateZ`);
     assert.equal(response.status, 400);
     const body = await response.json();
     assert.equal(body.code, 'VALIDATION_ERROR');
@@ -520,11 +521,11 @@ test('GET /api/audit returns 400 for invalid since', async () => {
   }
 });
 
-test('GET /api/audit returns 400 for invalid until', async () => {
+test('GET /api/audit returns 400 for invalid until (tz-suffixed but unparseable)', async () => {
   resetStore();
   const { server, baseUrl } = await startServer();
   try {
-    const response = await fetch(`${baseUrl}/api/audit?until=bogus`);
+    const response = await fetch(`${baseUrl}/api/audit?until=bogusZ`);
     assert.equal(response.status, 400);
     const body = await response.json();
     assert.equal(body.code, 'VALIDATION_ERROR');
@@ -555,6 +556,50 @@ test('GET /api/audit returns 400 when since > until', async () => {
     assert.equal(response.status, 400);
     const body = await response.json();
     assert.match(body.message, /since must be <= until/);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+// Codex P1 regression (PR #137): tz-naive datetime strings rejected as
+// ambiguous to prevent server-local vs browser-local tz boundary drift.
+test('GET /api/audit returns 400 when since lacks explicit timezone', async () => {
+  resetStore();
+  const { server, baseUrl } = await startServer();
+  try {
+    // No Z, no +HH:MM offset — ambiguous wall-clock string
+    const response = await fetch(`${baseUrl}/api/audit?since=2026-05-20T10:00:00`);
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.match(body.message, /since must include an explicit timezone offset/);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('GET /api/audit returns 400 when until lacks explicit timezone', async () => {
+  resetStore();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit?until=2026-05-20T10:00`);
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.match(body.message, /until must include an explicit timezone offset/);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('GET /api/audit accepts explicit positive offset (+02:00)', async () => {
+  resetStore();
+  seedAuditLog({ id: 'tz1', entity: 'Trait', createdAt: new Date('2026-03-15T08:00:00Z') });
+  const { server, baseUrl } = await startServer();
+  try {
+    // 2026-03-15T10:00:00+02:00 = 2026-03-15T08:00:00Z — record at exact bound
+    const response = await fetch(`${baseUrl}/api/audit?since=2026-03-15T10:00:00%2B02:00&until=2026-03-15T11:00:00%2B02:00`);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.total, 1);
   } finally {
     await closeServer(server);
   }
