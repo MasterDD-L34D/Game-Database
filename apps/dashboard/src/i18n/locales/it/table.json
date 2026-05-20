@@ -18,6 +18,12 @@
     "normal": "Normale"
   },
   "pagination": {
-    "rowsPerPage": "Righe per pagina"
+    "rowsPerPage": "Righe per pagina",
+    "displayedRows": "{{from}}–{{to}} di {{count}}",
+    "displayedRowsMoreThan": "{{from}}–{{to}} di oltre {{count}}",
+    "ariaFirst": "Vai alla prima pagina",
+    "ariaPrevious": "Vai alla pagina precedente",
+    "ariaNext": "Vai alla pagina successiva",
+    "ariaLast": "Vai all'ultima pagina"
   }
 }
