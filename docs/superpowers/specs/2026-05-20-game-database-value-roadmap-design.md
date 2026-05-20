@@ -2,8 +2,26 @@
 
 **Date**: 2026-05-20
 **Author**: parallel-#2 session (Ryzen, Claude opus-4.7)
-**Status**: DRAFT — awaiting Eduardo review
+**Status**: **EXECUTED** — Fase 1 100% delivered (5/5 PR merged 2026-05-20), Fase 2/3 vision tail remains
 **Scope**: Game-Database repo Fase 1 execution + Fase 2/3 vision tail across Evo-Tactics repo set
+
+## Execution status (Fase 1 — COMPLETE 2026-05-20)
+
+| PR | Scope | Merge SHA |
+|---|---|---|
+| #119 | PR-α slug hardening (1/5) — `server/utils/slug.js` canonical NFD+max-80, 6 call sites consolidated, audit-slug benchmark, 30 unit tests | `7ed9dd6` |
+| #120 | PR-β junction coverage (2/5) — +16 PATCH/DELETE tests across 4 junction files | `c47c13c` |
+| #121 | PR-γ schema doc auto-gen (3/5) — generator pure-JS + auto-gen `schema-reference.md` + CI drift gate workflow + slim `modal-game-database.md` + Postgres 15→16 drift fix | `6fe6719` |
+| #122 | PR-δ audit endpoint (4/5) — `GET /api/audit` + composite index migration + `AUDIT_READ_ROLES` RBAC + 12 tests | `91d5007` |
+| #125 | PR-ε import validator STRICT (5/5) — `--validate-only` flag + tiered exit-code policy + `computeExitCode` pure function + stdout JSON pollution fix + 16 tests | `e1454c2` |
+
+**Aggregate Fase 1 outcome:**
+- 5/5 PR delivered, 100% squash-merged
+- Test count: 107 → 181 (+74, +69%)
+- Full suite green throughout the chain
+- CI green rate: 100% (32/32 individual checks across the 5 PR)
+- Zero cross-repo touches outside Game-Database (Game, Godot-v2, vault, codemasterdd governance all untouched per NO-GO contract)
+- Bonus deliverables interleaved during execution: cleanup PR #115 (untracked triage), PR #116 (masters CRUD coverage +21 tests), PR #117 (`utils.js` restore() contract fix + regression), PR #124 (issue #123 a11y MUI TablePagination Italian fix)
 
 ## Context
 
