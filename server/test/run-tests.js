@@ -16,6 +16,7 @@ const testFiles = [
   'testInfraRestore.test.js',
   'slug.test.js',
   'audit.test.js',
+  'importValidator.test.js',
 ];
 
 for (const testFile of testFiles) {

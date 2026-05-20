@@ -60,8 +60,16 @@ function arg(name, def) {
 }
 
 const repoRoot = path.resolve(arg('repo', process.cwd()));
-const dryRun = !!arg('dry-run', false);
+const validateOnly = !!arg('validate-only', false);
+// --validate-only implies --dry-run (no DB writes) per spec PR-ε Q4 resolved.
+const dryRun = validateOnly || !!arg('dry-run', false);
 const verbose = !!arg('verbose', false);
+const warnOnly = !!arg('warn-only', false);
+const failOnRaw = arg('fail-on', 'errors,schema');
+const failOn = String(failOnRaw)
+  .split(',')
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
 const configPath = arg('config', null);
 const defaultConfig = {
   species: [
@@ -978,10 +986,39 @@ async function processEcosystems(items) {
   return report;
 }
 
+// Compute process exit code from import summary based on user-supplied flags.
+// Per spec PR-ε Q4 resolved: STRICT default (errori + schema_validation = exit 1,
+// partial completeness = warn only). Opt-out via --warn-only. Granular via
+// --fail-on=errors|schema|any.
+//
+// Pure function exported for unit testing.
+function computeExitCode(summary, opts = {}) {
+  const { validateOnly = false, warnOnly = false, failOn = ['errors', 'schema'] } = opts;
+  if (!validateOnly) return 0;
+  if (warnOnly) return 0;
+
+  const checkErrors = failOn.includes('errors') || failOn.includes('any');
+  const checkSchema = failOn.includes('schema') || failOn.includes('any');
+
+  if (checkErrors && (summary.errori || 0) > 0) return 1;
+
+  if (checkSchema) {
+    for (const detail of Object.values(summary.dettaglio || {})) {
+      const schemaSkips = detail?.motivi_scarto?.schema_validation || 0;
+      if (schemaSkips > 0) return 1;
+    }
+  }
+
+  return 0;
+}
+
 async function main() {
   const mainT0 = performance.now();
   const config = configPath ? JSON.parse(fs.readFileSync(configPath, 'utf-8')) : defaultConfig;
-  console.log(`Repo: ${repoRoot}${dryRun ? ' (dry-run)' : ''}`);
+  // Progress to stderr to keep stdout JSON-only for machine consumers
+  // (Game's evo-import-gate.yml and any --validate-only consumer).
+  const modeLabel = validateOnly ? ' (validate-only)' : dryRun ? ' (dry-run)' : '';
+  console.error(`Repo: ${repoRoot}${modeLabel}`);
   const globOptions = {
     cwd: repoRoot,
     absolute: true,
@@ -1024,17 +1061,31 @@ async function main() {
       };
       return acc;
     },
-    { mode: dryRun ? 'dry-run' : 'import', repo: repoRoot, totali_letti: 0, normalizzati: 0, completi: 0, parziali: 0, aggiornati_o_upsertati: 0, scartati: 0, errori: 0, dettaglio: {} },
+    { mode: validateOnly ? 'validate-only' : dryRun ? 'dry-run' : 'import', repo: repoRoot, totali_letti: 0, normalizzati: 0, completi: 0, parziali: 0, aggiornati_o_upsertati: 0, scartati: 0, errori: 0, dettaglio: {} },
   );
   summary.elapsed_ms = Math.round(performance.now() - mainT0);
+  // JSON-only on stdout (machine-readable). Anything else (Repo, progress,
+  // errors) routes to stderr.
   console.log(JSON.stringify(summary, null, 2));
+  return summary;
 }
 
-main()
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+if (require.main === module) {
+  main()
+    .then((summary) => {
+      const code = computeExitCode(summary, { validateOnly, warnOnly, failOn });
+      if (code !== 0) {
+        console.error(`validate-only: exit ${code} (errori=${summary.errori || 0}, fail-on=${failOn.join(',')})`);
+      }
+      process.exit(code);
+    })
+    .catch((error) => {
+      console.error(error);
+      process.exit(2);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}
+
+module.exports = { computeExitCode };
