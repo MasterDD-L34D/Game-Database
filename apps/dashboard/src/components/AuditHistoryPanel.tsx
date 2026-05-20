@@ -258,6 +258,19 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
   // current since/until match a window of ~N hours ending at ~now.
   // Tolerance accounts for the second-by-second drift between when the
   // preset was clicked and the current moment.
+  //
+  // Codex P2 fix from PR #144 review: isPresetActive depends on Date.now()
+  // but React doesn't re-render on time passage by default — chip would
+  // stay highlighted past the 5-min recency window until some unrelated
+  // event triggers a render. Fix: tick `now` state every 60s via
+  // setInterval so isPresetActive recomputes on a schedule. 60s cadence
+  // is fine because the recency window is 5 min ± minute precision.
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const handle = setInterval(() => setNowTick(Date.now()), 60_000);
+    return () => clearInterval(handle);
+  }, []);
+
   function isPresetActive(hours: number): boolean {
     if (!sinceFilter || !untilFilter) return false;
     const sinceMs = new Date(sinceFilter).getTime();
@@ -265,8 +278,9 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
     if (Number.isNaN(sinceMs) || Number.isNaN(untilMs)) return false;
     const widthHours = (untilMs - sinceMs) / (60 * 60 * 1000);
     if (Math.abs(widthHours - hours) > 0.05) return false;
-    // until must be within last 5 min of "now" — preset is "recent"
-    const ageMin = (Date.now() - untilMs) / (60 * 1000);
+    // until must be within last 5 min of "now" — preset is "recent".
+    // Read nowTick (refreshed every 60s) so re-render happens on schedule.
+    const ageMin = (nowTick - untilMs) / (60 * 1000);
     return ageMin >= -1 && ageMin <= 5;
   }
   const customActive = !sinceFilter && !untilFilter;

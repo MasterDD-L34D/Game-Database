@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { act, render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -890,6 +890,42 @@ describe('AuditHistoryPanel', () => {
       expect(diffHours).toBeGreaterThan(167.9);
       expect(diffHours).toBeLessThan(168.1);
     });
+  });
+
+  // Codex P2 regression (PR #144): isPresetActive must refresh on time
+  // passage via setInterval tick — chip should NOT stay highlighted past
+  // the 5-min recency window when component is idle.
+  it('preset chip de-highlights after time passes beyond recency window', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+        items: [],
+        page: 0,
+        pageSize: 10,
+        total: 0,
+      });
+
+      renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+      // Click 24h preset
+      fireEvent.click(screen.getByText('Ultime 24h'));
+
+      // Chip should be filled
+      const chip24h = screen.getByText('Ultime 24h').closest('.MuiChip-root') as HTMLElement;
+      expect(chip24h.className).toMatch(/MuiChip-filled/);
+
+      // Advance virtual time by 10 minutes (well beyond 5-min recency)
+      // Wrap in act to allow interval-triggered setState to flush.
+      await act(async () => {
+        vi.advanceTimersByTime(10 * 60 * 1000);
+      });
+
+      // Chip should be outlined now (no longer recent)
+      const chip24hAfter = screen.getByText('Ultime 24h').closest('.MuiChip-root') as HTMLElement;
+      expect(chip24hAfter.className).toMatch(/MuiChip-outlined/);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('Personalizzato chip starts filled (active) when no date set; 24h chip filled after click', async () => {
