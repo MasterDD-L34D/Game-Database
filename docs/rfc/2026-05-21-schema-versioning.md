@@ -72,39 +72,72 @@ CREATE UNIQUE INDEX "TaxonomyVersion_single_draft_idx"
   WHERE status = 'draft';
 ```
 
-### 2. `version_id` FK on entity tables
+### 2. Copy-on-write snapshot model (revised 2026-05-21 per Codex P1)
 
-Add nullable FK to each master:
+**Initial design rejected**: a single nullable `versionId` FK on each master table would mean UPDATEs retag the row in-place, **destroying the released snapshot**. Codex P1 caught this on first review (`docs/rfc/2026-05-21-schema-versioning.md:100`, see PR #143 comment).
+
+**Revised design — separate snapshot tables**:
 
 ```prisma
+// Master `Trait` table stays as-is: holds the CURRENT latest-released row
+// (or, equivalently, the working copy of the active draft). One row per
+// slug. Existing FKs (SpeciesTrait, etc.) continue to point here.
 model Trait {
-  // ... existing fields
-  versionId   String?
-  version     TaxonomyVersion? @relation(fields: [versionId], references: [id])
+  // ... existing fields unchanged
+  // Implicit: latestVersionId = id of the most-recent TaxonomyVersion this
+  // trait was modified under. Computed via join, NOT stored on Trait.
+}
+
+// NEW: snapshot table, append-only on release. One row per
+// (trait, version) pair. Captures all scalar fields at release time.
+model TraitVersion {
+  id              String           @id @default(cuid())
+  traitId         String
+  trait           Trait            @relation(fields: [traitId], references: [id], onDelete: Cascade)
+  versionId       String
+  version         TaxonomyVersion  @relation(fields: [versionId], references: [id])
+
+  // Frozen copy of all Trait scalar fields at release time
+  slug            String
+  name            String
+  description     String?
+  category        String?
+  unit            String?
+  dataType        TraitDataType
+  allowedValues   Json?
+  rangeMin        Float?
+  rangeMax        Float?
+  // ... rest of Trait scalars verbatim
+
+  capturedAt      DateTime         @default(now())
+
+  @@unique([traitId, versionId])
   @@index([versionId])
 }
-// Same on Biome, Species, Ecosystem.
+
+// Mirror: BiomeVersion, SpeciesVersion, EcosystemVersion per spec.
 ```
 
-Nullable for backward compat — existing rows get `null` and are treated as "all-versions, legacy".
+This gives **true immutability**: once a `TaxonomyVersion.status` flips from `draft` to `released`, the corresponding `TraitVersion` rows for that versionId are frozen. Subsequent `Trait` UPDATEs only mutate the master row and (if a draft is active) write a new `TraitVersion` row under the draft's versionId.
 
-### 3. Migration strategy (3 phases)
+### 3. Migration strategy (3 phases — revised)
 
 **Phase A (this RFC's PR)**: schema additions only.
 - Add `TaxonomyVersion` table + seed initial `v1.0.0` row with `status='released'`, `description='Baseline pre-versioning snapshot'`.
-- Add `versionId` columns to 4 master tables. All NULL initially.
-- Backfill: UPDATE every existing master row to set `versionId = v1.0.0`.
-- Existing API behavior unchanged. No client code needs changes yet.
+- Add 4 snapshot tables (`TraitVersion`, `BiomeVersion`, `SpeciesVersion`, `EcosystemVersion`).
+- Backfill: for each existing master row, INSERT a snapshot row into the matching `*Version` table with `versionId = v1.0.0`. Run in 1000-row chunks with progress log.
+- Master tables UNTOUCHED — no `versionId` column added. Existing API behavior unchanged.
 
 **Phase B (separate PR, 1-2 sprint later)**: write-path adoption.
-- Mutations require active `draft` version: every CREATE/UPDATE auto-tags the row with the current draft version's id.
-- Dashboard UI: new "Versione attiva: v1.1.0-draft" indicator in header + version-management panel for designers to release/retire drafts.
-- New endpoints: `GET /api/taxonomy/versions`, `POST /api/taxonomy/versions/:tag/release`, `POST /api/taxonomy/versions` (create draft).
+- Mutations require an active `draft` version. On every CREATE/UPDATE that lands on a master row, ALSO append a row to the matching `*Version` table tagged with the current draft's versionId. Master row continues to reflect the working draft state.
+- DELETEs on master cascade to `*Version` for that traitId via FK `onDelete: Cascade`. Released snapshots survive because their parent master row still exists (DELETE only removes the master). **Edge case**: hard-delete of a master also drops its snapshot history. Soft-delete pattern (a `deletedAt` column on master) may be needed — flagged as open question #7.
+- Dashboard UI: "Versione attiva: v1.1.0-draft" indicator + version-management panel.
+- New endpoints: `GET /api/taxonomy/versions`, `POST /api/taxonomy/versions`, `POST /api/taxonomy/versions/:tag/release`, `POST /api/taxonomy/versions/:tag/retire`.
 
 **Phase C (separate PR, after Phase B stabilizes)**: read-path version awareness.
-- `?versionId=v1.0.0` on entity GET endpoints filters to that version's rows.
-- Game runtime env var `EVO_TAXONOMY_VERSION` consumed in `/api/traits/glossary` and similar contract endpoints.
-- Default behavior preserved: unset versionId returns latest released.
+- `GET /api/traits?versionId=v1.0.0` joins to `TraitVersion` and returns the snapshot rows for that version.
+- `GET /api/traits` without versionId returns master rows (current working state).
+- Game runtime env var `EVO_TAXONOMY_VERSION` consumed in `/api/traits/glossary`.
 
 ### 4. API contract changes (Phase B+C)
 
@@ -158,6 +191,7 @@ Phase B/C each open a separate RFC + PR chain.
 4. **Audit interaction**: each version-release event should log to AuditLog with entity=`TaxonomyVersion`. The `_revertedFrom` chain (PR #130/#133) extends naturally.
 5. **Records entity**: NOT versioned in this RFC since Record is per-user artistic schede, not bilanciamento data. Explicit non-goal — confirm?
 6. **`@db.VarChar(80)` slug constraint deferral**: still pending from PR-α follow-up. Should it be part of Phase A migration or stay separate?
+7. **Hard-delete of master row drops snapshot history** (added 2026-05-21 per Codex P1 design revision): if we keep `onDelete: Cascade`, deleting Trait X destroys all its TraitVersion rows including released snapshots. Options: (a) add `deletedAt` soft-delete column to master tables; (b) change FK to `onDelete: SetNull` and keep orphaned snapshots; (c) accept this loss with explicit warning in delete UI. Recommend (a) for v1, but flag for review.
 
 ## Risk matrix
 
