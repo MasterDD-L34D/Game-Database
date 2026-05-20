@@ -14,6 +14,7 @@ const testFiles = [
   'ecosystemSpecies.test.js',
   'basicAuth.test.js',
   'testInfraRestore.test.js',
+  'slug.test.js',
 ];
 
 for (const testFile of testFiles) {
