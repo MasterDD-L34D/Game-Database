@@ -316,3 +316,63 @@ test('GET /api/audit returns 200 when AUDIT_READ_ROLES gated and caller has role
     delete process.env.AUDIT_READ_ROLES;
   }
 });
+
+// ---- Codex P2 regression: empty-string entity / entityId returns 400 ------
+
+test('GET /api/audit returns 400 when entity= is explicit empty string', async () => {
+  resetStore();
+  seedAuditLog({ entity: 'Trait' });
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit?entity=`);
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.equal(body.code, 'VALIDATION_ERROR');
+    assert.match(body.message, /entity must be non-empty/);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('GET /api/audit returns 400 when entityId= is explicit empty string', async () => {
+  resetStore();
+  seedAuditLog({ entity: 'Trait', entityId: 'trait-1' });
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit?entityId=`);
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.equal(body.code, 'VALIDATION_ERROR');
+    assert.match(body.message, /entityId must be non-empty/);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('GET /api/audit returns 400 when entity= is whitespace-only', async () => {
+  resetStore();
+  seedAuditLog({ entity: 'Trait' });
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit?entity=%20%20`);
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.equal(body.code, 'VALIDATION_ERROR');
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('GET /api/audit returns 400 when action= is explicit empty string', async () => {
+  resetStore();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit?action=`);
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.equal(body.code, 'VALIDATION_ERROR');
+    assert.match(body.message, /action must be one of/);
+  } finally {
+    await closeServer(server);
+  }
+});
