@@ -892,6 +892,36 @@ describe('AuditHistoryPanel', () => {
     });
   });
 
+  it('Personalizzato chip starts filled (active) when no date set; 24h chip filled after click', async () => {
+    vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: [],
+      page: 0,
+      pageSize: 10,
+      total: 0,
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    const personalizzato = screen.getByText('Personalizzato').closest('.MuiChip-root') as HTMLElement;
+    const chip24h = screen.getByText('Ultime 24h').closest('.MuiChip-root') as HTMLElement;
+
+    // Initially: Personalizzato active (filled-primary), 24h not active
+    expect(personalizzato.className).toMatch(/MuiChip-filled/);
+    expect(chip24h.className).toMatch(/MuiChip-outlined/);
+
+    // After clicking 24h
+    fireEvent.click(screen.getByText('Ultime 24h'));
+
+    await waitFor(() => {
+      const chip24hAfter = screen.getByText('Ultime 24h').closest('.MuiChip-root') as HTMLElement;
+      expect(chip24hAfter.className).toMatch(/MuiChip-filled/);
+    });
+
+    // Personalizzato becomes outlined now
+    const personalizzatoAfter = screen.getByText('Personalizzato').closest('.MuiChip-root') as HTMLElement;
+    expect(personalizzatoAfter.className).toMatch(/MuiChip-outlined/);
+  });
+
   it('preset chip "Personalizzato" clears since/until to empty', async () => {
     const listSpy = vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
       items: [],
