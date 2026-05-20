@@ -254,6 +254,37 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
     setUntilFilter('');
   };
 
+  // Active-preset detection (Fase 2 15/N): a preset is "active" iff
+  // current since/until match a window of ~N hours ending at ~now.
+  // Tolerance accounts for the second-by-second drift between when the
+  // preset was clicked and the current moment.
+  //
+  // Codex P2 fix from PR #144 review: isPresetActive depends on Date.now()
+  // but React doesn't re-render on time passage by default — chip would
+  // stay highlighted past the 5-min recency window until some unrelated
+  // event triggers a render. Fix: tick `now` state every 60s via
+  // setInterval so isPresetActive recomputes on a schedule. 60s cadence
+  // is fine because the recency window is 5 min ± minute precision.
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const handle = setInterval(() => setNowTick(Date.now()), 60_000);
+    return () => clearInterval(handle);
+  }, []);
+
+  function isPresetActive(hours: number): boolean {
+    if (!sinceFilter || !untilFilter) return false;
+    const sinceMs = new Date(sinceFilter).getTime();
+    const untilMs = new Date(untilFilter).getTime();
+    if (Number.isNaN(sinceMs) || Number.isNaN(untilMs)) return false;
+    const widthHours = (untilMs - sinceMs) / (60 * 60 * 1000);
+    if (Math.abs(widthHours - hours) > 0.05) return false;
+    // until must be within last 5 min of "now" — preset is "recent".
+    // Read nowTick (refreshed every 60s) so re-render happens on schedule.
+    const ageMin = (nowTick - untilMs) / (60 * 1000);
+    return ageMin >= -1 && ageMin <= 5;
+  }
+  const customActive = !sinceFilter && !untilFilter;
+
   // Codex P2 fix from PR #127 review: previous `useQuery` + `page` state
   // replaced visible items on `Carica altri` because the panel only
   // rendered the current page's items. `useInfiniteQuery` accumulates
@@ -470,10 +501,38 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
           <Typography variant="caption" color="text.secondary">
             {t('filter.presetLabel')}
           </Typography>
-          <Chip size="small" variant="outlined" clickable onClick={() => applyPreset(24)} label={t('filter.preset24h')} />
-          <Chip size="small" variant="outlined" clickable onClick={() => applyPreset(24 * 7)} label={t('filter.preset7d')} />
-          <Chip size="small" variant="outlined" clickable onClick={() => applyPreset(24 * 30)} label={t('filter.preset30d')} />
-          <Chip size="small" variant="outlined" clickable onClick={applyCustomPreset} label={t('filter.presetCustom')} />
+          <Chip
+            size="small"
+            variant={isPresetActive(24) ? 'filled' : 'outlined'}
+            color={isPresetActive(24) ? 'primary' : 'default'}
+            clickable
+            onClick={() => applyPreset(24)}
+            label={t('filter.preset24h')}
+          />
+          <Chip
+            size="small"
+            variant={isPresetActive(24 * 7) ? 'filled' : 'outlined'}
+            color={isPresetActive(24 * 7) ? 'primary' : 'default'}
+            clickable
+            onClick={() => applyPreset(24 * 7)}
+            label={t('filter.preset7d')}
+          />
+          <Chip
+            size="small"
+            variant={isPresetActive(24 * 30) ? 'filled' : 'outlined'}
+            color={isPresetActive(24 * 30) ? 'primary' : 'default'}
+            clickable
+            onClick={() => applyPreset(24 * 30)}
+            label={t('filter.preset30d')}
+          />
+          <Chip
+            size="small"
+            variant={customActive ? 'filled' : 'outlined'}
+            color={customActive ? 'primary' : 'default'}
+            clickable
+            onClick={applyCustomPreset}
+            label={t('filter.presetCustom')}
+          />
         </Stack>
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} mb={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
