@@ -81,6 +81,7 @@ For dominio/runtime/operational context (not schema), see
 
 - `@@index([entity, entityId])`
 - `@@index([createdAt])`
+- `@@index([entity, entityId, createdAt(sort: Desc)], name: "AuditLog_entity_entityId_createdAt_desc_idx")`
 
 ### Trait
 
