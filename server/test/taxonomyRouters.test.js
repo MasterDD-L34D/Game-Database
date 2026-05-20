@@ -491,3 +491,431 @@ test('PUT /api/ecosystems/:id returns 403 when user lacks taxonomy:write permiss
     await closeServer(server);
   }
 });
+
+
+// ---- PUT /api/traits/:id ---------------------------------------------------
+
+test('PUT /api/traits/:id updates an existing trait', async () => {
+  taxonomy.reset();
+  const trait = taxonomy.createTrait({ name: 'Old Trait', description: 'Old description' });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/traits/${trait.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ name: 'New Trait', dataType: 'TEXT', description: 'New description' }),
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.ok(Array.isArray(body.items), 'response should contain paginated items');
+    const updated = body.items.find(item => item.id === trait.id);
+    assert.ok(updated, 'updated trait should be in items');
+    assert.equal(updated.name, 'New Trait');
+    assert.equal(updated.description, 'New description');
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('PUT /api/traits/:id returns 409 for slug conflict', async () => {
+  taxonomy.reset();
+  taxonomy.createTrait({ name: 'Trait One', slug: 'trait-one' });
+  const t2 = taxonomy.createTrait({ name: 'Trait Two', slug: 'trait-two' });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/traits/${t2.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ name: 'Trait One', dataType: 'TEXT', slug: 'trait-one' }),
+    });
+    assert.equal(response.status, 409);
+    const body = await response.json();
+    assert.equal(body.code, 'CONFLICT');
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('PUT /api/traits/:id returns 404 for missing trait', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/traits/missing-id`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ name: 'Whatever', dataType: 'TEXT' }),
+    });
+    assert.equal(response.status, 404);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('PUT /api/traits/:id returns 403 when user lacks taxonomy:write permission', async () => {
+  taxonomy.reset();
+  const trait = taxonomy.createTrait({ name: 'Permission Test' });
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/traits/${trait.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'viewer' },
+      body: JSON.stringify({ name: 'Should fail', dataType: 'TEXT' }),
+    });
+    assert.equal(response.status, 403);
+    const body = await response.json();
+    assert.deepEqual(body, {
+      code: 'FORBIDDEN',
+      message: 'Insufficient permissions',
+    });
+  } finally {
+    await closeServer(server);
+  }
+});
+
+
+// ---- PUT /api/biomes/:id ---------------------------------------------------
+
+test('PUT /api/biomes/:id updates an existing biome', async () => {
+  taxonomy.reset();
+  const biome = taxonomy.createBiome({ name: 'Old Biome', description: 'Old description' });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/biomes/${biome.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ name: 'New Biome', description: 'New description' }),
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.ok(Array.isArray(body.items), 'response should contain paginated items');
+    const updated = body.items.find(item => item.id === biome.id);
+    assert.ok(updated, 'updated biome should be in items');
+    assert.equal(updated.name, 'New Biome');
+    assert.equal(updated.description, 'New description');
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('PUT /api/biomes/:id returns 409 for slug conflict', async () => {
+  taxonomy.reset();
+  taxonomy.createBiome({ name: 'Biome One', slug: 'biome-one' });
+  const b2 = taxonomy.createBiome({ name: 'Biome Two', slug: 'biome-two' });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/biomes/${b2.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ name: 'Biome One', slug: 'biome-one' }),
+    });
+    assert.equal(response.status, 409);
+    const body = await response.json();
+    assert.equal(body.code, 'CONFLICT');
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('PUT /api/biomes/:id returns 404 for missing biome', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/biomes/missing-id`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ name: 'Whatever' }),
+    });
+    assert.equal(response.status, 404);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('PUT /api/biomes/:id returns 403 when user lacks taxonomy:write permission', async () => {
+  taxonomy.reset();
+  const biome = taxonomy.createBiome({ name: 'Permission Test' });
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/biomes/${biome.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'viewer' },
+      body: JSON.stringify({ name: 'Should fail' }),
+    });
+    assert.equal(response.status, 403);
+    const body = await response.json();
+    assert.deepEqual(body, {
+      code: 'FORBIDDEN',
+      message: 'Insufficient permissions',
+    });
+  } finally {
+    await closeServer(server);
+  }
+});
+
+
+// ---- PUT /api/species/:id --------------------------------------------------
+
+test('PUT /api/species/:id updates an existing species', async () => {
+  taxonomy.reset();
+  const species = taxonomy.createSpecies({ scientificName: 'Old Scientific', commonName: 'Old Common' });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/species/${species.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ scientificName: 'New Scientific', commonName: 'New Common' }),
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.ok(Array.isArray(body.items), 'response should contain paginated items');
+    const updated = body.items.find(item => item.id === species.id);
+    assert.ok(updated, 'updated species should be in items');
+    assert.equal(updated.scientificName, 'New Scientific');
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('PUT /api/species/:id returns 409 for slug conflict', async () => {
+  taxonomy.reset();
+  taxonomy.createSpecies({ scientificName: 'Species One', slug: 'species-one' });
+  const s2 = taxonomy.createSpecies({ scientificName: 'Species Two', slug: 'species-two' });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/species/${s2.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ scientificName: 'Species One', slug: 'species-one' }),
+    });
+    assert.equal(response.status, 409);
+    const body = await response.json();
+    assert.equal(body.code, 'CONFLICT');
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('PUT /api/species/:id returns 404 for missing species', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/species/missing-id`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ scientificName: 'Whatever' }),
+    });
+    assert.equal(response.status, 404);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('PUT /api/species/:id returns 403 when user lacks taxonomy:write permission', async () => {
+  taxonomy.reset();
+  const species = taxonomy.createSpecies({ scientificName: 'Permission Test' });
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/species/${species.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'viewer' },
+      body: JSON.stringify({ scientificName: 'Should fail' }),
+    });
+    assert.equal(response.status, 403);
+    const body = await response.json();
+    assert.deepEqual(body, {
+      code: 'FORBIDDEN',
+      message: 'Insufficient permissions',
+    });
+  } finally {
+    await closeServer(server);
+  }
+});
+
+
+// ---- DELETE /api/traits/:id ------------------------------------------------
+
+test('DELETE /api/traits/:id removes an existing trait', async () => {
+  taxonomy.reset();
+  const trait = taxonomy.createTrait({ name: 'Trait to delete' });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/traits/${trait.id}`, {
+      method: 'DELETE',
+      headers: { 'X-Roles': 'taxonomy:write' },
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.success, true);
+    assert.equal(body.id, trait.id);
+
+    const getResponse = await fetch(`${baseUrl}/api/traits/${trait.id}`);
+    assert.equal(getResponse.status, 404);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('DELETE /api/traits/:id returns 404 for missing trait', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/traits/missing-id`, {
+      method: 'DELETE',
+      headers: { 'X-Roles': 'taxonomy:write' },
+    });
+    assert.equal(response.status, 404);
+    const body = await response.json();
+    assert.equal(body.code, 'NOT_FOUND');
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('DELETE /api/traits/:id returns 403 when user lacks taxonomy:write permission', async () => {
+  taxonomy.reset();
+  const trait = taxonomy.createTrait({ name: 'Permission Test' });
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/traits/${trait.id}`, {
+      method: 'DELETE',
+      headers: { 'X-Roles': 'viewer' },
+    });
+    assert.equal(response.status, 403);
+    const body = await response.json();
+    assert.deepEqual(body, {
+      code: 'FORBIDDEN',
+      message: 'Insufficient permissions',
+    });
+  } finally {
+    await closeServer(server);
+  }
+});
+
+
+// ---- DELETE /api/biomes/:id ------------------------------------------------
+
+test('DELETE /api/biomes/:id removes an existing biome', async () => {
+  taxonomy.reset();
+  const biome = taxonomy.createBiome({ name: 'Biome to delete' });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/biomes/${biome.id}`, {
+      method: 'DELETE',
+      headers: { 'X-Roles': 'taxonomy:write' },
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.success, true);
+    assert.equal(body.id, biome.id);
+
+    const getResponse = await fetch(`${baseUrl}/api/biomes/${biome.id}`);
+    assert.equal(getResponse.status, 404);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('DELETE /api/biomes/:id returns 404 for missing biome', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/biomes/missing-id`, {
+      method: 'DELETE',
+      headers: { 'X-Roles': 'taxonomy:write' },
+    });
+    assert.equal(response.status, 404);
+    const body = await response.json();
+    assert.equal(body.code, 'NOT_FOUND');
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('DELETE /api/biomes/:id returns 403 when user lacks taxonomy:write permission', async () => {
+  taxonomy.reset();
+  const biome = taxonomy.createBiome({ name: 'Permission Test' });
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/biomes/${biome.id}`, {
+      method: 'DELETE',
+      headers: { 'X-Roles': 'viewer' },
+    });
+    assert.equal(response.status, 403);
+    const body = await response.json();
+    assert.deepEqual(body, {
+      code: 'FORBIDDEN',
+      message: 'Insufficient permissions',
+    });
+  } finally {
+    await closeServer(server);
+  }
+});
+
+
+// ---- DELETE /api/ecosystems/:id --------------------------------------------
+
+test('DELETE /api/ecosystems/:id removes an existing ecosystem', async () => {
+  taxonomy.reset();
+  const eco = taxonomy.createEcosystem({ name: 'Ecosystem to delete' });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/ecosystems/${eco.id}`, {
+      method: 'DELETE',
+      headers: { 'X-Roles': 'taxonomy:write' },
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.success, true);
+    assert.equal(body.id, eco.id);
+
+    const getResponse = await fetch(`${baseUrl}/api/ecosystems/${eco.id}`);
+    assert.equal(getResponse.status, 404);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('DELETE /api/ecosystems/:id returns 404 for missing ecosystem', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/ecosystems/missing-id`, {
+      method: 'DELETE',
+      headers: { 'X-Roles': 'taxonomy:write' },
+    });
+    assert.equal(response.status, 404);
+    const body = await response.json();
+    assert.equal(body.code, 'NOT_FOUND');
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('DELETE /api/ecosystems/:id returns 403 when user lacks taxonomy:write permission', async () => {
+  taxonomy.reset();
+  const eco = taxonomy.createEcosystem({ name: 'Permission Test' });
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/ecosystems/${eco.id}`, {
+      method: 'DELETE',
+      headers: { 'X-Roles': 'viewer' },
+    });
+    assert.equal(response.status, 403);
+    const body = await response.json();
+    assert.deepEqual(body, {
+      code: 'FORBIDDEN',
+      message: 'Insufficient permissions',
+    });
+  } finally {
+    await closeServer(server);
+  }
+});
