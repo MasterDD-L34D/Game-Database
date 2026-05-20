@@ -6,7 +6,16 @@ const prisma = require('../db/prisma');
 const originalAuditLog = {
   count: prisma.auditLog?.count,
   findMany: prisma.auditLog?.findMany,
+  findUnique: prisma.auditLog?.findUnique,
+  create: prisma.auditLog?.create,
 };
+
+const originalTrait = {
+  findUnique: prisma.trait?.findUnique,
+  create: prisma.trait?.create,
+};
+
+const traitStore = new Map();
 
 const store = [];
 let idCounter = 1;
@@ -18,6 +27,7 @@ function clone(value) {
 function resetStore() {
   store.length = 0;
   idCounter = 1;
+  traitStore.clear();
 }
 
 function seedAuditLog(data = {}) {
@@ -66,11 +76,62 @@ function installMock() {
     const end = typeof take === 'number' ? skip + take : undefined;
     return ordered.slice(skip, end).map(clone);
   };
+  prisma.auditLog.findUnique = async ({ where } = {}) => {
+    if (!where || !where.id) return null;
+    const found = store.find(r => r.id === where.id);
+    return found ? clone(found) : null;
+  };
+  prisma.auditLog.create = async ({ data } = {}) => {
+    const record = {
+      id: data.id ?? `audit-${idCounter++}`,
+      entity: data.entity,
+      entityId: data.entityId,
+      action: data.action,
+      user: data.user ?? null,
+      payload: data.payload ?? null,
+      createdAt: new Date(),
+    };
+    store.push(record);
+    return clone(record);
+  };
+
+  prisma.trait = prisma.trait || {};
+  prisma.trait.findUnique = async ({ where } = {}) => {
+    if (!where) return null;
+    if (where.id) {
+      const found = traitStore.get(where.id);
+      return found ? clone(found) : null;
+    }
+    if (where.slug) {
+      for (const record of traitStore.values()) {
+        if (record.slug === where.slug) return clone(record);
+      }
+      return null;
+    }
+    return null;
+  };
+  prisma.trait.create = async ({ data } = {}) => {
+    if (traitStore.has(data.id)) {
+      throw new Error('Unique constraint failed (id)');
+    }
+    for (const record of traitStore.values()) {
+      if (record.slug && record.slug === data.slug) {
+        throw new Error('Unique constraint failed (slug)');
+      }
+    }
+    const record = { ...data };
+    traitStore.set(data.id, clone(record));
+    return clone(record);
+  };
 }
 
 function restoreMock() {
   if (originalAuditLog.count) prisma.auditLog.count = originalAuditLog.count;
   if (originalAuditLog.findMany) prisma.auditLog.findMany = originalAuditLog.findMany;
+  if (originalAuditLog.findUnique) prisma.auditLog.findUnique = originalAuditLog.findUnique;
+  if (originalAuditLog.create) prisma.auditLog.create = originalAuditLog.create;
+  if (originalTrait.findUnique) prisma.trait.findUnique = originalTrait.findUnique;
+  if (originalTrait.create) prisma.trait.create = originalTrait.create;
 }
 
 installMock();
@@ -372,6 +433,243 @@ test('GET /api/audit returns 400 when action= is explicit empty string', async (
     const body = await response.json();
     assert.equal(body.code, 'VALIDATION_ERROR');
     assert.match(body.message, /action must be one of/);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+// ---- POST /api/audit/:logId/revert (Fase 2 undo) -------------------------
+
+test('POST /api/audit/:logId/revert resurrects DELETE-tombstoned trait', async () => {
+  resetStore();
+  // Seed a DELETE audit entry for a Trait
+  const traitData = {
+    id: 'trait-revert-1',
+    slug: 'foo',
+    name: 'Foo',
+    dataType: 'TEXT',
+    description: 'pre-delete description',
+  };
+  const auditEntry = seedAuditLog({
+    id: 'audit-delete-1',
+    entity: 'Trait',
+    entityId: traitData.id,
+    action: 'DELETE',
+    payload: traitData,
+  });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit/${auditEntry.id}/revert`, {
+      method: 'POST',
+      headers: { 'X-Roles': 'taxonomy:write' },
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.success, true);
+    assert.equal(body.id, traitData.id);
+    assert.equal(body.entity, 'Trait');
+    assert.equal(body.revertedFrom, auditEntry.id);
+
+    // Verify trait actually exists now in mock store
+    const recreated = await prisma.trait.findUnique({ where: { id: traitData.id } });
+    assert.ok(recreated, 'trait should exist after revert');
+    assert.equal(recreated.slug, 'foo');
+    assert.equal(recreated.name, 'Foo');
+
+    // Verify a new audit entry was created for the revert
+    const allAudit = store.filter((r) => r.entity === 'Trait');
+    const createEntry = allAudit.find((r) => r.action === 'CREATE');
+    assert.ok(createEntry, 'a CREATE audit entry should be logged for the revert');
+    assert.equal(createEntry.payload._revertedFrom, auditEntry.id);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('POST /api/audit/:logId/revert returns 404 for missing log', async () => {
+  resetStore();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit/missing-log-id/revert`, {
+      method: 'POST',
+      headers: { 'X-Roles': 'taxonomy:write' },
+    });
+    assert.equal(response.status, 404);
+    const body = await response.json();
+    assert.equal(body.code, 'NOT_FOUND');
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('POST /api/audit/:logId/revert returns 400 for UPDATE actions (not revertable in v1)', async () => {
+  resetStore();
+  const auditEntry = seedAuditLog({
+    id: 'audit-update-1',
+    entity: 'Trait',
+    entityId: 'trait-1',
+    action: 'UPDATE',
+    payload: { name: 'New Name' },
+  });
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit/${auditEntry.id}/revert`, {
+      method: 'POST',
+      headers: { 'X-Roles': 'taxonomy:write' },
+    });
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.equal(body.code, 'NOT_REVERTABLE');
+    assert.match(body.message, /Only DELETE actions can be reverted/);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('POST /api/audit/:logId/revert returns 400 for CREATE actions', async () => {
+  resetStore();
+  const auditEntry = seedAuditLog({
+    id: 'audit-create-1',
+    entity: 'Trait',
+    entityId: 'trait-1',
+    action: 'CREATE',
+    payload: { id: 'trait-1', slug: 'x', name: 'X', dataType: 'TEXT' },
+  });
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit/${auditEntry.id}/revert`, {
+      method: 'POST',
+      headers: { 'X-Roles': 'taxonomy:write' },
+    });
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.equal(body.code, 'NOT_REVERTABLE');
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('POST /api/audit/:logId/revert returns 403 without taxonomy:write role', async () => {
+  resetStore();
+  const auditEntry = seedAuditLog({
+    id: 'audit-delete-403',
+    entity: 'Trait',
+    entityId: 'trait-1',
+    action: 'DELETE',
+    payload: { id: 'trait-1', slug: 'x', name: 'X', dataType: 'TEXT' },
+  });
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit/${auditEntry.id}/revert`, {
+      method: 'POST',
+      headers: { 'X-Roles': 'viewer' },
+    });
+    assert.equal(response.status, 403);
+    const body = await response.json();
+    assert.equal(body.code, 'FORBIDDEN');
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('POST /api/audit/:logId/revert returns 409 when entity already exists', async () => {
+  resetStore();
+  // Pre-seed an existing trait + a DELETE audit log for the same id
+  traitStore.set('trait-conflict', { id: 'trait-conflict', slug: 'c', name: 'C', dataType: 'TEXT' });
+  const auditEntry = seedAuditLog({
+    id: 'audit-delete-conflict',
+    entity: 'Trait',
+    entityId: 'trait-conflict',
+    action: 'DELETE',
+    payload: { id: 'trait-conflict', slug: 'c', name: 'C', dataType: 'TEXT' },
+  });
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit/${auditEntry.id}/revert`, {
+      method: 'POST',
+      headers: { 'X-Roles': 'taxonomy:write' },
+    });
+    assert.equal(response.status, 409);
+    const body = await response.json();
+    assert.equal(body.code, 'CONFLICT');
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('POST /api/audit/:logId/revert returns 400 for unknown entity (junction/non-master)', async () => {
+  resetStore();
+  const auditEntry = seedAuditLog({
+    id: 'audit-junction-1',
+    entity: 'SpeciesTrait',
+    entityId: 'st-1',
+    action: 'DELETE',
+    payload: { id: 'st-1' },
+  });
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit/${auditEntry.id}/revert`, {
+      method: 'POST',
+      headers: { 'X-Roles': 'taxonomy:write' },
+    });
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.equal(body.code, 'NOT_REVERTABLE');
+    assert.match(body.message, /master entities only/);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+// Codex P2 regression (PR #130 review): slug @unique collision must surface
+// as 409 CONFLICT (not fall-through Prisma P2002 → 500 INTERNAL_ERROR).
+test('POST /api/audit/:logId/revert returns 409 when slug now claimed by another entity', async () => {
+  resetStore();
+  // Another trait already has the slug `taken-slug` after the original was deleted
+  traitStore.set('trait-other', { id: 'trait-other', slug: 'taken-slug', name: 'Other', dataType: 'TEXT' });
+  const auditEntry = seedAuditLog({
+    id: 'audit-slug-collision',
+    entity: 'Trait',
+    entityId: 'trait-original',
+    action: 'DELETE',
+    payload: { id: 'trait-original', slug: 'taken-slug', name: 'Original', dataType: 'TEXT' },
+  });
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit/${auditEntry.id}/revert`, {
+      method: 'POST',
+      headers: { 'X-Roles': 'taxonomy:write' },
+    });
+    assert.equal(response.status, 409);
+    const body = await response.json();
+    assert.equal(body.code, 'CONFLICT');
+    assert.match(body.message, /Slug "taken-slug" is now used by another/);
+    assert.equal(body.details.conflictingId, 'trait-other');
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('POST /api/audit/:logId/revert returns 400 when payload has no id', async () => {
+  resetStore();
+  const auditEntry = seedAuditLog({
+    id: 'audit-no-id',
+    entity: 'Trait',
+    entityId: 'trait-noid',
+    action: 'DELETE',
+    payload: { slug: 'no-id', name: 'NoId', dataType: 'TEXT' }, // intentionally missing id
+  });
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit/${auditEntry.id}/revert`, {
+      method: 'POST',
+      headers: { 'X-Roles': 'taxonomy:write' },
+    });
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.equal(body.code, 'NOT_REVERTABLE');
+    assert.match(body.message, /missing or has no id/);
   } finally {
     await closeServer(server);
   }
