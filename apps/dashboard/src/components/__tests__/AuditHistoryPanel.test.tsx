@@ -454,6 +454,56 @@ describe('AuditHistoryPanel', () => {
     );
   });
 
+  // Codex P2 regression (PR #141): bulk revert must NOT send ids that
+  // are no longer in the visible items list (stale-selection leak).
+  it('bulk revert filters out selected ids that are no longer visible (stale leak)', async () => {
+    // First mock returns 2 DELETE entries; user selects both.
+    const entries1 = [
+      { ...deleteEntry, id: 'd1' },
+      { ...deleteEntry, id: 'd2' },
+    ];
+    // After re-render the list shrinks to 1 entry (other entity, action,
+    // or simply filtered out). selectedIds still contains 'd2' but it's
+    // not in items anymore.
+    const entries2 = [{ ...deleteEntry, id: 'd1' }];
+
+    const listSpy = vi.spyOn(auditLib, 'listAudit');
+    listSpy.mockResolvedValueOnce({ items: entries1, page: 0, pageSize: 10, total: 2 });
+    listSpy.mockResolvedValue({ items: entries2, page: 0, pageSize: 10, total: 1 });
+
+    const revertSpy = vi.spyOn(auditLib, 'revertAudit').mockResolvedValue({
+      success: true,
+      id: 'x',
+      entity: 'Trait',
+      revertedFrom: 'd1',
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    await waitFor(() => expect(screen.getAllByText('Eliminato')).toHaveLength(2));
+
+    // Select both DELETE rows
+    screen.getAllByRole('checkbox').forEach((cb) => fireEvent.click(cb));
+
+    // Trigger a filter change to force list refetch (returns entries2 = only d1)
+    // Mock returns entries2 on subsequent calls
+    fireEvent.change(screen.getByLabelText('Filtra per utente'), {
+      target: { value: 'someone@example.com' },
+    });
+
+    // Wait for debounce + refetch
+    await waitFor(
+      () => expect(screen.getAllByText('Eliminato')).toHaveLength(1),
+      { timeout: 1500 },
+    );
+
+    // Filter change auto-clears selection per Codex fix (defense-in-depth
+    // layer 1) — so bulk button is gone.
+    expect(screen.queryByRole('button', { name: /Ripristina selezionati/ })).not.toBeInTheDocument();
+    // revertAudit should NOT have been called automatically
+    expect(revertSpy).not.toHaveBeenCalled();
+  });
+
   // ---- URL sync (Fase 2 12/N) ----
 
   it('reads initial filter state from URL audit_* params on mount', async () => {

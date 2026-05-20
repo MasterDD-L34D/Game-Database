@@ -320,6 +320,15 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
 
   const clearSelection = () => setSelectedIds(new Set());
 
+  // Codex P2 fix from PR #141 review: reset bulk selection whenever the
+  // filter context changes (action/user/since/until) so the user can't
+  // accidentally revert hidden/stale rows that are no longer visible.
+  useEffect(() => {
+    clearSelection();
+    // intentional dep set — only filter knobs trigger reset
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actionFilter, userFilter, sinceFilter, untilFilter]);
+
   const revertMutation = useMutation({
     mutationFn: (logId: string) => revertAudit(logId),
     onSuccess: (data) => {
@@ -365,9 +374,18 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
   };
 
   const confirmBulkRevert = async () => {
-    const ids = Array.from(selectedIds);
+    // Codex P2 fix from PR #141 review: intersect selectedIds with the
+    // currently visible items + restrict to action='DELETE' before sending.
+    // Defensive layer against stale selections that could leak after a
+    // race (refetch arrived after click). Combined with the filter-change
+    // reset above, eliminates the "revert hidden/stale items" bug.
+    const visibleDeleteIds = new Set(
+      items.filter((e) => e.action === 'DELETE').map((e) => e.id),
+    );
+    const ids = Array.from(selectedIds).filter((id) => visibleDeleteIds.has(id));
     if (ids.length === 0) {
       setPendingBulkConfirm(false);
+      clearSelection();
       return;
     }
     setBulkInProgress(true);
