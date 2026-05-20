@@ -13,6 +13,7 @@ const testFiles = [
   'ecosystemBiomes.test.js',
   'ecosystemSpecies.test.js',
   'basicAuth.test.js',
+  'testInfraRestore.test.js',
 ];
 
 for (const testFile of testFiles) {
