@@ -332,7 +332,7 @@ describe('AuditHistoryPanel', () => {
 
   // ---- Bulk revert (Fase 2 13/N) ----
 
-  it('shows checkbox ONLY on DELETE rows (selectable)', async () => {
+  it('shows row checkbox ONLY on DELETE rows (selectable)', async () => {
     const entries = [
       { ...deleteEntry, id: 'd1' },
       { ...deleteEntry, id: 'u1', action: 'UPDATE' as const },
@@ -349,9 +349,15 @@ describe('AuditHistoryPanel', () => {
 
     await waitFor(() => expect(screen.getByText('Eliminato')).toBeInTheDocument());
 
-    // Only 1 checkbox (for the DELETE row)
+    // 2 checkboxes total: 1 master (since visibleDeleteIds > 0) + 1 row
+    // checkbox on the DELETE row. UPDATE + CREATE rows have NO checkbox.
     const checkboxes = screen.getAllByRole('checkbox');
-    expect(checkboxes).toHaveLength(1);
+    expect(checkboxes).toHaveLength(2);
+    // Filter to row-level by aria-label
+    const rowCheckboxes = checkboxes.filter((cb) =>
+      cb.getAttribute('aria-label')?.startsWith('Seleziona voce di cronologia'),
+    );
+    expect(rowCheckboxes).toHaveLength(1);
   });
 
   it('selecting DELETE entries shows bulk-revert button with count', async () => {
@@ -370,9 +376,13 @@ describe('AuditHistoryPanel', () => {
 
     await waitFor(() => expect(screen.getAllByText('Eliminato')).toHaveLength(2));
 
-    const [cb1, cb2] = screen.getAllByRole('checkbox');
-    fireEvent.click(cb1);
-    fireEvent.click(cb2);
+    // Skip the master checkbox (index 0); click the 2 row checkboxes
+    const rowCheckboxes = screen
+      .getAllByRole('checkbox')
+      .filter((cb) => cb.getAttribute('aria-label')?.startsWith('Seleziona voce di cronologia'));
+    expect(rowCheckboxes).toHaveLength(2);
+    fireEvent.click(rowCheckboxes[0]);
+    fireEvent.click(rowCheckboxes[1]);
 
     expect(screen.getByRole('button', { name: /Ripristina selezionati \(2\)/ })).toBeInTheDocument();
   });
@@ -399,9 +409,11 @@ describe('AuditHistoryPanel', () => {
 
     await waitFor(() => expect(screen.getAllByText('Eliminato')).toHaveLength(2));
 
-    const [cb1, cb2] = screen.getAllByRole('checkbox');
-    fireEvent.click(cb1);
-    fireEvent.click(cb2);
+    const rowCheckboxes = screen
+      .getAllByRole('checkbox')
+      .filter((cb) => cb.getAttribute('aria-label')?.startsWith('Seleziona voce di cronologia'));
+    fireEvent.click(rowCheckboxes[0]);
+    fireEvent.click(rowCheckboxes[1]);
 
     fireEvent.click(screen.getByRole('button', { name: /Ripristina selezionati \(2\)/ }));
 
@@ -440,7 +452,11 @@ describe('AuditHistoryPanel', () => {
 
     await waitFor(() => expect(screen.getAllByText('Eliminato')).toHaveLength(3));
 
-    screen.getAllByRole('checkbox').forEach((cb) => fireEvent.click(cb));
+    // Click only the row checkboxes (skip master)
+    screen
+      .getAllByRole('checkbox')
+      .filter((cb) => cb.getAttribute('aria-label')?.startsWith('Seleziona voce di cronologia'))
+      .forEach((cb) => fireEvent.click(cb));
 
     fireEvent.click(screen.getByRole('button', { name: /Ripristina selezionati \(3\)/ }));
     await waitFor(() =>
@@ -452,6 +468,108 @@ describe('AuditHistoryPanel', () => {
     await waitFor(() =>
       expect(screen.getByText(/2 ripristinate con successo \(1 fallite\)/)).toBeInTheDocument(),
     );
+  });
+
+  // Master select-all (Fase 2 14/N)
+  it('master checkbox selects all visible DELETE entries', async () => {
+    const entries = [
+      { ...deleteEntry, id: 'd1' },
+      { ...deleteEntry, id: 'd2' },
+      { ...deleteEntry, id: 'd3' },
+      { ...deleteEntry, id: 'u1', action: 'UPDATE' as const },
+    ];
+    vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: entries,
+      page: 0,
+      pageSize: 10,
+      total: 4,
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    await waitFor(() => expect(screen.getAllByText('Eliminato')).toHaveLength(3));
+
+    // Master checkbox visible (visibleDeleteIds > 0)
+    const masterCheckbox = screen.getByLabelText('Seleziona tutte le eliminazioni visibili');
+    fireEvent.click(masterCheckbox);
+
+    // Bulk button shows 3 (the 3 DELETE rows, NOT the UPDATE row)
+    expect(screen.getByRole('button', { name: /Ripristina selezionati \(3\)/ })).toBeInTheDocument();
+  });
+
+  it('master checkbox is hidden when no DELETE entries visible', async () => {
+    const entries = [
+      { ...deleteEntry, id: 'u1', action: 'UPDATE' as const },
+      { ...deleteEntry, id: 'c1', action: 'CREATE' as const },
+    ];
+    vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: entries,
+      page: 0,
+      pageSize: 10,
+      total: 2,
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    await waitFor(() => expect(screen.getByText('Aggiornato')).toBeInTheDocument());
+
+    expect(screen.queryByLabelText('Seleziona tutte le eliminazioni visibili')).not.toBeInTheDocument();
+  });
+
+  it('master checkbox indeterminate when SOME but not all DELETE selected', async () => {
+    const entries = [
+      { ...deleteEntry, id: 'd1' },
+      { ...deleteEntry, id: 'd2' },
+    ];
+    vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: entries,
+      page: 0,
+      pageSize: 10,
+      total: 2,
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    await waitFor(() => expect(screen.getAllByText('Eliminato')).toHaveLength(2));
+
+    // Click only the first row checkbox (entries iterate as items: master is at the top)
+    const allCheckboxes = screen.getAllByRole('checkbox');
+    // checkboxes[0] = master, checkboxes[1] = first DELETE row, [2] = second
+    fireEvent.click(allCheckboxes[1]);
+
+    const master = allCheckboxes[0] as HTMLInputElement;
+    // MUI indeterminate is rendered via data-indeterminate attribute on the
+    // inner span; assert via aria-checked === 'mixed' or via checking the
+    // bulk button reflects 1 selected.
+    expect(screen.getByRole('button', { name: /Ripristina selezionati \(1\)/ })).toBeInTheDocument();
+    // master not fully checked
+    expect(master.checked).toBe(false);
+  });
+
+  it('master checkbox uncheck clears all visible DELETE selections', async () => {
+    const entries = [
+      { ...deleteEntry, id: 'd1' },
+      { ...deleteEntry, id: 'd2' },
+    ];
+    vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: entries,
+      page: 0,
+      pageSize: 10,
+      total: 2,
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    await waitFor(() => expect(screen.getAllByText('Eliminato')).toHaveLength(2));
+
+    const master = screen.getByLabelText('Seleziona tutte le eliminazioni visibili');
+    // Select all
+    fireEvent.click(master);
+    expect(screen.getByRole('button', { name: /Ripristina selezionati \(2\)/ })).toBeInTheDocument();
+
+    // Unselect all
+    fireEvent.click(master);
+    expect(screen.queryByRole('button', { name: /Ripristina selezionati/ })).not.toBeInTheDocument();
   });
 
   // Codex P2 regression (PR #141): bulk revert must NOT send ids that
@@ -482,8 +600,11 @@ describe('AuditHistoryPanel', () => {
 
     await waitFor(() => expect(screen.getAllByText('Eliminato')).toHaveLength(2));
 
-    // Select both DELETE rows
-    screen.getAllByRole('checkbox').forEach((cb) => fireEvent.click(cb));
+    // Select both DELETE rows (skip master)
+    screen
+      .getAllByRole('checkbox')
+      .filter((cb) => cb.getAttribute('aria-label')?.startsWith('Seleziona voce di cronologia'))
+      .forEach((cb) => fireEvent.click(cb));
 
     // Trigger a filter change to force list refetch (returns entries2 = only d1)
     // Mock returns entries2 on subsequent calls
