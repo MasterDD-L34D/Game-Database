@@ -320,6 +320,28 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
 
   const clearSelection = () => setSelectedIds(new Set());
 
+  // Master "select all visible DELETE" helpers (Fase 2 14/N).
+  const visibleDeleteIds = useMemo(
+    () => items.filter((e) => e.action === 'DELETE').map((e) => e.id),
+    [items],
+  );
+  const allVisibleSelected =
+    visibleDeleteIds.length > 0 && visibleDeleteIds.every((id) => selectedIds.has(id));
+  const someVisibleSelected =
+    visibleDeleteIds.some((id) => selectedIds.has(id)) && !allVisibleSelected;
+
+  const toggleSelectAllVisible = (next: boolean) => {
+    setSelectedIds((prev) => {
+      const copy = new Set(prev);
+      if (next) {
+        for (const id of visibleDeleteIds) copy.add(id);
+      } else {
+        for (const id of visibleDeleteIds) copy.delete(id);
+      }
+      return copy;
+    });
+  };
+
   // Codex P2 fix from PR #141 review: reset bulk selection whenever the
   // filter context changes (action/user/since/until) so the user can't
   // accidentally revert hidden/stale rows that are no longer visible.
@@ -519,6 +541,22 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
 
         {!query.isLoading && items.length === 0 && !query.isError ? (
           <Typography color="text.secondary">{t('empty')}</Typography>
+        ) : null}
+
+        {visibleDeleteIds.length > 0 ? (
+          <Stack direction="row" spacing={1} alignItems="center" mb={0.5} sx={{ pl: 0.5 }}>
+            <Checkbox
+              size="small"
+              checked={allVisibleSelected}
+              indeterminate={someVisibleSelected}
+              onChange={(e) => toggleSelectAllVisible(e.target.checked)}
+              inputProps={{ 'aria-label': t('revert.bulkAriaSelectAll') }}
+              sx={{ p: 0.5 }}
+            />
+            <Typography variant="caption" color="text.secondary">
+              {t('revert.bulkAriaSelectAll')}
+            </Typography>
+          </Stack>
         ) : null}
 
         {items.length > 0 ? (
