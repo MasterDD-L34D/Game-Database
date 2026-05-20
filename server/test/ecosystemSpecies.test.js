@@ -352,3 +352,97 @@ test('POST /api/ecosystem-species returns 409 when duplicate combination is crea
 
   assert.equal(response.status, 409);
 });
+
+test('PATCH /api/ecosystem-species/:id updates existing records', async () => {
+  resetData();
+  const created = await createEcosystemSpecies({ abundance: 0.3, notes: 'Old notes' });
+
+  const { server, baseUrl } = await startServer();
+  const response = await fetch(`${baseUrl}/api/ecosystem-species/${created.id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Roles': TAXONOMY_ROLE,
+    },
+    body: JSON.stringify({ abundance: 0.7, notes: 'Updated notes' }),
+  });
+  const body = await response.json();
+  await closeServer(server);
+
+  assert.equal(response.status, 200);
+  assert.equal(body.id, created.id);
+  assert.equal(body.abundance, 0.7);
+  assert.equal(body.notes, 'Updated notes');
+});
+
+test('PATCH /api/ecosystem-species/:id returns 403 without taxonomy role', async () => {
+  resetData();
+  const created = await createEcosystemSpecies();
+
+  const { server, baseUrl } = await startServer();
+  const response = await fetch(`${baseUrl}/api/ecosystem-species/${created.id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Roles': 'viewer',
+    },
+    body: JSON.stringify({ notes: 'Unauthorized update' }),
+  });
+  const body = await response.json();
+  await closeServer(server);
+
+  assert.equal(response.status, 403);
+  assert.equal(body.code, 'FORBIDDEN');
+  assert.equal(body.message, 'Insufficient permissions');
+});
+
+test('DELETE /api/ecosystem-species/:id removes existing records', async () => {
+  resetData();
+  const created = await createEcosystemSpecies();
+
+  const { server, baseUrl } = await startServer();
+  const response = await fetch(`${baseUrl}/api/ecosystem-species/${created.id}`, {
+    method: 'DELETE',
+    headers: {
+      'X-Roles': TAXONOMY_ROLE,
+    },
+  });
+  await closeServer(server);
+
+  assert.equal(response.status, 204);
+  assert.equal(ecosystemSpeciesStore.has(created.id), false);
+});
+
+test('DELETE /api/ecosystem-species/:id returns 403 without taxonomy role', async () => {
+  resetData();
+  const created = await createEcosystemSpecies();
+
+  const { server, baseUrl } = await startServer();
+  const response = await fetch(`${baseUrl}/api/ecosystem-species/${created.id}`, {
+    method: 'DELETE',
+    headers: {
+      'X-Roles': 'viewer',
+    },
+  });
+  const body = await response.json();
+  await closeServer(server);
+
+  assert.equal(response.status, 403);
+  assert.equal(body.code, 'FORBIDDEN');
+  assert.equal(body.message, 'Insufficient permissions');
+});
+
+test('DELETE /api/ecosystem-species/:id returns 404 for missing records', async () => {
+  resetData();
+
+  const { server, baseUrl } = await startServer();
+  const response = await fetch(`${baseUrl}/api/ecosystem-species/missing`, {
+    method: 'DELETE',
+    headers: {
+      'X-Roles': TAXONOMY_ROLE,
+    },
+  });
+  await closeServer(server);
+
+  assert.equal(response.status, 404);
+});
