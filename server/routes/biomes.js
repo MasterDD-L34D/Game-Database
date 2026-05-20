@@ -6,6 +6,7 @@ const { logAudit } = require('../utils/audit');
 const { findByIdOrSlug, findExistingByIdOrSlug } = require('../utils/taxonomyValidation');
 const { AppError, sendError, handleError } = require('../utils/httpErrors');
 const { assertPagination, assertIdParam, assertString } = require('../utils/validation');
+const { normalizeSlug } = require('../utils/slug');
 const router = express.Router();
 
 function buildWhere(req) {
@@ -23,11 +24,6 @@ async function fetchPaginatedBiomes(req) {
     prisma.biome.findMany({ where, skip: page * pageSize, take: pageSize, orderBy: { name: 'asc' } }),
   ]);
   return { items, page, pageSize, total };
-}
-
-function normalizeSlug(input) {
-  if (!input) return '';
-  return input.toString().trim().toLowerCase().replace(/\s+/g, '-');
 }
 
 async function resolveParent(parentValue, currentId) {
