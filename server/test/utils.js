@@ -98,18 +98,24 @@ function createTaxonomyTestContext() {
       findMany: prisma.trait?.findMany,
       findFirst: prisma.trait?.findFirst,
       findUnique: prisma.trait?.findUnique,
+      update: prisma.trait?.update,
+      delete: prisma.trait?.delete,
     },
     biome: {
       count: prisma.biome?.count,
       findMany: prisma.biome?.findMany,
       findFirst: prisma.biome?.findFirst,
       findUnique: prisma.biome?.findUnique,
+      update: prisma.biome?.update,
+      delete: prisma.biome?.delete,
     },
     ecosystem: {
       count: prisma.ecosystem?.count,
       findMany: prisma.ecosystem?.findMany,
       findFirst: prisma.ecosystem?.findFirst,
       findUnique: prisma.ecosystem?.findUnique,
+      update: prisma.ecosystem?.update,
+      delete: prisma.ecosystem?.delete,
     },
   };
 
@@ -277,16 +283,22 @@ function createTaxonomyTestContext() {
     if (original.trait.findMany) prisma.trait.findMany = original.trait.findMany;
     if (original.trait.findFirst) prisma.trait.findFirst = original.trait.findFirst;
     if (original.trait.findUnique) prisma.trait.findUnique = original.trait.findUnique;
+    if (original.trait.update) prisma.trait.update = original.trait.update;
+    if (original.trait.delete) prisma.trait.delete = original.trait.delete;
 
     if (original.biome.count) prisma.biome.count = original.biome.count;
     if (original.biome.findMany) prisma.biome.findMany = original.biome.findMany;
     if (original.biome.findFirst) prisma.biome.findFirst = original.biome.findFirst;
     if (original.biome.findUnique) prisma.biome.findUnique = original.biome.findUnique;
+    if (original.biome.update) prisma.biome.update = original.biome.update;
+    if (original.biome.delete) prisma.biome.delete = original.biome.delete;
 
     if (original.ecosystem.count) prisma.ecosystem.count = original.ecosystem.count;
     if (original.ecosystem.findMany) prisma.ecosystem.findMany = original.ecosystem.findMany;
     if (original.ecosystem.findFirst) prisma.ecosystem.findFirst = original.ecosystem.findFirst;
     if (original.ecosystem.findUnique) prisma.ecosystem.findUnique = original.ecosystem.findUnique;
+    if (original.ecosystem.update) prisma.ecosystem.update = original.ecosystem.update;
+    if (original.ecosystem.delete) prisma.ecosystem.delete = original.ecosystem.delete;
   }
 
   function reset() {
