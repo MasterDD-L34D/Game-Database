@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { computeExitCode } = require('../scripts/ingest/import-taxonomy');
+const { computeExitCode, parseFlagFromArgs } = require('../scripts/ingest/import-taxonomy');
 
 // PR-ε: computeExitCode is the pure exit-code policy function.
 // Per spec Q4 resolved: STRICT default (errori + schema_validation = exit 1).
@@ -106,4 +106,41 @@ test('exit-code 1 default fail-on without explicit opts (validateOnly + errori)'
   // omitting opts.failOn should default to ['errors', 'schema']
   const s = summary({ errori: 2 });
   assert.equal(computeExitCode(s, { validateOnly: true }), 1);
+});
+
+// ---- parseFlagFromArgs (Codex P1 fix: support --flag=value form) ----------
+
+test('parseFlagFromArgs: returns default when flag absent', () => {
+  assert.equal(parseFlagFromArgs([], 'fail-on', 'errors,schema'), 'errors,schema');
+});
+
+test('parseFlagFromArgs: --flag=value inline form returns value', () => {
+  assert.equal(parseFlagFromArgs(['--fail-on=errors'], 'fail-on', 'default'), 'errors');
+});
+
+test('parseFlagFromArgs: --flag=value handles comma-separated value', () => {
+  assert.equal(parseFlagFromArgs(['--fail-on=errors,schema'], 'fail-on', 'default'), 'errors,schema');
+});
+
+test('parseFlagFromArgs: --flag value space-separated form still works', () => {
+  assert.equal(parseFlagFromArgs(['--fail-on', 'schema'], 'fail-on', 'default'), 'schema');
+});
+
+test('parseFlagFromArgs: bare --flag without value returns true', () => {
+  assert.equal(parseFlagFromArgs(['--validate-only'], 'validate-only', false), true);
+});
+
+test('parseFlagFromArgs: bare --flag followed by next flag returns true', () => {
+  // --validate-only --warn-only → --validate-only is boolean, --warn-only is boolean
+  assert.equal(parseFlagFromArgs(['--validate-only', '--warn-only'], 'validate-only', false), true);
+});
+
+test('parseFlagFromArgs: inline form takes precedence when both present', () => {
+  // Edge: if both --flag=A and --flag B given, inline wins (first match)
+  assert.equal(parseFlagFromArgs(['--fail-on=any', '--fail-on', 'errors'], 'fail-on', 'def'), 'any');
+});
+
+test('parseFlagFromArgs: empty inline value returns empty string (not default)', () => {
+  // --fail-on= explicitly passes empty; let caller decide
+  assert.equal(parseFlagFromArgs(['--fail-on='], 'fail-on', 'default'), '');
 });
