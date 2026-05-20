@@ -5,6 +5,7 @@ const { logAudit } = require('../utils/audit');
 const { findExistingByIdOrSlug } = require('../utils/taxonomyValidation');
 const { AppError, sendError, handleError } = require('../utils/httpErrors');
 const { assertPagination, assertIdParam, assertString } = require('../utils/validation');
+const { normalizeSlug } = require('../utils/slug');
 
 const router = express.Router();
 
@@ -29,11 +30,6 @@ async function fetchPaginatedSpecies(req) {
     prisma.species.findMany({ where, skip: page * pageSize, take: pageSize, orderBy: { scientificName: 'asc' } }),
   ]);
   return { items, page, pageSize, total };
-}
-
-function normalizeSlug(input) {
-  if (!input) return '';
-  return input.toString().trim().toLowerCase().replace(/\s+/g, '-');
 }
 
 function mapSpeciesData(body, slug, scientificName) {
