@@ -21,11 +21,15 @@
     "revertButton": "Ripristina entità {{entity}}:{{entityId}} dalla cronologia",
     "filterAction": "Filtra per azione",
     "filterUser": "Filtra per utente",
+    "filterSince": "Filtra da data",
+    "filterUntil": "Filtra a data",
     "filterClear": "Pulisci filtri"
   },
   "filter": {
     "actionAll": "Tutte le azioni",
     "userPlaceholder": "Filtra per utente (email)",
+    "sinceLabel": "Da",
+    "untilLabel": "A",
     "clear": "Pulisci"
   },
   "revert": {

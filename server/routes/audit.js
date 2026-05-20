@@ -107,6 +107,58 @@ function buildAuditWhere(query) {
     const user = String(query.user).trim();
     if (user) where.user = user;
   }
+
+  // Date range filter (Fase 2 9/N): ?since= and/or ?until= as ISO8601
+  // strings WITH EXPLICIT TIMEZONE (e.g. "2026-05-20T10:00:00Z" or
+  // "2026-05-20T10:00:00+02:00"). Both bounds optional, combined when
+  // present.
+  //
+  // Codex P1 fix from PR #137 review: the prior implementation accepted
+  // tz-naive strings like "2026-05-20T10:00" and parsed them via new
+  // Date() which applies the SERVER's local timezone — different from
+  // the browser's tz, causing boundary rows to leak/miss. Now we require
+  // explicit tz offset and reject naive datetime-local strings to make
+  // the wire contract unambiguous. The dashboard converts datetime-local
+  // → UTC ISO before sending (see AuditHistoryPanel.toUtcIso).
+  const TZ_REGEX = /(Z|[+-]\d{2}:?\d{2})$/;
+  function parseDateBound(value, field) {
+    const v = String(value ?? '').trim();
+    if (!v) {
+      throw new AppError(400, 'VALIDATION_ERROR', `${field} must be non-empty`, {
+        field,
+        location: 'query',
+      });
+    }
+    if (!TZ_REGEX.test(v)) {
+      throw new AppError(400, 'VALIDATION_ERROR',
+        `${field} must include an explicit timezone offset (e.g. Z or +02:00)`,
+        { field, location: 'query', value: v });
+    }
+    const parsed = new Date(v);
+    if (Number.isNaN(parsed.getTime())) {
+      throw new AppError(400, 'VALIDATION_ERROR', `${field} must be a valid ISO date`, {
+        field, location: 'query', value: v,
+      });
+    }
+    return parsed;
+  }
+  const createdAtFilter = {};
+  if (Object.prototype.hasOwnProperty.call(query, 'since')) {
+    createdAtFilter.gte = parseDateBound(query.since, 'since');
+  }
+  if (Object.prototype.hasOwnProperty.call(query, 'until')) {
+    createdAtFilter.lte = parseDateBound(query.until, 'until');
+  }
+  if (createdAtFilter.gte && createdAtFilter.lte && createdAtFilter.gte > createdAtFilter.lte) {
+    throw new AppError(400, 'VALIDATION_ERROR', 'since must be <= until', {
+      fields: ['since', 'until'],
+      location: 'query',
+    });
+  }
+  if (Object.keys(createdAtFilter).length > 0) {
+    where.createdAt = createdAtFilter;
+  }
+
   return where;
 }
 

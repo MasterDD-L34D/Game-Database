@@ -17,6 +17,10 @@ export interface AuditQuery {
   entityId?: string;
   action?: AuditAction;
   user?: string;
+  /** ISO8601 date string lower bound (gte createdAt) */
+  since?: string;
+  /** ISO8601 date string upper bound (lte createdAt) */
+  until?: string;
   page?: number;
   pageSize?: number;
 }
@@ -34,6 +38,8 @@ export async function listAudit(query: AuditQuery = {}): Promise<AuditPage> {
   if (query.entityId) params.set('entityId', query.entityId);
   if (query.action) params.set('action', query.action);
   if (query.user) params.set('user', query.user);
+  if (query.since) params.set('since', query.since);
+  if (query.until) params.set('until', query.until);
   if (query.page !== undefined) params.set('page', String(query.page));
   if (query.pageSize !== undefined) params.set('pageSize', String(query.pageSize));
   const qs = params.toString();

@@ -139,10 +139,14 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
   const queryClient = useQueryClient();
 
   // Filter state (Fase 2 8/N): action select + user text (debounced).
-  // Backend params already supported by PR #122 GET /api/audit.
+  // Fase 2 9/N: + since/until date range (datetime-local, no debounce —
+  // explicit user-picked date doesn't churn on keystroke).
+  // Backend params supported by PR #122/#136/#137 GET /api/audit.
   const [actionFilter, setActionFilter] = useState<AuditAction | ''>('');
   const [userFilterInput, setUserFilterInput] = useState('');
   const [userFilter, setUserFilter] = useState('');
+  const [sinceFilter, setSinceFilter] = useState('');
+  const [untilFilter, setUntilFilter] = useState('');
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -151,19 +155,37 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
     return () => clearTimeout(handle);
   }, [userFilterInput]);
 
+  // datetime-local emits "YYYY-MM-DDTHH:mm" (no seconds, no timezone).
+  // Codex P1 fix from PR #137 review: parsing such strings with new Date()
+  // on the server applies the SERVER's local tz, which may differ from the
+  // BROWSER's tz → boundary rows leak/miss by that offset. Fix: client
+  // converts to absolute UTC ISO via the browser's local-tz Date() before
+  // sending, so the wire contract is unambiguous.
+  function toUtcIso(localDateTime: string): string {
+    // Empty input → empty (caller treats as undefined)
+    if (!localDateTime) return '';
+    const parsed = new Date(localDateTime);
+    if (Number.isNaN(parsed.getTime())) return '';
+    return parsed.toISOString();
+  }
+  const sinceIso = toUtcIso(sinceFilter);
+  const untilIso = toUtcIso(untilFilter);
+
   // Codex P2 fix from PR #127 review: previous `useQuery` + `page` state
   // replaced visible items on `Carica altri` because the panel only
   // rendered the current page's items. `useInfiniteQuery` accumulates
   // pages across "load more" clicks while keeping pagination + total
   // wiring intact.
   const query = useInfiniteQuery<AuditPage>({
-    queryKey: ['audit', entity, entityId, actionFilter, userFilter],
+    queryKey: ['audit', entity, entityId, actionFilter, userFilter, sinceIso, untilIso],
     queryFn: ({ pageParam = 0 }) =>
       listAudit({
         entity,
         entityId,
         action: actionFilter || undefined,
         user: userFilter || undefined,
+        since: sinceIso || undefined,
+        until: untilIso || undefined,
         page: pageParam as number,
         pageSize: PAGE_SIZE,
       }),
@@ -179,9 +201,11 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
     setActionFilter('');
     setUserFilterInput('');
     setUserFilter('');
+    setSinceFilter('');
+    setUntilFilter('');
   };
 
-  const hasActiveFilters = Boolean(actionFilter || userFilter);
+  const hasActiveFilters = Boolean(actionFilter || userFilter || sinceFilter || untilFilter);
 
   const items = useMemo<AuditEntry[]>(
     () => (query.data?.pages ?? []).flatMap((p) => p.items),
@@ -271,6 +295,26 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
             onChange={(e) => setUserFilterInput(e.target.value)}
             sx={{ minWidth: 220, flex: 1 }}
             inputProps={{ 'aria-label': t('aria.filterUser') }}
+          />
+          <TextField
+            type="datetime-local"
+            size="small"
+            label={t('filter.sinceLabel')}
+            value={sinceFilter}
+            onChange={(e) => setSinceFilter(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            sx={{ minWidth: 200 }}
+            inputProps={{ 'aria-label': t('aria.filterSince') }}
+          />
+          <TextField
+            type="datetime-local"
+            size="small"
+            label={t('filter.untilLabel')}
+            value={untilFilter}
+            onChange={(e) => setUntilFilter(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            sx={{ minWidth: 200 }}
+            inputProps={{ 'aria-label': t('aria.filterUntil') }}
           />
           {hasActiveFilters ? (
             <Button
