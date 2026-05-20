@@ -52,7 +52,14 @@
     "confirmTitle": "Confermare il ripristino?",
     "confirmBody": "Stai per ripristinare l'entità {{entity}} (id {{entityId}}) dalla cronologia. Questo ricrea l'entità nel database con i valori originali. Vuoi continuare?",
     "confirmAction": "Conferma ripristino",
-    "confirmCancel": "Annulla"
+    "confirmCancel": "Annulla",
+    "bulkButton": "Ripristina selezionati ({{count}})",
+    "bulkConfirmTitle": "Confermare il ripristino multiplo?",
+    "bulkConfirmBody": "Stai per ripristinare {{count}} entità eliminate dalla cronologia. L'operazione ricrea tutte le entità nel database con i loro valori originali.",
+    "bulkSuccessToast": "{{success}} ripristinate con successo ({{failed}} fallite)",
+    "bulkSuccessAllToast": "Tutte le {{count}} entità ripristinate con successo",
+    "bulkAriaSelectRow": "Seleziona voce di cronologia {{entity}}:{{entityId}}",
+    "bulkAriaSelectAll": "Seleziona tutte le eliminazioni visibili"
   },
   "payload": {
     "captionCreate": "Campi dell'entità creata",
