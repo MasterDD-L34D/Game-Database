@@ -7,6 +7,11 @@ import {
   CardContent,
   Chip,
   Collapse,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Divider,
   IconButton,
   Stack,
@@ -163,6 +168,11 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
   const total = query.data?.pages?.[0]?.total ?? 0;
   const hasMore = Boolean(query.hasNextPage);
 
+  // Confirmation dialog state (Fase 2 4/N): block accidental revert clicks
+  // by requiring explicit confirm. Stores the entry pending confirmation
+  // (or null when closed).
+  const [pendingRevert, setPendingRevert] = useState<AuditEntry | null>(null);
+
   const revertMutation = useMutation({
     mutationFn: (logId: string) => revertAudit(logId),
     onSuccess: (data) => {
@@ -172,6 +182,7 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
       queryClient.invalidateQueries({ queryKey: ['audit', entity, entityId] });
       const entityKey = entity.toLowerCase();
       queryClient.invalidateQueries({ queryKey: [entityKey] });
+      setPendingRevert(null);
     },
     onError: (error: unknown) => {
       // Inspect error message for known backend codes (409 CONFLICT, 400
@@ -184,11 +195,26 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
       } else {
         enqueueSnackbar(t('revert.errorGeneric'), { variant: 'error' });
       }
+      setPendingRevert(null);
     },
   });
 
   const handleRevert = (logId: string) => {
-    revertMutation.mutate(logId);
+    const entry = items.find((e) => e.id === logId);
+    if (!entry) return;
+    setPendingRevert(entry);
+  };
+
+  const confirmRevert = () => {
+    if (pendingRevert) {
+      revertMutation.mutate(pendingRevert.id);
+    }
+  };
+
+  const cancelRevert = () => {
+    if (!revertMutation.isPending) {
+      setPendingRevert(null);
+    }
   };
 
   return (
@@ -249,6 +275,39 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
           </Stack>
         ) : null}
       </CardContent>
+
+      <Dialog
+        open={pendingRevert !== null}
+        onClose={cancelRevert}
+        aria-labelledby="audit-revert-dialog-title"
+        aria-describedby="audit-revert-dialog-body"
+      >
+        <DialogTitle id="audit-revert-dialog-title">{t('revert.confirmTitle')}</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="audit-revert-dialog-body">
+            {pendingRevert
+              ? t('revert.confirmBody', {
+                  entity: pendingRevert.entity,
+                  entityId: pendingRevert.entityId,
+                })
+              : null}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cancelRevert} disabled={revertMutation.isPending}>
+            {t('revert.confirmCancel')}
+          </Button>
+          <Button
+            onClick={confirmRevert}
+            variant="contained"
+            color="primary"
+            disabled={revertMutation.isPending}
+            autoFocus
+          >
+            {revertMutation.isPending ? t('revert.inProgress') : t('revert.confirmAction')}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Card>
   );
 }
