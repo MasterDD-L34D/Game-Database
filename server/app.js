@@ -14,6 +14,7 @@ const ecosystemBiomesRouter = require('./routes/ecosystemBiomes');
 const ecosystemSpeciesRouter = require('./routes/ecosystemSpecies');
 const ecosystemsRouter = require('./routes/ecosystems');
 const dashboardRouter = require('./routes/dashboard');
+const auditRouter = require('./routes/audit');
 
 function createApp() {
   const app = express();
@@ -59,6 +60,7 @@ function createApp() {
   app.use('/api/ecosystem-biomes', ecosystemBiomesRouter);
   app.use('/api/ecosystem-species', ecosystemSpeciesRouter);
   app.use('/api/ecosystems', ecosystemsRouter);
+  app.use('/api/audit', auditRouter);
 
   if (process.env.SERVE_DASHBOARD === '1') {
     const dashboardDist = path.resolve(__dirname, '..', 'apps', 'dashboard', 'dist');

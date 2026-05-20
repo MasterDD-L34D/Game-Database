@@ -15,6 +15,7 @@ const testFiles = [
   'basicAuth.test.js',
   'testInfraRestore.test.js',
   'slug.test.js',
+  'audit.test.js',
 ];
 
 for (const testFile of testFiles) {
