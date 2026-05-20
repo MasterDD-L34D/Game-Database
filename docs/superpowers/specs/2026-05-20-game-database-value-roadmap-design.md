@@ -271,12 +271,75 @@ Pattern: Fase 1 = foundation utile a tutte 3 dimensioni; Fase 2 = designer-tool 
 | Scope creep su PR α (slug ↔ everything) | High | Hardcap 1-entity-at-time, defer to PR α2 if needed |
 | Vision tail Fase 2/3 mai eseguito | Med | Time-box review post-Fase-1: decision-point Eduardo |
 
-## Open questions (require Eduardo input before Fase 1 start)
+## Resolved decisions (autoresearch 2026-05-20, cross-repo evidence-based)
 
-- [ ] Slug normalization: adopt `slugify` npm lib (ICU-aware) o lockdown regex custom? Trade-off: lib = battle-tested ma + dep weight; custom = full control ma maintenance burden.
-- [ ] Audit endpoint default RBAC: open-by-default (dev-friendly) o gated (security-strict)?
-- [ ] PR-γ schema doc: replace `modal-game-database.md` o coesistere come index?
-- [ ] PR-ε validate-only: warn-only initial release o strict-mode subito?
+All 4 originally-open questions answered via 4 parallel research agents with read-only cross-repo scope (Game-Database + Game + codemasterdd-ai-station, skip vault/Godot-v2).
+
+### Q1 — Slug normalization: custom regex consolidated (NOT npm lib)
+
+**Verdict**: Lift existing robust slugify from `server/scripts/ingest/import-taxonomy.js:85-92` into new `server/utils/slug.js`. Consume from all 5 call sites (`routes/{traits,biomes,species,ecosystems}.js` + `test/utils.js`).
+
+**Logic**: NFD normalize → `̀-ͯ` diacritic strip → lowercase → `[^a-z0-9]+ → -` → trim trailing dashes → max-length 80 (Postgres varchar index sweet-spot).
+
+**Why not npm `slugify`**: ~10 LOC duplicated logic already proven on Game YAML round-trip; adds runtime dep weight; Cyrillic/CJK transliteration features unused (Evo-Tactics = Latin binomials + Italian common names); aligned with codemasterdd ADR-0021 + CLAUDE.md ASCII-first encoding policy.
+
+**Cross-repo impact**: ZERO. Game has separate slugifiers (4 JS variants use `_`, 2 Python variants use `-`); none consumed by Game-Database. Import script re-slugifies at boundary — Game-side slug churn out-of-scope (A6/COOP own).
+
+**Follow-up flagged for PR-α**: confirm Prisma `slug` column adds `@db.VarChar(80)` constraint; cross-repo slug-format ADR (`_` vs `-` Game inconsistency) is future RFC candidate, not PR-α scope.
+
+### Q2 — Audit RBAC: open-by-default, configurable strict
+
+**Verdict**: Default open (no role check on `GET /api/audit`), opt-in via `AUDIT_READ_ROLES=audit:read,admin` env var. Mirrors existing pattern: all 10 GET routes in Game-Database are open today, only mutations gated via `TAXONOMY_WRITE_ROLES`.
+
+**Sensitivity assessment**: AuditLog.payload contains full entity rows on CREATE/DELETE + `req.body` partial diffs on UPDATE. No PII, no secrets, no tokens — only taxonomy data which is publicly canonical from sibling Game repo. Worst-case = low-privilege reader can resurrect tombstoned taxonomy, which is a Fase 2 feature (undo), not a leak.
+
+**LAN/prod hardening**: `start:lan` enables `basicAuth` middleware automatically when `APP_AUTH_USER` set → audit endpoint inherits 401 wall for free.
+
+**Cross-repo impact**: ZERO. Sibling Game has zero references to `/api/audit` (only consumes `/api/traits/glossary`). codemasterdd ground-truth principle (anti-pattern #8) favors visibility.
+
+**Follow-up flagged**: future `POST /api/audit/:logId/revert` (Fase 2) MUST be gated with `audit:revert` role — explicit in spec.
+
+### Q3 — Schema doc: coexist, slim manual file
+
+**Verdict**: Coexist as complementary. PR-γ creates auto-gen `docs/schema-reference.md` (canonical schema source, CI-gated). Existing `docs/modal-game-database.md` slimmed: replace schema table (lines 15-28, ~33% content) with one-liner pointer; preserve all non-schema content (dominio/processi/sicurezza/runtime/TODO = 66%) which PR-γ does NOT emit.
+
+**Evidence**: Git `--follow` shows only 2 commits ever (creation 2025-11-10 + URL fix 2026-04-25) → fossilized, drift-prone. Zero external references in Game or codemasterdd-ai-station; only intra-Game-Database refs in `docs/Documento_Riferimento.md:47,69` (anchor updates needed when slimming).
+
+**Cross-repo impact**: ZERO. Game's contract dependency is `glossary.schema.json` already canonicalized in `server/schemas/glossary.schema.json`, NOT this doc.
+
+**Naming**: keep `modal-game-database.md` filename (link stability) OR rename to `domain-overview.md` (clearer semantics) — Eduardo preference. Spec assumes keep-filename for now.
+
+**Follow-up flagged**: PR-γ generated `schema-reference.md` should include one-line back-link to `modal-game-database.md` (avoid orphan generation). Bonus: CI could lint Postgres-version-in-prose against `docker-compose.yml` (defer to follow-up PR).
+
+### Q4 — Import validator: STRICT tiered severity
+
+**Verdict**: STRICT default. `--validate-only` exits 1 on `errori > 0` OR `skipReasons.schema_validation > 0`; `partial`/completeness gaps stay warn-only (informational). Opt-out: `--validate-only --warn-only`. Granular knob: `--fail-on=errors|schema|any` (default `errors,schema`).
+
+**Phased rollout**:
+- v1 (today, pre-PR-ε): Game's `evo-import-gate.yml:46-52` is already STRICT-equivalent (`errori > 0 → exit 1`), green at `1197a1f`.
+- v2 (PR-ε): formalize `--validate-only` flag, elevate `schema_validation` skips to errors, fix stdout JSON pollution.
+- v3 (future): tighten — promote selected `skipReasons.*` to errors once baseline drift understood.
+
+**Evidence**:
+- Game already gates: `C:/dev/Game/.github/workflows/evo-import-gate.yml` STRICT, has caught real bug (M5-#2 stdout JSON parse-break, documented in `C:/dev/Game/docs/process/2026-04-19-M5-audit-sprint-completion.md:37`, 5 phantom species + 7 orphan trait refs)
+- CLAUDE.md anti-pattern #9 ("DRY-RUN smoke ≠ Apply smoke") argues against soft validators
+- CLAUDE.md anti-pattern #8 ("Shallow ADOPT") favors skeptical strict default
+
+**Latent bug to fix in PR-ε**: `import-taxonomy.js:988` prints `Repo: ...` to stdout BEFORE JSON report → consumers need `sed -n '/^{/,$p'` workaround. Emit JSON-only on stdout, progress on stderr.
+
+**Cross-repo impact**: Risk = if Game-Database `main` currently has latent slug/schema issue masked by `noteSkip` (not `noteError`), first STRICT run fails Game CI. Mitigation = run `--validate-only` against current `main` locally before merging PR-ε, baseline `errori=0` + `schema_validation=0`.
+
+**Follow-up flagged**:
+1. Should `evo-import-sync.yml` (scheduled 6h importer) gate on `--validate-only` before full import? (Defer to PR-ε follow-up)
+2. Exit-code distinction: `exit 1` (validation errors) vs `exit 2` (operational/IO errors) for CI differentiation.
+
+### Cross-repo state observed during research
+
+- **Game** (`C:/dev/Game`, sibling, NO-WRITE): A6/COOP sessions own its scope. evo-import-gate.yml STRICT already, evo-import-sync.yml schedule, glossary.schema.json canonical contract.
+- **codemasterdd-ai-station** (`C:/dev/codemasterdd-ai-station`, governance, append-only): ADR-0011 commit attribution + ADR-0021 multi-client encoding policy bind PR-α (ASCII-first slug).
+- **vault**, **Game-Godot-v2**: NOT inspected (NO-GO per session prompt).
+
+All 4 decisions converge: continue PR plan as drafted, with PR-α/γ/ε refined per resolved answers above. NO blocker, NO architecture revision required.
 
 ## Next step
 
