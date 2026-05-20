@@ -384,6 +384,79 @@ describe('AuditHistoryPanel', () => {
     expect(screen.queryByLabelText('Pulisci filtri')).not.toBeInTheDocument();
   });
 
+  it('preset chip "Ultime 24h" prefills since/until ~24h window', async () => {
+    const listSpy = vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: [],
+      page: 0,
+      pageSize: 10,
+      total: 0,
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    const chip24h = screen.getByText('Ultime 24h');
+    fireEvent.click(chip24h);
+
+    await waitFor(() => {
+      const lastCall = listSpy.mock.lastCall?.[0];
+      expect(lastCall?.since).toBeTruthy();
+      expect(lastCall?.until).toBeTruthy();
+      const sinceMs = new Date(lastCall!.since!).getTime();
+      const untilMs = new Date(lastCall!.until!).getTime();
+      const diffHours = (untilMs - sinceMs) / (60 * 60 * 1000);
+      // Allow tolerance (preset triggers immediately, clock skew + minute rounding):
+      // 24h ± 2 minutes
+      expect(diffHours).toBeGreaterThan(23.95);
+      expect(diffHours).toBeLessThan(24.05);
+    });
+  });
+
+  it('preset chip "Ultimi 7 giorni" prefills ~168h window', async () => {
+    const listSpy = vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: [],
+      page: 0,
+      pageSize: 10,
+      total: 0,
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    fireEvent.click(screen.getByText('Ultimi 7 giorni'));
+
+    await waitFor(() => {
+      const lastCall = listSpy.mock.lastCall?.[0];
+      const sinceMs = new Date(lastCall!.since!).getTime();
+      const untilMs = new Date(lastCall!.until!).getTime();
+      const diffHours = (untilMs - sinceMs) / (60 * 60 * 1000);
+      expect(diffHours).toBeGreaterThan(167.9);
+      expect(diffHours).toBeLessThan(168.1);
+    });
+  });
+
+  it('preset chip "Personalizzato" clears since/until to empty', async () => {
+    const listSpy = vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: [],
+      page: 0,
+      pageSize: 10,
+      total: 0,
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    // First apply 24h preset
+    fireEvent.click(screen.getByText('Ultime 24h'));
+    await waitFor(() => {
+      expect(listSpy.mock.lastCall?.[0]?.since).toBeTruthy();
+    });
+
+    // Then click Personalizzato → cleared
+    fireEvent.click(screen.getByText('Personalizzato'));
+    await waitFor(() => {
+      expect(listSpy.mock.lastCall?.[0]?.since).toBeUndefined();
+      expect(listSpy.mock.lastCall?.[0]?.until).toBeUndefined();
+    });
+  });
+
   it('passes since/until to listAudit as UTC ISO strings (tz-normalized)', async () => {
     // Codex P1 fix from PR #137: datetime-local is tz-naive; client must
     // convert to absolute UTC ISO via browser tz before sending.

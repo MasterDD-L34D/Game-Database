@@ -23,14 +23,20 @@
     "filterUser": "Filtra per utente",
     "filterSince": "Filtra da data",
     "filterUntil": "Filtra a data",
-    "filterClear": "Pulisci filtri"
+    "filterClear": "Pulisci filtri",
+    "presetGroup": "Intervalli rapidi date"
   },
   "filter": {
     "actionAll": "Tutte le azioni",
     "userPlaceholder": "Filtra per utente (email)",
     "sinceLabel": "Da",
     "untilLabel": "A",
-    "clear": "Pulisci"
+    "clear": "Pulisci",
+    "presetLabel": "Intervallo rapido:",
+    "preset24h": "Ultime 24h",
+    "preset7d": "Ultimi 7 giorni",
+    "preset30d": "Ultimi 30 giorni",
+    "presetCustom": "Personalizzato"
   },
   "revert": {
     "button": "Ripristina",

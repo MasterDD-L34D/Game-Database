@@ -171,6 +171,31 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
   const sinceIso = toUtcIso(sinceFilter);
   const untilIso = toUtcIso(untilFilter);
 
+  // Format a Date as the datetime-local input shape "YYYY-MM-DDTHH:mm"
+  // in the BROWSER's local timezone. Used by the preset buttons below to
+  // populate the since/until TextField values so users see what they
+  // would have typed manually.
+  function toLocalDateTimeInput(d: Date): string {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return (
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+      `T${pad(d.getHours())}:${pad(d.getMinutes())}`
+    );
+  }
+
+  const applyPreset = (hours: number) => {
+    const now = new Date();
+    const since = new Date(now.getTime() - hours * 60 * 60 * 1000);
+    setSinceFilter(toLocalDateTimeInput(since));
+    setUntilFilter(toLocalDateTimeInput(now));
+  };
+
+  const applyCustomPreset = () => {
+    // "Personalizzato" simply clears both — user types manually after
+    setSinceFilter('');
+    setUntilFilter('');
+  };
+
   // Codex P2 fix from PR #127 review: previous `useQuery` + `page` state
   // replaced visible items on `Carica altri` because the panel only
   // rendered the current page's items. `useInfiniteQuery` accumulates
@@ -271,6 +296,16 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
           <Typography variant="body2" color="text.secondary">
             {t('subtitle')}
           </Typography>
+        </Stack>
+
+        <Stack direction="row" spacing={1} mb={1.5} alignItems="center" flexWrap="wrap" role="group" aria-label={t('aria.presetGroup')}>
+          <Typography variant="caption" color="text.secondary">
+            {t('filter.presetLabel')}
+          </Typography>
+          <Chip size="small" variant="outlined" clickable onClick={() => applyPreset(24)} label={t('filter.preset24h')} />
+          <Chip size="small" variant="outlined" clickable onClick={() => applyPreset(24 * 7)} label={t('filter.preset7d')} />
+          <Chip size="small" variant="outlined" clickable onClick={() => applyPreset(24 * 30)} label={t('filter.preset30d')} />
+          <Chip size="small" variant="outlined" clickable onClick={applyCustomPreset} label={t('filter.presetCustom')} />
         </Stack>
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} mb={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
