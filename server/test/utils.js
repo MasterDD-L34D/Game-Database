@@ -1,15 +1,9 @@
 const createApp = require('../app');
 const prisma = require('../db/prisma');
+const { normalizeSlug } = require('../utils/slug');
 
 function clone(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
-}
-
-function normalizeSlug(value, fallback) {
-  if (!value && !fallback) return '';
-  const base = value || fallback || '';
-  const normalized = base.toString().trim().toLowerCase().replace(/\s+/g, '-');
-  return normalized || (fallback || '').toString();
 }
 
 function matchesValue(record, key, condition) {
