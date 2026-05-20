@@ -25,6 +25,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "prisma:seed": "prisma db seed",
+    "audit:slug": "node ./scripts/audit-slug.js",
     "prisma:studio": "prisma studio",
     "start:lan": "node scripts/start-lan.js",
     "test": "node ./test/run-tests.js",
