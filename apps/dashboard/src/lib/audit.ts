@@ -1,4 +1,4 @@
-import { fetchJSON } from './api';
+import { fetchJSON, postJSON } from './api';
 
 export type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE';
 
@@ -38,4 +38,15 @@ export async function listAudit(query: AuditQuery = {}): Promise<AuditPage> {
   if (query.pageSize !== undefined) params.set('pageSize', String(query.pageSize));
   const qs = params.toString();
   return fetchJSON<AuditPage>(`/audit${qs ? `?${qs}` : ''}`);
+}
+
+export interface RevertResponse {
+  success: boolean;
+  id: string;
+  entity: string;
+  revertedFrom: string;
+}
+
+export async function revertAudit(logId: string): Promise<RevertResponse> {
+  return postJSON<Record<string, never>, RevertResponse>(`/audit/${encodeURIComponent(logId)}/revert`, {});
 }

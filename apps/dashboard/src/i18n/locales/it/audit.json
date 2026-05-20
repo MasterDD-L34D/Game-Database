@@ -17,6 +17,15 @@
   "totalCount_other": "{{count}} voci in totale",
   "aria": {
     "panel": "Cronologia modifiche entità",
-    "entry": "Voce cronologia {{action}} del {{date}}"
+    "entry": "Voce cronologia {{action}} del {{date}}",
+    "revertButton": "Ripristina entità {{entity}}:{{entityId}} dalla cronologia"
+  },
+  "revert": {
+    "button": "Ripristina",
+    "inProgress": "Ripristino...",
+    "successToast": "Entità {{entity}} ripristinata con successo",
+    "errorConflict": "Conflitto: un'altra entità ha lo stesso slug o id — impossibile ripristinare",
+    "errorNotRevertable": "Solo le eliminazioni (DELETE) sono ripristinabili in questa versione",
+    "errorGeneric": "Errore durante il ripristino. Riprova oppure controlla i log."
   }
 }
