@@ -40,10 +40,30 @@
 
 ## Workflow notes
 
-- The repo has four GitHub Actions workflows under `.github/workflows/`:
+- The repo has five GitHub Actions workflows under `.github/workflows/`:
   - `backend-and-frontend-tests.yml`
   - `playwright-e2e.yml`
   - `prisma-seed.yml`
   - `evo-import-sync.yml`
+  - `schema-doc-check.yml` (added in PR-γ #121: fails if `docs/schema-reference.md` is out-of-sync with `server/prisma/schema.prisma`)
 - `evo-import-sync.yml` is a scheduled/manual workflow that checks out the sibling `Game` repo, runs `npm run evo:import`, and opens a PR with synced changes when needed.
-- CI uses Node `20` for backend/frontend checks and Playwright, and Node `18` for the Prisma seed verification workflow.
+- CI uses Node `20` for backend/frontend checks, Playwright, and schema-doc-check; Node `18` for the Prisma seed verification workflow.
+
+## Pre-merge protocol (MANDATORY)
+
+**Never squash-merge a PR without first inspecting inline review comments.**
+
+```bash
+gh api repos/MasterDD-L34D/Game-Database/pulls/<N>/comments \
+  --jq '.[] | "[\(.user.login)] \(.path):\(.line // "?") :: \(.body)"'
+```
+
+Triage each comment by severity:
+
+- **P1** (correctness / security / data loss / CI truncation) → fix before merge.
+- **P2** (behavior bug / inconsistency / UX regression) → fix before merge OR explicitly defer with rationale.
+- **P3+** (nit / style / suggestion) → may defer to follow-up issue with explicit ack.
+
+If a comment is rejected as false-positive or out-of-scope, reply on the PR explaining why before merging.
+
+**Anti-pattern flagged 2026-05-20**: 5 unaddressed Codex P1+P2 review comments across PR #118 / #122 / #125 / #127 merged silently and only caught by post-hoc audit. Follow-up PR #128 fixed all 5 + introduced this protocol section. See `docs/superpowers/specs/2026-05-20-game-database-value-roadmap-design.md` § "Code review protocol" for the full anti-pattern catalogue.
