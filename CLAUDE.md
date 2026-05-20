@@ -98,3 +98,30 @@ cd Game && npm run start:api                 # API on 3334
 # Set GAME_DATABASE_ENABLED=true in Game's .env
 # Game backend will fetch trait glossary from http://localhost:3333
 ```
+
+## Code review protocol (MANDATORY pre-merge)
+
+**Before squash-merging ANY PR, you MUST check inline review comments.**
+
+Run:
+
+```bash
+gh api repos/MasterDD-L34D/Game-Database/pulls/<N>/comments \
+  --jq '.[] | "[\(.user.login)] \(.path):\(.line // "?") :: \(.body)"'
+```
+
+Triage each comment:
+
+- **P1** (correctness / security / data loss / CI gate truncation): **must fix** before merge.
+- **P2** (behavior bug / inconsistency / UX regression): **must fix** before merge OR explicitly defer with rationale in PR description.
+- **P3+** (nit / style / suggestion): may defer to follow-up issue, but acknowledge in PR description.
+
+Add fixes as additional commits on the same branch, re-run CI, then merge. If a comment is **rejected** (false-positive / out-of-scope), reply explaining why before merging.
+
+### Anti-pattern flagged 2026-05-20
+
+5 Codex P1+P2 inline review comments on PR #118 / #122 / #125 / #127 were merged silently without inspection. Caught only by post-hoc audit. Follow-up PR #128 fixed all 5 + introduced this protocol.
+
+**Never merge again without checking `/pulls/N/comments` first.**
+
+Full protocol detail: `docs/superpowers/specs/2026-05-20-game-database-value-roadmap-design.md` § "Code review protocol".
