@@ -7,6 +7,7 @@ const yaml = require('js-yaml');
 const { parse: parseCsv } = require('csv-parse/sync');
 const { PrismaClient } = require('@prisma/client');
 const Ajv = require('ajv');
+const { normalizeSlug } = require('../../utils/slug');
 
 const prisma = new PrismaClient();
 const ajv = new Ajv({ allErrors: true, coerceTypes: false });
@@ -82,14 +83,9 @@ const defaultConfig = {
   ],
 };
 
-function slugify(value) {
-  return String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '');
-}
+// Use shared normalizeSlug from server/utils/slug (canonical contract,
+// includes max-80 truncation). Backward-compat alias preserves call sites.
+const slugify = (value) => normalizeSlug(value);
 
 function parseFile(filePath) {
   const ext = path.extname(filePath).toLowerCase();
