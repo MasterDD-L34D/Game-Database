@@ -35,14 +35,20 @@
   "payload": {
     "captionCreate": "Campi dell'entità creata",
     "captionUpdate": "Campi modificati (patch)",
+    "captionUpdateWithDiff": "Campi modificati (con confronto entry precedente)",
     "captionDelete": "Campi dell'entità eliminata",
     "captionGeneric": "Dettagli payload",
     "columnField": "Campo",
     "columnValue": "Valore",
+    "columnPrevious": "Valore precedente",
+    "columnNew": "Nuovo valore",
     "revertedFrom": "Ripristino dalla voce {{logId}}",
     "valueNull": "(nullo)",
     "valueEmpty": "(vuoto)",
     "valueObject": "(oggetto)",
-    "valueArray": "(array, {{count}} elementi)"
+    "valueArray": "(array, {{count}} elementi)",
+    "valueUnchanged": "(invariato)",
+    "valueMissing": "(non disponibile)",
+    "diffArrow": "→"
   }
 }

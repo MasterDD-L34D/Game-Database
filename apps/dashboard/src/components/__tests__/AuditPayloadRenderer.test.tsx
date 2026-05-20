@@ -149,4 +149,99 @@ describe('AuditPayloadRenderer', () => {
     // JSON preview rendered inline
     expect(screen.getByText(/canSpawn/)).toBeInTheDocument();
   });
+
+  // ---- Diff mode (UPDATE with previousPayload) ----------------------------
+
+  it('renders diff columns when UPDATE + previousPayload provided', () => {
+    render(
+      <AuditPayloadRenderer
+        action="UPDATE"
+        payload={{ name: 'New Name', description: 'New desc' }}
+        previousPayload={{ name: 'Old Name', description: 'Old desc', category: 'cat-1' }}
+      />,
+    );
+    // Caption flips to diff-aware variant
+    expect(screen.getByText('Campi modificati (con confronto entry precedente)')).toBeInTheDocument();
+    // 3-column headers
+    expect(screen.getByText('Campo')).toBeInTheDocument();
+    expect(screen.getByText('Valore precedente')).toBeInTheDocument();
+    expect(screen.getByText('Nuovo valore')).toBeInTheDocument();
+    // Field values + prior values both visible
+    expect(screen.getByText('Old Name')).toBeInTheDocument();
+    expect(screen.getByText('New Name')).toBeInTheDocument();
+    expect(screen.getByText('Old desc')).toBeInTheDocument();
+    expect(screen.getByText('New desc')).toBeInTheDocument();
+  });
+
+  it('renders (non disponibile) for keys missing from prior payload', () => {
+    render(
+      <AuditPayloadRenderer
+        action="UPDATE"
+        payload={{ newField: 'new', existing: 'updated' }}
+        previousPayload={{ existing: 'old' }}
+      />,
+    );
+    // newField is in patch but absent in prior → "(non disponibile)" placeholder
+    expect(screen.getByText('(non disponibile)')).toBeInTheDocument();
+    expect(screen.getByText('new')).toBeInTheDocument();
+    expect(screen.getByText('old')).toBeInTheDocument();
+    expect(screen.getByText('updated')).toBeInTheDocument();
+  });
+
+  it('renders (invariato) marker when prior value equals new value', () => {
+    render(
+      <AuditPayloadRenderer
+        action="UPDATE"
+        payload={{ status: 'active', description: 'changed' }}
+        previousPayload={{ status: 'active', description: 'original' }}
+      />,
+    );
+    // status unchanged → (invariato) appears once in the new-value cell
+    const unchangedCells = screen.getAllByText('(invariato)');
+    expect(unchangedCells).toHaveLength(1);
+    // The "active" prior value still rendered
+    expect(screen.getByText('active')).toBeInTheDocument();
+    // Description shows both old + new
+    expect(screen.getByText('original')).toBeInTheDocument();
+    expect(screen.getByText('changed')).toBeInTheDocument();
+  });
+
+  it('does NOT activate diff mode for CREATE action even if previousPayload passed', () => {
+    render(
+      <AuditPayloadRenderer
+        action="CREATE"
+        payload={{ slug: 'new-entity' }}
+        previousPayload={{ slug: 'should-be-ignored' }}
+      />,
+    );
+    // Caption stays CREATE — not diff variant
+    expect(screen.getByText("Campi dell'entità creata")).toBeInTheDocument();
+    expect(screen.queryByText('Valore precedente')).not.toBeInTheDocument();
+    // Single Valore column header only
+    expect(screen.getByText('Valore')).toBeInTheDocument();
+  });
+
+  it('does NOT activate diff mode when previousPayload is not an object', () => {
+    render(
+      <AuditPayloadRenderer
+        action="UPDATE"
+        payload={{ slug: 'changed' }}
+        previousPayload={null}
+      />,
+    );
+    // Falls back to single-value caption
+    expect(screen.getByText('Campi modificati (patch)')).toBeInTheDocument();
+    expect(screen.queryByText('Valore precedente')).not.toBeInTheDocument();
+  });
+
+  it('handles deep-equal objects as unchanged in diff mode', () => {
+    render(
+      <AuditPayloadRenderer
+        action="UPDATE"
+        payload={{ config: { a: 1, b: 2 } }}
+        previousPayload={{ config: { a: 1, b: 2 } }}
+      />,
+    );
+    expect(screen.getByText('(invariato)')).toBeInTheDocument();
+  });
 });

@@ -16,18 +16,38 @@ import type { AuditAction } from '../lib/audit';
 export interface AuditPayloadRendererProps {
   action: AuditAction;
   payload: unknown;
+  /**
+   * Optional prior-state object for diff rendering. When provided and action
+   * is UPDATE, each field-row shows `oldValue → newValue` with color
+   * highlights. Caller (e.g. AuditHistoryPanel) typically passes the next
+   * entry's payload in chronological order (i.e. `items[idx+1].payload`
+   * since the list is sorted createdAt DESC).
+   */
+  previousPayload?: unknown;
 }
 
-function captionKey(action: AuditAction): string {
+function captionKey(action: AuditAction, hasDiff: boolean): string {
   switch (action) {
     case 'CREATE':
       return 'payload.captionCreate';
     case 'UPDATE':
-      return 'payload.captionUpdate';
+      return hasDiff ? 'payload.captionUpdateWithDiff' : 'payload.captionUpdate';
     case 'DELETE':
       return 'payload.captionDelete';
     default:
       return 'payload.captionGeneric';
+  }
+}
+
+function deepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a === null || b === null) return false;
+  if (typeof a !== typeof b) return false;
+  if (typeof a !== 'object') return false;
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch {
+    return false;
   }
 }
 
@@ -82,7 +102,7 @@ function renderValueCell(value: unknown, t: (key: string, opts?: Record<string, 
   return <Typography variant="body2">{formatScalar(value, t)}</Typography>;
 }
 
-export default function AuditPayloadRenderer({ action, payload }: AuditPayloadRendererProps) {
+export default function AuditPayloadRenderer({ action, payload, previousPayload }: AuditPayloadRendererProps) {
   const { t } = useTranslation('audit');
 
   const entries = useMemo<Array<[string, unknown]>>(() => {
@@ -91,6 +111,17 @@ export default function AuditPayloadRenderer({ action, payload }: AuditPayloadRe
     }
     return Object.entries(payload as Record<string, unknown>);
   }, [payload]);
+
+  // Diff mode is only meaningful for UPDATE and when caller supplied a prior
+  // object-shaped payload. CREATE has no "before"; DELETE shows the full
+  // tombstoned record with no diff context.
+  const previousMap = useMemo<Record<string, unknown> | null>(() => {
+    if (action !== 'UPDATE') return null;
+    if (previousPayload === null || previousPayload === undefined) return null;
+    if (typeof previousPayload !== 'object' || Array.isArray(previousPayload)) return null;
+    return previousPayload as Record<string, unknown>;
+  }, [action, previousPayload]);
+  const hasDiff = previousMap !== null;
 
   if (entries.length === 0) {
     // Fallback: render raw value (string/number/array) as monospace
@@ -125,7 +156,7 @@ export default function AuditPayloadRenderer({ action, payload }: AuditPayloadRe
   return (
     <Box sx={{ mt: 1 }}>
       <Typography variant="caption" color="text.secondary" component="div" sx={{ mb: 0.5 }}>
-        {t(captionKey(action))}
+        {t(captionKey(action, hasDiff))}
       </Typography>
       {revertedFrom ? (
         <Chip
@@ -137,26 +168,67 @@ export default function AuditPayloadRenderer({ action, payload }: AuditPayloadRe
         />
       ) : null}
       <TableContainer sx={{ maxHeight: 320 }}>
-        <Table size="small" stickyHeader aria-label={t(captionKey(action))}>
+        <Table size="small" stickyHeader aria-label={t(captionKey(action, hasDiff))}>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ fontWeight: 600, width: '30%' }}>
+              <TableCell sx={{ fontWeight: 600, width: hasDiff ? '24%' : '30%' }}>
                 {t('payload.columnField')}
               </TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>{t('payload.columnValue')}</TableCell>
+              {hasDiff ? (
+                <>
+                  <TableCell sx={{ fontWeight: 600, width: '38%' }}>
+                    {t('payload.columnPrevious')}
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>
+                    {t('payload.columnNew')}
+                  </TableCell>
+                </>
+              ) : (
+                <TableCell sx={{ fontWeight: 600 }}>{t('payload.columnValue')}</TableCell>
+              )}
             </TableRow>
           </TableHead>
           <TableBody>
-            {visibleEntries.map(([key, value]) => (
-              <TableRow key={key} hover>
-                <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem', verticalAlign: 'top' }}>
-                  {key}
-                </TableCell>
-                <TableCell sx={{ verticalAlign: 'top' }}>
-                  {renderValueCell(value, t)}
-                </TableCell>
-              </TableRow>
-            ))}
+            {visibleEntries.map(([key, value]) => {
+              const prior = previousMap && Object.prototype.hasOwnProperty.call(previousMap, key)
+                ? previousMap[key]
+                : undefined;
+              const priorMissing = previousMap !== null && !Object.prototype.hasOwnProperty.call(previousMap, key);
+              const unchanged = previousMap !== null && deepEqual(prior, value);
+              return (
+                <TableRow key={key} hover>
+                  <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem', verticalAlign: 'top' }}>
+                    {key}
+                  </TableCell>
+                  {hasDiff ? (
+                    <>
+                      <TableCell sx={{ verticalAlign: 'top', backgroundColor: (theme) => unchanged ? 'transparent' : theme.palette.error.light, opacity: priorMissing ? 0.6 : 1 }}>
+                        {priorMissing ? (
+                          <Typography variant="body2" color="text.secondary" component="span">
+                            {t('payload.valueMissing')}
+                          </Typography>
+                        ) : (
+                          renderValueCell(prior, t)
+                        )}
+                      </TableCell>
+                      <TableCell sx={{ verticalAlign: 'top', backgroundColor: (theme) => unchanged ? 'transparent' : theme.palette.success.light }}>
+                        {unchanged ? (
+                          <Typography variant="body2" color="text.secondary" component="span">
+                            {t('payload.valueUnchanged')}
+                          </Typography>
+                        ) : (
+                          renderValueCell(value, t)
+                        )}
+                      </TableCell>
+                    </>
+                  ) : (
+                    <TableCell sx={{ verticalAlign: 'top' }}>
+                      {renderValueCell(value, t)}
+                    </TableCell>
+                  )}
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </TableContainer>

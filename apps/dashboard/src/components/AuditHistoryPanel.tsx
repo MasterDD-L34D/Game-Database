@@ -56,11 +56,12 @@ function formatTimestamp(iso: string): string {
 
 interface AuditEntryRowProps {
   entry: AuditEntry;
+  previousPayload?: unknown;
   onRevert?: (logId: string) => void;
   isReverting?: boolean;
 }
 
-function AuditEntryRow({ entry, onRevert, isReverting }: AuditEntryRowProps) {
+function AuditEntryRow({ entry, previousPayload, onRevert, isReverting }: AuditEntryRowProps) {
   const { t } = useTranslation('audit');
   const [expanded, setExpanded] = useState(false);
   const formatted = formatTimestamp(entry.createdAt);
@@ -112,7 +113,11 @@ function AuditEntryRow({ entry, onRevert, isReverting }: AuditEntryRowProps) {
       </Stack>
       {hasPayload ? (
         <Collapse in={expanded} unmountOnExit>
-          <AuditPayloadRenderer action={entry.action} payload={entry.payload} />
+          <AuditPayloadRenderer
+            action={entry.action}
+            payload={entry.payload}
+            previousPayload={previousPayload}
+          />
         </Collapse>
       ) : null}
     </Box>
@@ -226,18 +231,33 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
 
         {items.length > 0 ? (
           <Box role="list">
-            {items.map((entry, idx) => (
-              <Box key={entry.id}>
-                <AuditEntryRow
-                  entry={entry}
-                  onRevert={handleRevert}
-                  isReverting={
-                    revertMutation.isPending && revertMutation.variables === entry.id
-                  }
-                />
-                {idx < items.length - 1 ? <Divider /> : null}
-              </Box>
-            ))}
+            {items.map((entry, idx) => {
+              // Items are sorted createdAt DESC → the next index is the
+              // CHRONOLOGICALLY PRIOR entry for the same entity. Pass its
+              // payload as `previousPayload` so AuditPayloadRenderer can
+              // diff UPDATE patches against the prior state. Skipped when
+              // there's no preceding entry (last item) or when prior is
+              // a DELETE (an entity cannot UPDATE after being deleted in
+              // normal flow; defensive guard).
+              const candidate = items[idx + 1];
+              const previousPayload =
+                candidate && candidate.entityId === entry.entityId && candidate.action !== 'DELETE'
+                  ? candidate.payload
+                  : undefined;
+              return (
+                <Box key={entry.id}>
+                  <AuditEntryRow
+                    entry={entry}
+                    previousPayload={previousPayload}
+                    onRevert={handleRevert}
+                    isReverting={
+                      revertMutation.isPending && revertMutation.variables === entry.id
+                    }
+                  />
+                  {idx < items.length - 1 ? <Divider /> : null}
+                </Box>
+              );
+            })}
           </Box>
         ) : null}
 
