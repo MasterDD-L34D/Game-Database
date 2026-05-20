@@ -47,6 +47,18 @@ function seedAuditLog(data = {}) {
 
 function matchesWhere(record, where = {}) {
   for (const [key, value] of Object.entries(where)) {
+    if (key === 'createdAt' && value && typeof value === 'object') {
+      const recordTime = record.createdAt instanceof Date ? record.createdAt.getTime() : new Date(record.createdAt).getTime();
+      if (value.gte !== undefined) {
+        const gteTime = value.gte instanceof Date ? value.gte.getTime() : new Date(value.gte).getTime();
+        if (recordTime < gteTime) return false;
+      }
+      if (value.lte !== undefined) {
+        const lteTime = value.lte instanceof Date ? value.lte.getTime() : new Date(value.lte).getTime();
+        if (recordTime > lteTime) return false;
+      }
+      continue;
+    }
     if (record[key] !== value) return false;
   }
   return true;
@@ -433,6 +445,116 @@ test('GET /api/audit returns 400 when action= is explicit empty string', async (
     const body = await response.json();
     assert.equal(body.code, 'VALIDATION_ERROR');
     assert.match(body.message, /action must be one of/);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+// ---- Date range filter (Fase 2 9/N: ?since / ?until) --------------------
+
+test('GET /api/audit filters by since (gte createdAt)', async () => {
+  resetStore();
+  seedAuditLog({ id: 'a1', entity: 'Trait', createdAt: new Date('2026-01-01T00:00:00Z') });
+  seedAuditLog({ id: 'a2', entity: 'Trait', createdAt: new Date('2026-03-15T00:00:00Z') });
+  seedAuditLog({ id: 'a3', entity: 'Trait', createdAt: new Date('2026-06-30T00:00:00Z') });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit?since=2026-03-01T00:00:00Z`);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.total, 2);
+    assert.ok(body.items.every((i) => new Date(i.createdAt) >= new Date('2026-03-01T00:00:00Z')));
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('GET /api/audit filters by until (lte createdAt)', async () => {
+  resetStore();
+  seedAuditLog({ id: 'a1', entity: 'Trait', createdAt: new Date('2026-01-01T00:00:00Z') });
+  seedAuditLog({ id: 'a2', entity: 'Trait', createdAt: new Date('2026-03-15T00:00:00Z') });
+  seedAuditLog({ id: 'a3', entity: 'Trait', createdAt: new Date('2026-06-30T00:00:00Z') });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit?until=2026-04-01T00:00:00Z`);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.total, 2);
+    assert.ok(body.items.every((i) => new Date(i.createdAt) <= new Date('2026-04-01T00:00:00Z')));
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('GET /api/audit combines since + until for a window', async () => {
+  resetStore();
+  seedAuditLog({ id: 'a1', entity: 'Trait', createdAt: new Date('2026-01-01T00:00:00Z') });
+  seedAuditLog({ id: 'a2', entity: 'Trait', createdAt: new Date('2026-03-15T00:00:00Z') });
+  seedAuditLog({ id: 'a3', entity: 'Trait', createdAt: new Date('2026-06-30T00:00:00Z') });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit?since=2026-02-01T00:00:00Z&until=2026-04-01T00:00:00Z`);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.total, 1);
+    assert.equal(body.items[0].id, 'a2');
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('GET /api/audit returns 400 for invalid since', async () => {
+  resetStore();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit?since=not-a-date`);
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.equal(body.code, 'VALIDATION_ERROR');
+    assert.match(body.message, /since must be a valid ISO date/);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('GET /api/audit returns 400 for invalid until', async () => {
+  resetStore();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit?until=bogus`);
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.equal(body.code, 'VALIDATION_ERROR');
+    assert.match(body.message, /until must be a valid ISO date/);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('GET /api/audit returns 400 for empty since=', async () => {
+  resetStore();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit?since=`);
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.match(body.message, /since must be non-empty/);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('GET /api/audit returns 400 when since > until', async () => {
+  resetStore();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit?since=2026-06-01T00:00:00Z&until=2026-01-01T00:00:00Z`);
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.match(body.message, /since must be <= until/);
   } finally {
     await closeServer(server);
   }

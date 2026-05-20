@@ -107,6 +107,57 @@ function buildAuditWhere(query) {
     const user = String(query.user).trim();
     if (user) where.user = user;
   }
+
+  // Date range filter (Fase 2 9/N): ?since= and/or ?until= as ISO8601
+  // strings (e.g. "2026-05-20T10:00:00Z" or HTML datetime-local
+  // "2026-05-20T10:00"). Both bounds optional, combined when present.
+  const createdAtFilter = {};
+  if (Object.prototype.hasOwnProperty.call(query, 'since')) {
+    const since = String(query.since ?? '').trim();
+    if (!since) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'since must be non-empty', {
+        field: 'since',
+        location: 'query',
+      });
+    }
+    const sinceDate = new Date(since);
+    if (Number.isNaN(sinceDate.getTime())) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'since must be a valid ISO date', {
+        field: 'since',
+        location: 'query',
+        value: since,
+      });
+    }
+    createdAtFilter.gte = sinceDate;
+  }
+  if (Object.prototype.hasOwnProperty.call(query, 'until')) {
+    const until = String(query.until ?? '').trim();
+    if (!until) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'until must be non-empty', {
+        field: 'until',
+        location: 'query',
+      });
+    }
+    const untilDate = new Date(until);
+    if (Number.isNaN(untilDate.getTime())) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'until must be a valid ISO date', {
+        field: 'until',
+        location: 'query',
+        value: until,
+      });
+    }
+    createdAtFilter.lte = untilDate;
+  }
+  if (createdAtFilter.gte && createdAtFilter.lte && createdAtFilter.gte > createdAtFilter.lte) {
+    throw new AppError(400, 'VALIDATION_ERROR', 'since must be <= until', {
+      fields: ['since', 'until'],
+      location: 'query',
+    });
+  }
+  if (Object.keys(createdAtFilter).length > 0) {
+    where.createdAt = createdAtFilter;
+  }
+
   return where;
 }
 

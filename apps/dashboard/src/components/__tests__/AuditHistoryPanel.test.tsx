@@ -384,6 +384,50 @@ describe('AuditHistoryPanel', () => {
     expect(screen.queryByLabelText('Pulisci filtri')).not.toBeInTheDocument();
   });
 
+  it('passes since/until to listAudit when date inputs change', async () => {
+    const listSpy = vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: [],
+      page: 0,
+      pageSize: 10,
+      total: 0,
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    const sinceInput = screen.getByLabelText('Filtra da data');
+    const untilInput = screen.getByLabelText('Filtra a data');
+
+    fireEvent.change(sinceInput, { target: { value: '2026-03-01T00:00' } });
+    fireEvent.change(untilInput, { target: { value: '2026-05-01T00:00' } });
+
+    await waitFor(() =>
+      expect(listSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          since: '2026-03-01T00:00',
+          until: '2026-05-01T00:00',
+        }),
+      ),
+    );
+  });
+
+  it('shows Pulisci button when only since filter is set', async () => {
+    vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: [],
+      page: 0,
+      pageSize: 10,
+      total: 0,
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    const sinceInput = screen.getByLabelText('Filtra da data');
+    fireEvent.change(sinceInput, { target: { value: '2026-03-01T00:00' } });
+
+    await waitFor(() =>
+      expect(screen.getByLabelText('Pulisci filtri')).toBeInTheDocument(),
+    );
+  });
+
   it('shows Pulisci button when user filter is set, clears state on click', async () => {
     const listSpy = vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
       items: [],
