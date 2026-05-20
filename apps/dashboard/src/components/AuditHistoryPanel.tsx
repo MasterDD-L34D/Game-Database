@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Alert,
   Box,
@@ -12,9 +12,9 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { listAudit, type AuditAction, type AuditEntry } from '../lib/audit';
+import { listAudit, type AuditAction, type AuditEntry, type AuditPage } from '../lib/audit';
 
 const PAGE_SIZE = 10;
 
@@ -120,18 +120,30 @@ export interface AuditHistoryPanelProps {
 
 export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPanelProps) {
   const { t } = useTranslation('audit');
-  const [page, setPage] = useState(0);
 
-  const query = useQuery({
-    queryKey: ['audit', entity, entityId, page],
-    queryFn: () => listAudit({ entity, entityId, page, pageSize: PAGE_SIZE }),
+  // Codex P2 fix from PR #127 review: previous `useQuery` + `page` state
+  // replaced visible items on `Carica altri` because the panel only
+  // rendered the current page's items. `useInfiniteQuery` accumulates
+  // pages across "load more" clicks while keeping pagination + total
+  // wiring intact.
+  const query = useInfiniteQuery<AuditPage>({
+    queryKey: ['audit', entity, entityId],
+    queryFn: ({ pageParam = 0 }) =>
+      listAudit({ entity, entityId, page: pageParam as number, pageSize: PAGE_SIZE }),
     enabled: Boolean(entity && entityId),
-    keepPreviousData: true,
+    getNextPageParam: (lastPage) => {
+      const loadedSoFar = (lastPage.page + 1) * lastPage.pageSize;
+      return loadedSoFar < lastPage.total ? lastPage.page + 1 : undefined;
+    },
+    initialPageParam: 0,
   });
 
-  const items = query.data?.items ?? [];
-  const total = query.data?.total ?? 0;
-  const hasMore = (page + 1) * PAGE_SIZE < total;
+  const items = useMemo<AuditEntry[]>(
+    () => (query.data?.pages ?? []).flatMap((p) => p.items),
+    [query.data],
+  );
+  const total = query.data?.pages?.[0]?.total ?? 0;
+  const hasMore = Boolean(query.hasNextPage);
 
   return (
     <Card variant="outlined" aria-label={t('aria.panel')}>
@@ -174,8 +186,10 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
             {hasMore ? (
               <Button
                 size="small"
-                onClick={() => setPage((p) => p + 1)}
-                disabled={query.isFetching}
+                onClick={() => {
+                  void query.fetchNextPage();
+                }}
+                disabled={query.isFetching || query.isFetchingNextPage}
               >
                 {t('loadMore')}
               </Button>
