@@ -104,7 +104,11 @@ describe('AuditHistoryPanel', () => {
     fireEvent.click(toggle);
 
     await waitFor(() => {
-      expect(screen.getByText(/"slug": "foo"/)).toBeInTheDocument();
+      // New AuditPayloadRenderer table renders key cell + value cell
+      // (caption "Campi dell'entità creata" for CREATE action)
+      expect(screen.getByText("Campi dell'entità creata")).toBeInTheDocument();
+      expect(screen.getByText('slug')).toBeInTheDocument();
+      expect(screen.getByText('foo')).toBeInTheDocument();
     });
 
     // Toggle label flips

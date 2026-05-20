@@ -21,6 +21,7 @@ import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-q
 import { useTranslation } from 'react-i18next';
 import { listAudit, revertAudit, type AuditAction, type AuditEntry, type AuditPage } from '../lib/audit';
 import { useSnackbar } from './SnackbarProvider';
+import AuditPayloadRenderer from './AuditPayloadRenderer';
 
 const PAGE_SIZE = 10;
 
@@ -111,23 +112,7 @@ function AuditEntryRow({ entry, onRevert, isReverting }: AuditEntryRowProps) {
       </Stack>
       {hasPayload ? (
         <Collapse in={expanded} unmountOnExit>
-          <Box
-            component="pre"
-            sx={{
-              mt: 1,
-              p: 1.5,
-              fontSize: '0.75rem',
-              fontFamily: 'monospace',
-              backgroundColor: (theme) => theme.palette.grey[100],
-              borderRadius: 1,
-              overflow: 'auto',
-              maxHeight: 240,
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-            }}
-          >
-            {JSON.stringify(entry.payload, null, 2)}
-          </Box>
+          <AuditPayloadRenderer action={entry.action} payload={entry.payload} />
         </Collapse>
       ) : null}
     </Box>
