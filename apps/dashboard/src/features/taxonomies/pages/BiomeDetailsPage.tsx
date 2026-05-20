@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { getBiome, listAllEcosystems, listAllSpecies } from '../../../lib/taxonomy';
 import { getEcosystemBiomes, getSpeciesBiomes } from '../../../lib/taxonomyRelations';
 import { EntityDetailCard, RelationListCard } from '../components/EntityDetailCard';
+import AuditHistoryPanel from '../../../components/AuditHistoryPanel';
 
 export default function BiomeDetailsPage() {
   const { biomeId = '' } = useParams<{ biomeId: string }>();
@@ -117,6 +118,8 @@ export default function BiomeDetailsPage() {
           );
         })}
       </RelationListCard>
+
+      {biome ? <AuditHistoryPanel entity="Biome" entityId={biome.id} /> : null}
     </Stack>
   );
 }

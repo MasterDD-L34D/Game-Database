@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { getSpecies, listAllBiomes, listAllEcosystems, listAllTraits } from '../../../lib/taxonomy';
 import { getEcosystemSpecies, getSpeciesBiomes, getSpeciesTraits } from '../../../lib/taxonomyRelations';
 import { EntityDetailCard, RelationListCard } from '../components/EntityDetailCard';
+import AuditHistoryPanel from '../../../components/AuditHistoryPanel';
 
 function relationValue(entry: { bool?: boolean | null; num?: number | null; text?: string | null; value?: unknown; unit?: string | null }) {
   if (entry.bool !== null && entry.bool !== undefined) return entry.bool ? 'true' : 'false';
@@ -152,6 +153,8 @@ export default function SpeciesDetailsPage() {
           );
         })}
       </RelationListCard>
+
+      {species ? <AuditHistoryPanel entity="Species" entityId={species.id} /> : null}
     </Stack>
   );
 }
