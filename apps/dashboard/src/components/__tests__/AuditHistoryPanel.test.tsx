@@ -320,6 +320,52 @@ describe('AuditHistoryPanel', () => {
     );
   });
 
+  // ---- CSV export (Fase 2 11/N) ----
+
+  it('renders "Esporta CSV" button with anchor pointing to /api/audit?format=csv', async () => {
+    vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: [],
+      page: 0,
+      pageSize: 10,
+      total: 0,
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    const btn = await screen.findByRole('link', { name: /^Esporta cronologia/ });
+    const href = btn.getAttribute('href');
+    expect(href).toMatch(/\/audit\?.*format=csv/);
+    expect(href).toMatch(/entity=Trait/);
+    expect(href).toMatch(/entityId=trait-1/);
+  });
+
+  it('CSV export URL includes active filters (action + user + since + until)', async () => {
+    vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: [],
+      page: 0,
+      pageSize: 10,
+      total: 0,
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    // Apply user filter
+    fireEvent.change(screen.getByLabelText('Filtra per utente'), { target: { value: 'alice@example.com' } });
+    // Apply 24h preset
+    fireEvent.click(screen.getByText('Ultime 24h'));
+
+    await waitFor(
+      () => {
+        const btn = screen.getByRole('link', { name: /^Esporta cronologia/ });
+        const href = btn.getAttribute('href') || '';
+        expect(href).toMatch(/user=alice/);
+        expect(href).toMatch(/since=\d{4}-\d{2}-\d{2}T/);
+        expect(href).toMatch(/until=\d{4}-\d{2}-\d{2}T/);
+      },
+      { timeout: 1500 },
+    );
+  });
+
   // ---- Filter UI (Fase 2 8/N) ----
 
   it('renders Italian action filter labels + "Tutte le azioni" default option', async () => {

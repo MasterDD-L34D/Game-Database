@@ -590,6 +590,93 @@ test('GET /api/audit returns 400 when until lacks explicit timezone', async () =
   }
 });
 
+// ---- CSV export (Fase 2 11/N) -------------------------------------------
+
+test('GET /api/audit?format=csv returns text/csv with header row', async () => {
+  resetStore();
+  seedAuditLog({
+    id: 'a1', entity: 'Trait', entityId: 't-1', action: 'CREATE',
+    user: 'alice@example.com', createdAt: new Date('2026-01-01T00:00:00Z'),
+  });
+  seedAuditLog({
+    id: 'a2', entity: 'Trait', entityId: 't-1', action: 'UPDATE',
+    user: 'bob@example.com', createdAt: new Date('2026-02-01T00:00:00Z'),
+  });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit?format=csv`);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-type') || '', /text\/csv/);
+    assert.match(response.headers.get('content-disposition') || '', /attachment; filename=".*\.csv"/);
+
+    const body = await response.text();
+    const lines = body.trim().split('\n');
+    // header + 2 data rows
+    assert.equal(lines.length, 3);
+    assert.equal(lines[0], 'id,entity,entityId,action,user,createdAt,payload');
+    // newest-first ordering
+    assert.match(lines[1], /a2,Trait,t-1,UPDATE,bob@example.com/);
+    assert.match(lines[2], /a1,Trait,t-1,CREATE,alice@example.com/);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('GET /api/audit?format=csv respects entity/action filters', async () => {
+  resetStore();
+  seedAuditLog({ id: 'a1', entity: 'Trait', entityId: 't-1', action: 'CREATE' });
+  seedAuditLog({ id: 'a2', entity: 'Trait', entityId: 't-1', action: 'UPDATE' });
+  seedAuditLog({ id: 'a3', entity: 'Biome', entityId: 'b-1', action: 'CREATE' });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit?format=csv&entity=Trait&action=UPDATE`);
+    assert.equal(response.status, 200);
+    const body = await response.text();
+    const lines = body.trim().split('\n');
+    // header + only a2 (Trait UPDATE)
+    assert.equal(lines.length, 2);
+    assert.match(lines[1], /a2,Trait/);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('GET /api/audit?format=csv escapes payload JSON containing commas and quotes', async () => {
+  resetStore();
+  seedAuditLog({
+    id: 'a1',
+    entity: 'Trait',
+    entityId: 't-1',
+    action: 'CREATE',
+    payload: { description: 'Has, comma "and" quotes', count: 5 },
+  });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit?format=csv`);
+    const body = await response.text();
+    // The payload cell must be quoted + internal quotes doubled
+    assert.match(body, /"\{""description"":""Has, comma \\""and\\"" quotes""/);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('GET /api/audit?format=csv with no results returns header-only file', async () => {
+  resetStore();
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit?format=csv&entity=Trait`);
+    assert.equal(response.status, 200);
+    const body = await response.text();
+    assert.equal(body, 'id,entity,entityId,action,user,createdAt,payload\n');
+  } finally {
+    await closeServer(server);
+  }
+});
+
 test('GET /api/audit accepts explicit positive offset (+02:00)', async () => {
   resetStore();
   seedAuditLog({ id: 'tz1', entity: 'Trait', createdAt: new Date('2026-03-15T08:00:00Z') });

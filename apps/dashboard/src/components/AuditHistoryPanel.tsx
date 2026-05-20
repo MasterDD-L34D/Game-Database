@@ -21,7 +21,7 @@ import {
 } from '@mui/material';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { listAudit, revertAudit, type AuditAction, type AuditEntry, type AuditPage } from '../lib/audit';
+import { buildAuditCsvUrl, listAudit, revertAudit, type AuditAction, type AuditEntry, type AuditPage } from '../lib/audit';
 import { useSnackbar } from './SnackbarProvider';
 import AuditPayloadRenderer from './AuditPayloadRenderer';
 
@@ -291,11 +291,31 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
   return (
     <Card variant="outlined" aria-label={t('aria.panel')}>
       <CardContent>
-        <Stack spacing={0.5} mb={2}>
-          <Typography variant="h6">{t('title')}</Typography>
-          <Typography variant="body2" color="text.secondary">
-            {t('subtitle')}
-          </Typography>
+        <Stack direction="row" spacing={1} mb={2} alignItems="flex-start" justifyContent="space-between" flexWrap="wrap">
+          <Stack spacing={0.5}>
+            <Typography variant="h6">{t('title')}</Typography>
+            <Typography variant="body2" color="text.secondary">
+              {t('subtitle')}
+            </Typography>
+          </Stack>
+          <Button
+            size="small"
+            variant="outlined"
+            component="a"
+            href={buildAuditCsvUrl({
+              entity,
+              entityId,
+              action: actionFilter || undefined,
+              user: userFilter || undefined,
+              since: sinceIso || undefined,
+              until: untilIso || undefined,
+            })}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={t('export.csvAriaLabel')}
+          >
+            {t('export.csvButton')}
+          </Button>
         </Stack>
 
         <Stack direction="row" spacing={1} mb={1.5} alignItems="center" flexWrap="wrap" role="group" aria-label={t('aria.presetGroup')}>
