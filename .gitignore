@@ -25,6 +25,7 @@ server/.docker-prisma-bootstrapped
 # Editor
 .vscode
 .idea
+.claude
 
 # OS
 .DS_Store
