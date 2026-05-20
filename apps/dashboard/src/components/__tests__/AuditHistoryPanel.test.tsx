@@ -1,19 +1,29 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AuditHistoryPanel from '../AuditHistoryPanel';
 import { SnackbarProvider } from '../SnackbarProvider';
 import * as auditLib from '../../lib/audit';
 
-function renderWithClient(ui: React.ReactNode) {
+function renderWithClient(ui: React.ReactNode, initialEntries: string[] = ['/']) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={client}>
-      <SnackbarProvider>{ui}</SnackbarProvider>
+      <SnackbarProvider>
+        <MemoryRouter initialEntries={initialEntries}>{ui}</MemoryRouter>
+      </SnackbarProvider>
     </QueryClientProvider>,
   );
+}
+
+// Helper: in-tree component that exposes the current URL search string so
+// tests can assert filter state propagated to the URL.
+function CurrentSearchSpy() {
+  const loc = useLocation();
+  return <span data-testid="current-search">{loc.search}</span>;
 }
 
 const sampleEntries = [
@@ -318,6 +328,114 @@ describe('AuditHistoryPanel', () => {
     await waitFor(() =>
       expect(screen.getByText(/Solo le eliminazioni \(DELETE\) sono ripristinabili/)).toBeInTheDocument(),
     );
+  });
+
+  // ---- URL sync (Fase 2 12/N) ----
+
+  it('reads initial filter state from URL audit_* params on mount', async () => {
+    const listSpy = vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: [],
+      page: 0,
+      pageSize: 10,
+      total: 0,
+    });
+
+    renderWithClient(
+      <AuditHistoryPanel entity="Trait" entityId="trait-1" />,
+      ['/?audit_action=UPDATE&audit_user=alice%40example.com'],
+    );
+
+    // First listAudit call sees URL-derived filters
+    await waitFor(() =>
+      expect(listSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'UPDATE', user: 'alice@example.com' }),
+      ),
+    );
+
+    // UI inputs reflect the URL state
+    expect((screen.getByLabelText('Filtra per utente') as HTMLInputElement).value).toBe('alice@example.com');
+  });
+
+  it('rejects invalid audit_action URL param (defaults to empty)', async () => {
+    const listSpy = vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: [],
+      page: 0,
+      pageSize: 10,
+      total: 0,
+    });
+
+    renderWithClient(
+      <AuditHistoryPanel entity="Trait" entityId="trait-1" />,
+      ['/?audit_action=NOT_AN_ACTION'],
+    );
+
+    await waitFor(() =>
+      expect(listSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ action: undefined }),
+      ),
+    );
+  });
+
+  it('writes filter state to URL on change (namespaced audit_*)', async () => {
+    vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: [],
+      page: 0,
+      pageSize: 10,
+      total: 0,
+    });
+
+    renderWithClient(
+      <>
+        <AuditHistoryPanel entity="Trait" entityId="trait-1" />
+        <CurrentSearchSpy />
+      </>,
+    );
+
+    // Initially URL has no audit_* params
+    await waitFor(() =>
+      expect(screen.getByTestId('current-search').textContent).toBe(''),
+    );
+
+    // Type user filter → debounce → URL should contain audit_user
+    fireEvent.change(screen.getByLabelText('Filtra per utente'), {
+      target: { value: 'alice@example.com' },
+    });
+
+    await waitFor(
+      () => expect(screen.getByTestId('current-search').textContent).toMatch(/audit_user=alice/),
+      { timeout: 1500 },
+    );
+  });
+
+  it('Pulisci filtri clears URL audit_* params', async () => {
+    vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: [],
+      page: 0,
+      pageSize: 10,
+      total: 0,
+    });
+
+    renderWithClient(
+      <>
+        <AuditHistoryPanel entity="Trait" entityId="trait-1" />
+        <CurrentSearchSpy />
+      </>,
+      ['/?audit_action=UPDATE&audit_user=alice%40example.com'],
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('current-search').textContent).toMatch(/audit_action=UPDATE/),
+    );
+
+    // Pulisci button visible because filters active from URL init
+    const clear = await screen.findByLabelText('Pulisci filtri');
+    fireEvent.click(clear);
+
+    await waitFor(() => {
+      const search = screen.getByTestId('current-search').textContent || '';
+      expect(search).not.toMatch(/audit_action/);
+      expect(search).not.toMatch(/audit_user/);
+    });
   });
 
   // ---- CSV export (Fase 2 11/N) ----
