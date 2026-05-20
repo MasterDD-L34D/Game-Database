@@ -330,6 +330,130 @@ describe('AuditHistoryPanel', () => {
     );
   });
 
+  // ---- Bulk revert (Fase 2 13/N) ----
+
+  it('shows checkbox ONLY on DELETE rows (selectable)', async () => {
+    const entries = [
+      { ...deleteEntry, id: 'd1' },
+      { ...deleteEntry, id: 'u1', action: 'UPDATE' as const },
+      { ...deleteEntry, id: 'c1', action: 'CREATE' as const },
+    ];
+    vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: entries,
+      page: 0,
+      pageSize: 10,
+      total: 3,
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    await waitFor(() => expect(screen.getByText('Eliminato')).toBeInTheDocument());
+
+    // Only 1 checkbox (for the DELETE row)
+    const checkboxes = screen.getAllByRole('checkbox');
+    expect(checkboxes).toHaveLength(1);
+  });
+
+  it('selecting DELETE entries shows bulk-revert button with count', async () => {
+    const entries = [
+      { ...deleteEntry, id: 'd1' },
+      { ...deleteEntry, id: 'd2' },
+    ];
+    vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: entries,
+      page: 0,
+      pageSize: 10,
+      total: 2,
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    await waitFor(() => expect(screen.getAllByText('Eliminato')).toHaveLength(2));
+
+    const [cb1, cb2] = screen.getAllByRole('checkbox');
+    fireEvent.click(cb1);
+    fireEvent.click(cb2);
+
+    expect(screen.getByRole('button', { name: /Ripristina selezionati \(2\)/ })).toBeInTheDocument();
+  });
+
+  it('bulk revert: confirm dialog → Promise.all(revertAudit) + success toast all-OK', async () => {
+    const entries = [
+      { ...deleteEntry, id: 'd1', entityId: 'trait-1' },
+      { ...deleteEntry, id: 'd2', entityId: 'trait-2' },
+    ];
+    vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: entries,
+      page: 0,
+      pageSize: 10,
+      total: 2,
+    });
+    const revertSpy = vi.spyOn(auditLib, 'revertAudit').mockResolvedValue({
+      success: true,
+      id: 'x',
+      entity: 'Trait',
+      revertedFrom: 'd1',
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    await waitFor(() => expect(screen.getAllByText('Eliminato')).toHaveLength(2));
+
+    const [cb1, cb2] = screen.getAllByRole('checkbox');
+    fireEvent.click(cb1);
+    fireEvent.click(cb2);
+
+    fireEvent.click(screen.getByRole('button', { name: /Ripristina selezionati \(2\)/ }));
+
+    // Confirm dialog appears
+    await waitFor(() =>
+      expect(screen.getByText('Confermare il ripristino multiplo?')).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/2 entità eliminate/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Conferma ripristino' }));
+
+    await waitFor(() => expect(revertSpy).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.getByText(/Tutte le 2 entità ripristinate con successo/)).toBeInTheDocument(),
+    );
+  });
+
+  it('bulk revert: partial-failure shows count summary warning toast', async () => {
+    const entries = [
+      { ...deleteEntry, id: 'd1', entityId: 'trait-1' },
+      { ...deleteEntry, id: 'd2', entityId: 'trait-2' },
+      { ...deleteEntry, id: 'd3', entityId: 'trait-3' },
+    ];
+    vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: entries,
+      page: 0,
+      pageSize: 10,
+      total: 3,
+    });
+    const revertSpy = vi.spyOn(auditLib, 'revertAudit')
+      .mockResolvedValueOnce({ success: true, id: 'x1', entity: 'Trait', revertedFrom: 'd1' })
+      .mockRejectedValueOnce(new Error('HTTP 409'))
+      .mockResolvedValueOnce({ success: true, id: 'x3', entity: 'Trait', revertedFrom: 'd3' });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    await waitFor(() => expect(screen.getAllByText('Eliminato')).toHaveLength(3));
+
+    screen.getAllByRole('checkbox').forEach((cb) => fireEvent.click(cb));
+
+    fireEvent.click(screen.getByRole('button', { name: /Ripristina selezionati \(3\)/ }));
+    await waitFor(() =>
+      expect(screen.getByText('Confermare il ripristino multiplo?')).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Conferma ripristino' }));
+
+    await waitFor(() => expect(revertSpy).toHaveBeenCalledTimes(3));
+    await waitFor(() =>
+      expect(screen.getByText(/2 ripristinate con successo \(1 fallite\)/)).toBeInTheDocument(),
+    );
+  });
+
   // ---- URL sync (Fase 2 12/N) ----
 
   it('reads initial filter state from URL audit_* params on mount', async () => {

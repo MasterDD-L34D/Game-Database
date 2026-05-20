@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
   Collapse,
   Dialog,
@@ -62,9 +63,20 @@ interface AuditEntryRowProps {
   previousPayload?: unknown;
   onRevert?: (logId: string) => void;
   isReverting?: boolean;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelected?: (logId: string, next: boolean) => void;
 }
 
-function AuditEntryRow({ entry, previousPayload, onRevert, isReverting }: AuditEntryRowProps) {
+function AuditEntryRow({
+  entry,
+  previousPayload,
+  onRevert,
+  isReverting,
+  selectable,
+  selected,
+  onToggleSelected,
+}: AuditEntryRowProps) {
   const { t } = useTranslation('audit');
   const [expanded, setExpanded] = useState(false);
   const formatted = formatTimestamp(entry.createdAt);
@@ -79,6 +91,20 @@ function AuditEntryRow({ entry, previousPayload, onRevert, isReverting }: AuditE
       sx={{ py: 1.5 }}
     >
       <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
+        {selectable && entry.action === 'DELETE' ? (
+          <Checkbox
+            size="small"
+            checked={Boolean(selected)}
+            onChange={(e) => onToggleSelected?.(entry.id, e.target.checked)}
+            inputProps={{
+              'aria-label': t('revert.bulkAriaSelectRow', {
+                entity: entry.entity,
+                entityId: entry.entityId,
+              }),
+            }}
+            sx={{ p: 0.5 }}
+          />
+        ) : null}
         <Chip
           size="small"
           color={chipColorForAction(entry.action)}
@@ -276,6 +302,24 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
   // (or null when closed).
   const [pendingRevert, setPendingRevert] = useState<AuditEntry | null>(null);
 
+  // Bulk revert state (Fase 2 13/N): set of selected DELETE-entry ids
+  // + pending-bulk-confirm flag. Bulk-mode only highlights DELETE rows
+  // since v1 server endpoint restricts revert to DELETE actions.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [pendingBulkConfirm, setPendingBulkConfirm] = useState(false);
+  const [bulkInProgress, setBulkInProgress] = useState(false);
+
+  const toggleSelected = (logId: string, next: boolean) => {
+    setSelectedIds((prev) => {
+      const copy = new Set(prev);
+      if (next) copy.add(logId);
+      else copy.delete(logId);
+      return copy;
+    });
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
   const revertMutation = useMutation({
     mutationFn: (logId: string) => revertAudit(logId),
     onSuccess: (data) => {
@@ -317,6 +361,38 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
   const cancelRevert = () => {
     if (!revertMutation.isPending) {
       setPendingRevert(null);
+    }
+  };
+
+  const confirmBulkRevert = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) {
+      setPendingBulkConfirm(false);
+      return;
+    }
+    setBulkInProgress(true);
+    try {
+      const results = await Promise.allSettled(ids.map((id) => revertAudit(id)));
+      const successCount = results.filter((r) => r.status === 'fulfilled').length;
+      const failedCount = results.length - successCount;
+      if (failedCount === 0) {
+        enqueueSnackbar(t('revert.bulkSuccessAllToast', { count: successCount }), {
+          variant: 'success',
+        });
+      } else {
+        enqueueSnackbar(
+          t('revert.bulkSuccessToast', { success: successCount, failed: failedCount }),
+          { variant: 'warning' },
+        );
+      }
+      // Refresh audit panel + parent entity caches
+      queryClient.invalidateQueries({ queryKey: ['audit', entity, entityId] });
+      const entityKey = entity.toLowerCase();
+      queryClient.invalidateQueries({ queryKey: [entityKey] });
+    } finally {
+      setBulkInProgress(false);
+      setPendingBulkConfirm(false);
+      clearSelection();
     }
   };
 
@@ -451,12 +527,32 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
                     isReverting={
                       revertMutation.isPending && revertMutation.variables === entry.id
                     }
+                    selectable
+                    selected={selectedIds.has(entry.id)}
+                    onToggleSelected={toggleSelected}
                   />
                   {idx < items.length - 1 ? <Divider /> : null}
                 </Box>
               );
             })}
           </Box>
+        ) : null}
+
+        {selectedIds.size > 0 ? (
+          <Stack direction="row" spacing={1} mt={2} alignItems="center">
+            <Button
+              size="small"
+              variant="contained"
+              color="primary"
+              disabled={bulkInProgress}
+              onClick={() => setPendingBulkConfirm(true)}
+            >
+              {t('revert.bulkButton', { count: selectedIds.size })}
+            </Button>
+            <Button size="small" variant="text" onClick={clearSelection} disabled={bulkInProgress}>
+              {t('filter.clear')}
+            </Button>
+          </Stack>
         ) : null}
 
         {total > 0 ? (
@@ -478,6 +574,37 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
           </Stack>
         ) : null}
       </CardContent>
+
+      <Dialog
+        open={pendingBulkConfirm}
+        onClose={() => !bulkInProgress && setPendingBulkConfirm(false)}
+        aria-labelledby="audit-bulk-revert-dialog-title"
+        aria-describedby="audit-bulk-revert-dialog-body"
+      >
+        <DialogTitle id="audit-bulk-revert-dialog-title">{t('revert.bulkConfirmTitle')}</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="audit-bulk-revert-dialog-body">
+            {t('revert.bulkConfirmBody', { count: selectedIds.size })}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setPendingBulkConfirm(false)}
+            disabled={bulkInProgress}
+          >
+            {t('revert.confirmCancel')}
+          </Button>
+          <Button
+            onClick={() => void confirmBulkRevert()}
+            variant="contained"
+            color="primary"
+            disabled={bulkInProgress}
+            autoFocus
+          >
+            {bulkInProgress ? t('revert.inProgress') : t('revert.confirmAction')}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={pendingRevert !== null}
