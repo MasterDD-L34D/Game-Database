@@ -179,7 +179,7 @@ describe('AuditHistoryPanel', () => {
     expect(buttons).toHaveLength(1);
   });
 
-  it('calls revertAudit + shows success toast on success', async () => {
+  it('opens confirmation dialog on revert click (does NOT call revertAudit immediately)', async () => {
     vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
       items: [deleteEntry],
       page: 0,
@@ -200,13 +200,79 @@ describe('AuditHistoryPanel', () => {
     const revertBtn = screen.getByRole('button', { name: /^Ripristina entit/ });
     fireEvent.click(revertBtn);
 
+    // Dialog appears
+    await waitFor(() =>
+      expect(screen.getByText('Confermare il ripristino?')).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/Stai per ripristinare l'entità Trait \(id trait-1\)/)).toBeInTheDocument();
+
+    // revertAudit NOT called yet — waits for confirm
+    expect(revertSpy).not.toHaveBeenCalled();
+  });
+
+  it('cancels dialog without calling revertAudit', async () => {
+    vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: [deleteEntry],
+      page: 0,
+      pageSize: 10,
+      total: 1,
+    });
+    const revertSpy = vi.spyOn(auditLib, 'revertAudit').mockResolvedValue({
+      success: true,
+      id: 'trait-1',
+      entity: 'Trait',
+      revertedFrom: 'audit-delete-1',
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    await waitFor(() => expect(screen.getByText('Eliminato')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /^Ripristina entit/ }));
+    await waitFor(() =>
+      expect(screen.getByText('Confermare il ripristino?')).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Annulla' }));
+
+    await waitFor(() =>
+      expect(screen.queryByText('Confermare il ripristino?')).not.toBeInTheDocument(),
+    );
+    expect(revertSpy).not.toHaveBeenCalled();
+  });
+
+  it('calls revertAudit + shows success toast after confirm', async () => {
+    vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: [deleteEntry],
+      page: 0,
+      pageSize: 10,
+      total: 1,
+    });
+    const revertSpy = vi.spyOn(auditLib, 'revertAudit').mockResolvedValue({
+      success: true,
+      id: 'trait-1',
+      entity: 'Trait',
+      revertedFrom: 'audit-delete-1',
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    await waitFor(() => expect(screen.getByText('Eliminato')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /^Ripristina entit/ }));
+    await waitFor(() =>
+      expect(screen.getByText('Confermare il ripristino?')).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Conferma ripristino' }));
+
     await waitFor(() => expect(revertSpy).toHaveBeenCalledWith('audit-delete-1'));
     await waitFor(() =>
       expect(screen.getByText(/Entità Trait ripristinata con successo/)).toBeInTheDocument(),
     );
   });
 
-  it('shows Italian conflict toast on 409 error', async () => {
+  it('shows Italian conflict toast on 409 error after confirm', async () => {
     vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
       items: [deleteEntry],
       page: 0,
@@ -219,15 +285,16 @@ describe('AuditHistoryPanel', () => {
 
     await waitFor(() => expect(screen.getByText('Eliminato')).toBeInTheDocument());
 
-    const revertBtn = screen.getByRole('button', { name: /^Ripristina entit/ });
-    fireEvent.click(revertBtn);
+    fireEvent.click(screen.getByRole('button', { name: /^Ripristina entit/ }));
+    await waitFor(() => expect(screen.getByText('Confermare il ripristino?')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Conferma ripristino' }));
 
     await waitFor(() =>
       expect(screen.getByText(/Conflitto: un'altra entità ha lo stesso slug o id/)).toBeInTheDocument(),
     );
   });
 
-  it('shows Italian not-revertable toast on 400 error', async () => {
+  it('shows Italian not-revertable toast on 400 error after confirm', async () => {
     vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
       items: [deleteEntry],
       page: 0,
@@ -240,8 +307,9 @@ describe('AuditHistoryPanel', () => {
 
     await waitFor(() => expect(screen.getByText('Eliminato')).toBeInTheDocument());
 
-    const revertBtn = screen.getByRole('button', { name: /^Ripristina entit/ });
-    fireEvent.click(revertBtn);
+    fireEvent.click(screen.getByRole('button', { name: /^Ripristina entit/ }));
+    await waitFor(() => expect(screen.getByText('Confermare il ripristino?')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Conferma ripristino' }));
 
     await waitFor(() =>
       expect(screen.getByText(/Solo le eliminazioni \(DELETE\) sono ripristinabili/)).toBeInTheDocument(),
