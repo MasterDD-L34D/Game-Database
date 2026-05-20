@@ -256,6 +256,13 @@ router.get('/', requireAuditRead, async (req, res) => {
     // (no client pagination) when ?format=csv present. Useful for audit
     // analytics + offline review. Filters (entity/entityId/action/user/
     // since/until) are respected via the same buildAuditWhere.
+    //
+    // Codex P2 fix from PR #139 review: skip+take offset pagination is
+    // UNSTABLE when rows are inserted/deleted mid-export — offsets shift
+    // between iterations and rows can be skipped or duplicated. Switch
+    // to keyset/cursor pagination on (createdAt DESC, id DESC) so each
+    // batch query is filtered to "strictly older than last seen" tuple.
+    // Guarantees no skip/dup even if writes happen during the stream.
     const format = typeof req.query.format === 'string' ? req.query.format.toLowerCase() : '';
     if (format === 'csv') {
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -267,13 +274,24 @@ router.get('/', requireAuditRead, async (req, res) => {
       res.write(`${header.join(',')}\n`);
 
       const batchSize = 1000;
-      let pageIdx = 0;
+      let cursor = null; // { createdAt: Date, id: string } from previous batch's tail
       // eslint-disable-next-line no-constant-condition
       while (true) {
+        const cursorWhere = cursor
+          ? {
+              OR: [
+                { createdAt: { lt: cursor.createdAt } },
+                { AND: [{ createdAt: cursor.createdAt }, { id: { lt: cursor.id } }] },
+              ],
+            }
+          : null;
+        const effectiveWhere = cursorWhere
+          ? (Object.keys(where).length > 0 ? { AND: [where, cursorWhere] } : cursorWhere)
+          : where;
+
         const batch = await prisma.auditLog.findMany({
-          where,
-          orderBy: { createdAt: 'desc' },
-          skip: pageIdx * batchSize,
+          where: effectiveWhere,
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
           take: batchSize,
         });
         if (!batch.length) break;
@@ -283,7 +301,9 @@ router.get('/', requireAuditRead, async (req, res) => {
           const row = [r.id, r.entity, r.entityId, r.action, r.user, createdAt, payload];
           res.write(`${row.map(csvEscape).join(',')}\n`);
         }
-        pageIdx += 1;
+        const last = batch[batch.length - 1];
+        cursor = { createdAt: last.createdAt, id: last.id };
+        if (batch.length < batchSize) break; // last partial page → done
         await new Promise((resolve) => setImmediate(resolve));
       }
       return res.end();
