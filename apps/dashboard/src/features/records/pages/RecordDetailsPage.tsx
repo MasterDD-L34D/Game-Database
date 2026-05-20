@@ -17,6 +17,7 @@ import { getRecord } from '../../../lib/records';
 import type { RecordRow } from '../../../types/record';
 import { df } from '../../../lib/formatters';
 import type { AppTheme } from '../../../theme';
+import AuditHistoryPanel from '../../../components/AuditHistoryPanel';
 
 function resolveCardPadding(theme: Partial<AppTheme>): string | number {
   const spacing = theme.spacing;
@@ -193,6 +194,8 @@ export default function RecordDetailsPage() {
           </Stack>
         </Paper>
       )}
+
+      {record ? <AuditHistoryPanel entity="Record" entityId={record.id} /> : null}
     </Stack>
   );
 }
