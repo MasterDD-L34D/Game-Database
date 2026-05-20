@@ -11,6 +11,7 @@ import table from './locales/it/table.json';
 import records from './locales/it/records.json';
 import exportNs from './locales/it/export.json';
 import taxonomy from './locales/it/taxonomy.json';
+import audit from './locales/it/audit.json';
 
 const resources = {
   it: {
@@ -23,6 +24,7 @@ const resources = {
     records,
     export: exportNs,
     taxonomy,
+    audit,
   },
 };
 
@@ -31,7 +33,7 @@ i18n.use(initReactI18next).init({
   lng: 'it',
   fallbackLng: 'it',
   defaultNS: 'common',
-  ns: ['common', 'navigation', 'dashboard', 'list', 'filters', 'table', 'records', 'export', 'taxonomy'],
+  ns: ['common', 'navigation', 'dashboard', 'list', 'filters', 'table', 'records', 'export', 'taxonomy', 'audit'],
   interpolation: { escapeValue: false },
   returnNull: false,
   returnEmptyString: false,

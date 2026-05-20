@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { getTrait, listAllSpecies } from '../../../lib/taxonomy';
 import { getSpeciesTraits } from '../../../lib/taxonomyRelations';
 import { EntityDetailCard, RelationListCard } from '../components/EntityDetailCard';
+import AuditHistoryPanel from '../../../components/AuditHistoryPanel';
 
 function renderRelationValue(entry: { bool?: boolean | null; num?: number | null; text?: string | null; value?: unknown; unit?: string | null }) {
   if (entry.bool !== null && entry.bool !== undefined) return entry.bool ? 'true' : 'false';
@@ -87,6 +88,8 @@ export default function TraitDetailsPage() {
           );
         })}
       </RelationListCard>
+
+      {trait ? <AuditHistoryPanel entity="Trait" entityId={trait.id} /> : null}
     </Stack>
   );
 }

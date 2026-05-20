@@ -1,0 +1,22 @@
+{
+  "title": "Cronologia modifiche",
+  "subtitle": "Audit log delle ultime modifiche all'entità",
+  "empty": "Nessuna modifica registrata",
+  "loadMore": "Carica altri",
+  "loading": "Caricamento cronologia...",
+  "loadError": "Impossibile caricare la cronologia",
+  "actions": {
+    "CREATE": "Creato",
+    "UPDATE": "Aggiornato",
+    "DELETE": "Eliminato"
+  },
+  "anonymousUser": "Utente anonimo",
+  "togglePayload": "Mostra dettagli payload",
+  "togglePayloadHide": "Nascondi dettagli payload",
+  "totalCount": "{{count}} voce in totale",
+  "totalCount_other": "{{count}} voci in totale",
+  "aria": {
+    "panel": "Cronologia modifiche entità",
+    "entry": "Voce cronologia {{action}} del {{date}}"
+  }
+}
