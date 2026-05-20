@@ -1,19 +1,35 @@
 // server/utils/slug.js
 // Canonical slug normalization for Game-Database.
-// Lifted from server/scripts/ingest/import-taxonomy.js slugify() with
-// added max-length truncation. Per spec PR-α (2026-05-20) Q1 resolved.
+// Pipeline: NFD normalize → strip combining marks → lowercase →
+// replace non-alphanum with hyphen → trim → length cap → re-trim.
+// Per spec PR-α (2026-05-20) Q1 resolved: custom regex consolidate,
+// no npm dependency. Aligned with codemasterdd ADR-0021 ASCII-first.
 
 'use strict';
 
 const MAX_SLUG_LENGTH = 80;
 
 function buildSlug(source) {
-  // TODO Task 2: implement after writing failing tests
-  return '';
+  if (source == null) return '';
+  const raw = String(source);
+  if (!raw) return '';
+  const normalized = raw
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+  if (!normalized) return '';
+  if (normalized.length <= MAX_SLUG_LENGTH) return normalized;
+  return normalized.slice(0, MAX_SLUG_LENGTH).replace(/-+$/, '');
 }
 
 function normalizeSlug(value, fallback) {
-  // TODO Task 2: implement after writing failing tests
+  const fromValue = buildSlug(value);
+  if (fromValue) return fromValue;
+  if (fallback !== undefined && fallback !== null) {
+    return buildSlug(fallback);
+  }
   return '';
 }
 
