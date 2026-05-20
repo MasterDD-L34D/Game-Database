@@ -12,9 +12,10 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { listAudit, type AuditAction, type AuditEntry, type AuditPage } from '../lib/audit';
+import { listAudit, revertAudit, type AuditAction, type AuditEntry, type AuditPage } from '../lib/audit';
+import { useSnackbar } from './SnackbarProvider';
 
 const PAGE_SIZE = 10;
 
@@ -49,14 +50,17 @@ function formatTimestamp(iso: string): string {
 
 interface AuditEntryRowProps {
   entry: AuditEntry;
+  onRevert?: (logId: string) => void;
+  isReverting?: boolean;
 }
 
-function AuditEntryRow({ entry }: AuditEntryRowProps) {
+function AuditEntryRow({ entry, onRevert, isReverting }: AuditEntryRowProps) {
   const { t } = useTranslation('audit');
   const [expanded, setExpanded] = useState(false);
   const formatted = formatTimestamp(entry.createdAt);
   const userLabel = entry.user || t('anonymousUser');
   const hasPayload = entry.payload !== null && entry.payload !== undefined;
+  const canRevert = entry.action === 'DELETE' && Boolean(onRevert);
 
   return (
     <Box
@@ -86,6 +90,18 @@ function AuditEntryRow({ entry }: AuditEntryRowProps) {
               {expanded ? '▾' : '▸'}
             </Typography>
           </IconButton>
+        ) : null}
+        {canRevert ? (
+          <Button
+            size="small"
+            variant="outlined"
+            color="primary"
+            disabled={isReverting}
+            onClick={() => onRevert?.(entry.id)}
+            aria-label={t('aria.revertButton', { entity: entry.entity, entityId: entry.entityId })}
+          >
+            {isReverting ? t('revert.inProgress') : t('revert.button')}
+          </Button>
         ) : null}
       </Stack>
       {hasPayload ? (
@@ -120,6 +136,8 @@ export interface AuditHistoryPanelProps {
 
 export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPanelProps) {
   const { t } = useTranslation('audit');
+  const { enqueueSnackbar } = useSnackbar();
+  const queryClient = useQueryClient();
 
   // Codex P2 fix from PR #127 review: previous `useQuery` + `page` state
   // replaced visible items on `Carica altri` because the panel only
@@ -144,6 +162,34 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
   );
   const total = query.data?.pages?.[0]?.total ?? 0;
   const hasMore = Boolean(query.hasNextPage);
+
+  const revertMutation = useMutation({
+    mutationFn: (logId: string) => revertAudit(logId),
+    onSuccess: (data) => {
+      enqueueSnackbar(t('revert.successToast', { entity: data.entity }), { variant: 'success' });
+      // Refresh audit panel + invalidate parent entity caches so detail page
+      // re-fetches the resurrected entity.
+      queryClient.invalidateQueries({ queryKey: ['audit', entity, entityId] });
+      const entityKey = entity.toLowerCase();
+      queryClient.invalidateQueries({ queryKey: [entityKey] });
+    },
+    onError: (error: unknown) => {
+      // Inspect error message for known backend codes (409 CONFLICT, 400
+      // NOT_REVERTABLE) and surface localized toast.
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.includes('409')) {
+        enqueueSnackbar(t('revert.errorConflict'), { variant: 'error' });
+      } else if (msg.includes('400')) {
+        enqueueSnackbar(t('revert.errorNotRevertable'), { variant: 'error' });
+      } else {
+        enqueueSnackbar(t('revert.errorGeneric'), { variant: 'error' });
+      }
+    },
+  });
+
+  const handleRevert = (logId: string) => {
+    revertMutation.mutate(logId);
+  };
 
   return (
     <Card variant="outlined" aria-label={t('aria.panel')}>
@@ -171,7 +217,13 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
           <Box role="list">
             {items.map((entry, idx) => (
               <Box key={entry.id}>
-                <AuditEntryRow entry={entry} />
+                <AuditEntryRow
+                  entry={entry}
+                  onRevert={handleRevert}
+                  isReverting={
+                    revertMutation.isPending && revertMutation.variables === entry.id
+                  }
+                />
                 {idx < items.length - 1 ? <Divider /> : null}
               </Box>
             ))}

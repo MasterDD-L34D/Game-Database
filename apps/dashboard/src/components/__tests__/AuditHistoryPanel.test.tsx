@@ -2,11 +2,18 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AuditHistoryPanel from '../AuditHistoryPanel';
+import { SnackbarProvider } from '../SnackbarProvider';
 import * as auditLib from '../../lib/audit';
 
 function renderWithClient(ui: React.ReactNode) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={client}>
+      <SnackbarProvider>{ui}</SnackbarProvider>
+    </QueryClientProvider>,
+  );
 }
 
 const sampleEntries = [
@@ -127,6 +134,118 @@ describe('AuditHistoryPanel', () => {
     expect(
       screen.getByLabelText('Cronologia modifiche entità'),
     ).toBeInTheDocument();
+  });
+
+  // ---- Revert button (Fase 2 3/N) ----
+
+  const deleteEntry = {
+    id: 'audit-delete-1',
+    entity: 'Trait',
+    entityId: 'trait-1',
+    action: 'DELETE' as const,
+    user: 'alice@example.com',
+    payload: { id: 'trait-1', slug: 'foo', name: 'Foo', dataType: 'TEXT' },
+    createdAt: '2026-05-20T10:00:00Z',
+  };
+
+  it('shows Ripristina button ONLY for DELETE entries', async () => {
+    const mixed = [
+      deleteEntry,
+      {
+        ...deleteEntry,
+        id: 'audit-update-1',
+        action: 'UPDATE' as const,
+        payload: { name: 'New' },
+      },
+      {
+        ...deleteEntry,
+        id: 'audit-create-1',
+        action: 'CREATE' as const,
+        payload: { id: 'trait-1', slug: 'foo', name: 'Foo', dataType: 'TEXT' },
+      },
+    ];
+    vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: mixed,
+      page: 0,
+      pageSize: 10,
+      total: 3,
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    await waitFor(() => expect(screen.getByText('Eliminato')).toBeInTheDocument());
+    // Exactly one Ripristina button (for the DELETE row only)
+    const buttons = screen.getAllByRole('button', { name: /^Ripristina entit/ });
+    expect(buttons).toHaveLength(1);
+  });
+
+  it('calls revertAudit + shows success toast on success', async () => {
+    vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: [deleteEntry],
+      page: 0,
+      pageSize: 10,
+      total: 1,
+    });
+    const revertSpy = vi.spyOn(auditLib, 'revertAudit').mockResolvedValue({
+      success: true,
+      id: 'trait-1',
+      entity: 'Trait',
+      revertedFrom: 'audit-delete-1',
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    await waitFor(() => expect(screen.getByText('Eliminato')).toBeInTheDocument());
+
+    const revertBtn = screen.getByRole('button', { name: /^Ripristina entit/ });
+    fireEvent.click(revertBtn);
+
+    await waitFor(() => expect(revertSpy).toHaveBeenCalledWith('audit-delete-1'));
+    await waitFor(() =>
+      expect(screen.getByText(/Entità Trait ripristinata con successo/)).toBeInTheDocument(),
+    );
+  });
+
+  it('shows Italian conflict toast on 409 error', async () => {
+    vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: [deleteEntry],
+      page: 0,
+      pageSize: 10,
+      total: 1,
+    });
+    vi.spyOn(auditLib, 'revertAudit').mockRejectedValue(new Error('HTTP 409'));
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    await waitFor(() => expect(screen.getByText('Eliminato')).toBeInTheDocument());
+
+    const revertBtn = screen.getByRole('button', { name: /^Ripristina entit/ });
+    fireEvent.click(revertBtn);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Conflitto: un'altra entità ha lo stesso slug o id/)).toBeInTheDocument(),
+    );
+  });
+
+  it('shows Italian not-revertable toast on 400 error', async () => {
+    vi.spyOn(auditLib, 'listAudit').mockResolvedValue({
+      items: [deleteEntry],
+      page: 0,
+      pageSize: 10,
+      total: 1,
+    });
+    vi.spyOn(auditLib, 'revertAudit').mockRejectedValue(new Error('HTTP 400'));
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    await waitFor(() => expect(screen.getByText('Eliminato')).toBeInTheDocument());
+
+    const revertBtn = screen.getByRole('button', { name: /^Ripristina entit/ });
+    fireEvent.click(revertBtn);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Solo le eliminazioni \(DELETE\) sono ripristinabili/)).toBeInTheDocument(),
+    );
   });
 
   // Codex P2 regression (PR #127): "Carica altri" must APPEND new page entries,
