@@ -128,4 +128,52 @@ describe('AuditHistoryPanel', () => {
       screen.getByLabelText('Cronologia modifiche entità'),
     ).toBeInTheDocument();
   });
+
+  // Codex P2 regression (PR #127): "Carica altri" must APPEND new page entries,
+  // not replace the visible list.
+  it('preserves previously rendered entries when "Carica altri" loads next page', async () => {
+    const page0Items = Array.from({ length: 10 }, (_, i) => ({
+      id: `audit-p0-${i}`,
+      entity: 'Trait',
+      entityId: 'trait-1',
+      action: 'UPDATE' as const,
+      user: `user-${i}@example.com`,
+      payload: null,
+      createdAt: `2026-05-${String(20 - i).padStart(2, '0')}T10:00:00Z`,
+    }));
+    const page1Items = Array.from({ length: 5 }, (_, i) => ({
+      id: `audit-p1-${i}`,
+      entity: 'Trait',
+      entityId: 'trait-1',
+      action: 'CREATE' as const,
+      user: `older-${i}@example.com`,
+      payload: null,
+      createdAt: `2026-05-${String(10 - i).padStart(2, '0')}T10:00:00Z`,
+    }));
+
+    const listAuditSpy = vi.spyOn(auditLib, 'listAudit');
+    listAuditSpy.mockImplementation(async ({ page = 0 }) => {
+      if (page === 0) return { items: page0Items, page: 0, pageSize: 10, total: 15 };
+      if (page === 1) return { items: page1Items, page: 1, pageSize: 10, total: 15 };
+      return { items: [], page, pageSize: 10, total: 15 };
+    });
+
+    renderWithClient(<AuditHistoryPanel entity="Trait" entityId="trait-1" />);
+
+    // Wait for page 0 to render
+    await waitFor(() => expect(screen.getByText('user-0@example.com', { exact: false })).toBeInTheDocument());
+    expect(screen.getByText('user-9@example.com', { exact: false })).toBeInTheDocument();
+
+    // Click "Carica altri"
+    const loadMore = screen.getByRole('button', { name: 'Carica altri' });
+    fireEvent.click(loadMore);
+
+    // Wait for page 1 to be appended (older-0 visible)
+    await waitFor(() => expect(screen.getByText('older-0@example.com', { exact: false })).toBeInTheDocument());
+
+    // CRITICAL: page 0 items STILL visible after load-more (the original bug)
+    expect(screen.getByText('user-0@example.com', { exact: false })).toBeInTheDocument();
+    expect(screen.getByText('user-9@example.com', { exact: false })).toBeInTheDocument();
+    expect(screen.getByText('older-4@example.com', { exact: false })).toBeInTheDocument();
+  });
 });

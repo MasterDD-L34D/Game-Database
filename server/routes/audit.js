@@ -10,8 +10,12 @@ const ALLOWED_ACTIONS = new Set(['CREATE', 'UPDATE', 'DELETE']);
 
 function buildAuditWhere(query) {
   const where = {};
-  if (query.entity) {
-    const entity = String(query.entity).trim();
+  // Codex P2 fix from PR #122 review: presence-based check `if (query.entity)`
+  // skipped validation for empty-string filter (`?entity=`), so the route
+  // treated explicit-empty as no-filter and returned unfiltered rows
+  // instead of 400. Now distinguish "key present" via hasOwnProperty.
+  if (Object.prototype.hasOwnProperty.call(query, 'entity')) {
+    const entity = String(query.entity ?? '').trim();
     if (!entity) {
       throw new AppError(400, 'VALIDATION_ERROR', 'entity must be non-empty', {
         field: 'entity',
@@ -20,8 +24,8 @@ function buildAuditWhere(query) {
     }
     where.entity = entity;
   }
-  if (query.entityId) {
-    const entityId = String(query.entityId).trim();
+  if (Object.prototype.hasOwnProperty.call(query, 'entityId')) {
+    const entityId = String(query.entityId ?? '').trim();
     if (!entityId) {
       throw new AppError(400, 'VALIDATION_ERROR', 'entityId must be non-empty', {
         field: 'entityId',
@@ -30,8 +34,8 @@ function buildAuditWhere(query) {
     }
     where.entityId = entityId;
   }
-  if (query.action) {
-    const action = String(query.action).trim().toUpperCase();
+  if (Object.prototype.hasOwnProperty.call(query, 'action')) {
+    const action = String(query.action ?? '').trim().toUpperCase();
     if (!ALLOWED_ACTIONS.has(action)) {
       throw new AppError(400, 'VALIDATION_ERROR', `action must be one of ${[...ALLOWED_ACTIONS].join(', ')}`, {
         field: 'action',

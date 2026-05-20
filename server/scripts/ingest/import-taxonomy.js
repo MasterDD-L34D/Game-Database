@@ -51,12 +51,26 @@ const validateNormalizedEcosystem = ajv.compile({
   },
 });
 
-function arg(name, def) {
-  const index = args.indexOf(`--${name}`);
+// Pure helper for CLI arg parsing — exported for unit tests.
+// Supports both `--flag value` and `--flag=value` forms (Codex P1 fix
+// from PR #125 review: documented `--fail-on=errors|schema|any` form
+// was not parsed by space-separated lookup, silently fell back to
+// default and could fail CI unexpectedly).
+function parseFlagFromArgs(argv, name, def) {
+  const prefix = `--${name}=`;
+  const inlineIdx = argv.findIndex((a) => typeof a === 'string' && a.startsWith(prefix));
+  if (inlineIdx >= 0) {
+    return argv[inlineIdx].slice(prefix.length);
+  }
+  const index = argv.indexOf(`--${name}`);
   if (index < 0) return def;
-  const next = args[index + 1];
+  const next = argv[index + 1];
   if (next && !next.startsWith('--')) return next;
   return true;
+}
+
+function arg(name, def) {
+  return parseFlagFromArgs(args, name, def);
 }
 
 const repoRoot = path.resolve(arg('repo', process.cwd()));
@@ -1071,21 +1085,26 @@ async function main() {
 }
 
 if (require.main === module) {
+  // Codex P1 fix from PR #125 review: use process.exitCode + let the
+  // event loop drain instead of process.exit(). Hard-exit can truncate
+  // stdout JSON when piped (the exact CI/gating use case for this
+  // command) because Node may not flush buffered stdout before exit.
+  // Setting exitCode lets the natural promise-chain shutdown happen.
   main()
     .then((summary) => {
       const code = computeExitCode(summary, { validateOnly, warnOnly, failOn });
       if (code !== 0) {
         console.error(`validate-only: exit ${code} (errori=${summary.errori || 0}, fail-on=${failOn.join(',')})`);
       }
-      process.exit(code);
+      process.exitCode = code;
     })
     .catch((error) => {
       console.error(error);
-      process.exit(2);
+      process.exitCode = 2;
     })
     .finally(async () => {
       await prisma.$disconnect();
     });
 }
 
-module.exports = { computeExitCode };
+module.exports = { computeExitCode, parseFlagFromArgs };

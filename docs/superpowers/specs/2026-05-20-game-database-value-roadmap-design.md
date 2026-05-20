@@ -270,6 +270,23 @@ Pattern: Fase 1 = foundation utile a tutte 3 dimensioni; Fase 2 = designer-tool 
 - Version-pin adoption % builds Game
 - Bidirectional sync sync-time + error rate
 
+### Code review protocol (MANDATORY pre-merge, added 2026-05-20 post-audit)
+
+Before squash-merging any PR, the implementer MUST:
+
+1. Run `gh api repos/<owner>/<repo>/pulls/<N>/comments` and inspect inline review comments (Codex / human reviewers / bots).
+2. Triage each comment by severity:
+   - **P1**: must fix before merge (correctness, security, data loss risk, CI gate truncation, etc.)
+   - **P2**: must fix before merge OR explicitly defer with rationale in PR description
+   - **P3+**: may defer to follow-up issue, but acknowledged in PR description
+3. Address fixes in additional commits on the same branch, re-run CI, then merge.
+4. If a comment is **rejected** (false-positive / out-of-scope), reply explaining why before merging.
+
+**Anti-pattern flagged 2026-05-20**: 5 unaddressed Codex P1+P2 review
+comments across PR #118/#122/#125/#127 were merged silently and only
+caught by post-hoc audit. Follow-up consolidated fix PR opened.
+**Never merge again without checking `/pulls/N/comments` first.**
+
 ### Quality gates per PR (CLAUDE.md Release Standard)
 
 1. **Step 1 Smoke**: comando + risultato atteso + risultato reale documentato in PR Test Plan
@@ -284,7 +301,7 @@ Pattern: Fase 1 = foundation utile a tutte 3 dimensioni; Fase 2 = designer-tool 
 | PR β junction test flakiness | Low | Use existing `taxonomy.reset()` pattern proven 46/46 verde |
 | PR γ generated doc churn in git diff | Med | Pre-commit hook + stable sort + idempotent gen |
 | PR δ AuditLog query slow on 100k rows | Med | Index migration in same PR + EXPLAIN ANALYZE before/after |
-| PR ε validate-only false positive | High | Conservative initial mode (warn-only), --strict opt-in |
+| PR ε validate-only false positive | High | STRICT default per Q4 (errori+schema=exit-1, partial=warn); `--warn-only` flag exists as explicit opt-out for nightly batch reports / manual triage |
 | Cross-session conflict open PR Game-Database | Low | `gh pr list` pre-check + handoff OWNING append |
 | Scope creep su PR α (slug ↔ everything) | High | Hardcap 1-entity-at-time, defer to PR α2 if needed |
 | Vision tail Fase 2/3 mai eseguito | Med | Time-box review post-Fase-1: decision-point Eduardo |
