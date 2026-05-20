@@ -20,6 +20,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { buildAuditCsvUrl, listAudit, revertAudit, type AuditAction, type AuditEntry, type AuditPage } from '../lib/audit';
 import { useSnackbar } from './SnackbarProvider';
@@ -141,12 +142,43 @@ export default function AuditHistoryPanel({ entity, entityId }: AuditHistoryPane
   // Filter state (Fase 2 8/N): action select + user text (debounced).
   // Fase 2 9/N: + since/until date range (datetime-local, no debounce —
   // explicit user-picked date doesn't churn on keystroke).
+  // Fase 2 12/N: + URL sync via namespaced ?audit_action / ?audit_user /
+  // ?audit_since / ?audit_until params so filtered views are
+  // deep-linkable. Namespace prefix avoids collision with parent list
+  // page params (q/page/pageSize/sort).
   // Backend params supported by PR #122/#136/#137 GET /api/audit.
-  const [actionFilter, setActionFilter] = useState<AuditAction | ''>('');
-  const [userFilterInput, setUserFilterInput] = useState('');
-  const [userFilter, setUserFilter] = useState('');
-  const [sinceFilter, setSinceFilter] = useState('');
-  const [untilFilter, setUntilFilter] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const ALLOWED_ACTIONS: ReadonlyArray<AuditAction> = ['CREATE', 'UPDATE', 'DELETE'];
+  const initialActionParam = searchParams.get('audit_action') ?? '';
+  const initialAction: AuditAction | '' =
+    ALLOWED_ACTIONS.includes(initialActionParam as AuditAction) ? (initialActionParam as AuditAction) : '';
+  const initialUser = searchParams.get('audit_user') ?? '';
+  const initialSince = searchParams.get('audit_since') ?? '';
+  const initialUntil = searchParams.get('audit_until') ?? '';
+  const [actionFilter, setActionFilter] = useState<AuditAction | ''>(initialAction);
+  const [userFilterInput, setUserFilterInput] = useState(initialUser);
+  const [userFilter, setUserFilter] = useState(initialUser);
+  const [sinceFilter, setSinceFilter] = useState(initialSince);
+  const [untilFilter, setUntilFilter] = useState(initialUntil);
+
+  // Sync filter state → URL whenever any debounced/committed filter changes
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    const ensure = (key: string, value: string) => {
+      if (value) next.set(key, value);
+      else next.delete(key);
+    };
+    ensure('audit_action', actionFilter);
+    ensure('audit_user', userFilter);
+    ensure('audit_since', sinceFilter);
+    ensure('audit_until', untilFilter);
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+    // searchParams intentionally excluded from deps: we only push on
+    // filter changes, not on every URL navigation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actionFilter, userFilter, sinceFilter, untilFilter]);
 
   useEffect(() => {
     const handle = setTimeout(() => {
