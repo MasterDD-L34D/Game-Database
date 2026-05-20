@@ -143,12 +143,28 @@ router.post('/:logId/revert', requireTaxonomyWrite, async (req, res) => {
         { field: 'payload', logId });
     }
 
-    // Check entity doesn't already exist (resurrection conflict)
+    // Check entity doesn't already exist (resurrection conflict on id)
     const existing = await prisma[modelKey].findUnique({ where: { id: projected.id } });
     if (existing) {
       return sendError(res, 409, 'CONFLICT',
         `Entity ${auditEntry.entity}:${projected.id} already exists — nothing to revert`,
         { field: 'id', value: projected.id });
+    }
+
+    // Codex P2 fix from PR #130 review: also check non-id @unique columns
+    // (slug on Trait/Biome/Species/Ecosystem). If the entity was deleted and
+    // another row later claimed the same slug, .create() throws Prisma
+    // P2002 which falls through to 500 INTERNAL_ERROR. Pre-check returns
+    // a clear 409 CONFLICT instead. Record model has no unique slug.
+    if (projected.slug && modelKey !== 'record') {
+      const slugCollision = await prisma[modelKey].findUnique({
+        where: { slug: projected.slug },
+      });
+      if (slugCollision) {
+        return sendError(res, 409, 'CONFLICT',
+          `Slug "${projected.slug}" is now used by another ${auditEntry.entity} (id=${slugCollision.id}) — cannot revert`,
+          { field: 'slug', value: projected.slug, conflictingId: slugCollision.id });
+      }
     }
 
     const recreated = await prisma[modelKey].create({ data: projected });

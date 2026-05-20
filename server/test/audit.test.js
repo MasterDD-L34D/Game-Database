@@ -97,13 +97,27 @@ function installMock() {
 
   prisma.trait = prisma.trait || {};
   prisma.trait.findUnique = async ({ where } = {}) => {
-    if (!where || !where.id) return null;
-    const found = traitStore.get(where.id);
-    return found ? clone(found) : null;
+    if (!where) return null;
+    if (where.id) {
+      const found = traitStore.get(where.id);
+      return found ? clone(found) : null;
+    }
+    if (where.slug) {
+      for (const record of traitStore.values()) {
+        if (record.slug === where.slug) return clone(record);
+      }
+      return null;
+    }
+    return null;
   };
   prisma.trait.create = async ({ data } = {}) => {
     if (traitStore.has(data.id)) {
-      throw new Error('Unique constraint failed');
+      throw new Error('Unique constraint failed (id)');
+    }
+    for (const record of traitStore.values()) {
+      if (record.slug && record.slug === data.slug) {
+        throw new Error('Unique constraint failed (slug)');
+      }
     }
     const record = { ...data };
     traitStore.set(data.id, clone(record));
@@ -603,6 +617,35 @@ test('POST /api/audit/:logId/revert returns 400 for unknown entity (junction/non
     const body = await response.json();
     assert.equal(body.code, 'NOT_REVERTABLE');
     assert.match(body.message, /master entities only/);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+// Codex P2 regression (PR #130 review): slug @unique collision must surface
+// as 409 CONFLICT (not fall-through Prisma P2002 → 500 INTERNAL_ERROR).
+test('POST /api/audit/:logId/revert returns 409 when slug now claimed by another entity', async () => {
+  resetStore();
+  // Another trait already has the slug `taken-slug` after the original was deleted
+  traitStore.set('trait-other', { id: 'trait-other', slug: 'taken-slug', name: 'Other', dataType: 'TEXT' });
+  const auditEntry = seedAuditLog({
+    id: 'audit-slug-collision',
+    entity: 'Trait',
+    entityId: 'trait-original',
+    action: 'DELETE',
+    payload: { id: 'trait-original', slug: 'taken-slug', name: 'Original', dataType: 'TEXT' },
+  });
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit/${auditEntry.id}/revert`, {
+      method: 'POST',
+      headers: { 'X-Roles': 'taxonomy:write' },
+    });
+    assert.equal(response.status, 409);
+    const body = await response.json();
+    assert.equal(body.code, 'CONFLICT');
+    assert.match(body.message, /Slug "taken-slug" is now used by another/);
+    assert.equal(body.details.conflictingId, 'trait-other');
   } finally {
     await closeServer(server);
   }
