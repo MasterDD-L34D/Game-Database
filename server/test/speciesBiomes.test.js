@@ -309,3 +309,96 @@ test('POST /api/species-biomes returns 409 when the relation already exists', as
 
   assert.equal(response.status, 409);
 });
+
+test('PATCH /api/species-biomes/:id updates existing records', async () => {
+  resetData();
+  const created = await createSpeciesBiome({ notes: 'Old notes' });
+
+  const { server, baseUrl } = await startServer();
+  const response = await fetch(`${baseUrl}/api/species-biomes/${created.id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Roles': TAXONOMY_ROLE,
+    },
+    body: JSON.stringify({ notes: 'Updated notes' }),
+  });
+  const body = await response.json();
+  await closeServer(server);
+
+  assert.equal(response.status, 200);
+  assert.equal(body.id, created.id);
+  assert.equal(body.notes, 'Updated notes');
+});
+
+test('PATCH /api/species-biomes/:id returns 403 without taxonomy role', async () => {
+  resetData();
+  const created = await createSpeciesBiome();
+
+  const { server, baseUrl } = await startServer();
+  const response = await fetch(`${baseUrl}/api/species-biomes/${created.id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Roles': 'viewer',
+    },
+    body: JSON.stringify({ notes: 'Unauthorized update' }),
+  });
+  const body = await response.json();
+  await closeServer(server);
+
+  assert.equal(response.status, 403);
+  assert.equal(body.code, 'FORBIDDEN');
+  assert.equal(body.message, 'Insufficient permissions');
+});
+
+test('DELETE /api/species-biomes/:id removes existing records', async () => {
+  resetData();
+  const created = await createSpeciesBiome();
+
+  const { server, baseUrl } = await startServer();
+  const response = await fetch(`${baseUrl}/api/species-biomes/${created.id}`, {
+    method: 'DELETE',
+    headers: {
+      'X-Roles': TAXONOMY_ROLE,
+    },
+  });
+  await closeServer(server);
+
+  assert.equal(response.status, 204);
+  assert.equal(speciesBiomeStore.has(created.id), false);
+});
+
+test('DELETE /api/species-biomes/:id returns 403 without taxonomy role', async () => {
+  resetData();
+  const created = await createSpeciesBiome();
+
+  const { server, baseUrl } = await startServer();
+  const response = await fetch(`${baseUrl}/api/species-biomes/${created.id}`, {
+    method: 'DELETE',
+    headers: {
+      'X-Roles': 'viewer',
+    },
+  });
+  const body = await response.json();
+  await closeServer(server);
+
+  assert.equal(response.status, 403);
+  assert.equal(body.code, 'FORBIDDEN');
+  assert.equal(body.message, 'Insufficient permissions');
+});
+
+test('DELETE /api/species-biomes/:id returns 404 for missing records', async () => {
+  resetData();
+
+  const { server, baseUrl } = await startServer();
+  const response = await fetch(`${baseUrl}/api/species-biomes/missing`, {
+    method: 'DELETE',
+    headers: {
+      'X-Roles': TAXONOMY_ROLE,
+    },
+  });
+  await closeServer(server);
+
+  assert.equal(response.status, 404);
+});

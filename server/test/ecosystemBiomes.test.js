@@ -456,3 +456,64 @@ test('DELETE /api/ecosystem-biomes/:id returns 404 for missing records', async (
 
   assert.equal(response.status, 404);
 });
+
+test('PATCH /api/ecosystem-biomes/:id returns 403 without taxonomy role', async () => {
+  resetData();
+  const created = await createEcosystemBiome();
+
+  const { server, baseUrl } = await startServer();
+  const response = await fetch(`${baseUrl}/api/ecosystem-biomes/${created.id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Roles': 'viewer',
+    },
+    body: JSON.stringify({ notes: 'Unauthorized update' }),
+  });
+  const body = await response.json();
+  await closeServer(server);
+
+  assert.equal(response.status, 403);
+  assert.equal(body.code, 'FORBIDDEN');
+  assert.equal(body.message, 'Insufficient permissions');
+});
+
+test('PATCH /api/ecosystem-biomes/:id returns 409 when changing combination causes duplicate', async () => {
+  resetData();
+  await createEcosystemBiome({ ecosystemId: 'ecosystem-1', biomeId: 'biome-1' });
+  const second = await createEcosystemBiome({ ecosystemId: 'ecosystem-1', biomeId: 'biome-2' });
+
+  const { server, baseUrl } = await startServer();
+  const response = await fetch(`${baseUrl}/api/ecosystem-biomes/${second.id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Roles': TAXONOMY_ROLE,
+    },
+    body: JSON.stringify({ biomeId: 'biome-1' }),
+  });
+  const body = await response.json();
+  await closeServer(server);
+
+  assert.equal(response.status, 409);
+  assert.ok(body.error);
+});
+
+test('DELETE /api/ecosystem-biomes/:id returns 403 without taxonomy role', async () => {
+  resetData();
+  const created = await createEcosystemBiome();
+
+  const { server, baseUrl } = await startServer();
+  const response = await fetch(`${baseUrl}/api/ecosystem-biomes/${created.id}`, {
+    method: 'DELETE',
+    headers: {
+      'X-Roles': 'viewer',
+    },
+  });
+  const body = await response.json();
+  await closeServer(server);
+
+  assert.equal(response.status, 403);
+  assert.equal(body.code, 'FORBIDDEN');
+  assert.equal(body.message, 'Insufficient permissions');
+});

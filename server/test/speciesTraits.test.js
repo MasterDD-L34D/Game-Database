@@ -497,3 +497,58 @@ test('DELETE /api/species-traits/:id removes an entry', async () => {
   const afterDelete = await prisma.speciesTrait.findUnique({ where: { id: existing.id } });
   assert.equal(afterDelete, null);
 });
+
+test('PATCH /api/species-traits/:id returns 403 without taxonomy role', async () => {
+  resetData();
+  const existing = await createSpeciesTrait({ text: 'Before' });
+
+  const { server, baseUrl } = await startServer();
+  const response = await fetch(`${baseUrl}/api/species-traits/${existing.id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Roles': 'viewer',
+    },
+    body: JSON.stringify({ text: 'Unauthorized update' }),
+  });
+  const body = await response.json();
+  await closeServer(server);
+
+  assert.equal(response.status, 403);
+  assert.equal(body.code, 'FORBIDDEN');
+  assert.equal(body.message, 'Insufficient permissions');
+});
+
+test('DELETE /api/species-traits/:id returns 403 without taxonomy role', async () => {
+  resetData();
+  const existing = await createSpeciesTrait();
+
+  const { server, baseUrl } = await startServer();
+  const response = await fetch(`${baseUrl}/api/species-traits/${existing.id}`, {
+    method: 'DELETE',
+    headers: {
+      'X-Roles': 'viewer',
+    },
+  });
+  const body = await response.json();
+  await closeServer(server);
+
+  assert.equal(response.status, 403);
+  assert.equal(body.code, 'FORBIDDEN');
+  assert.equal(body.message, 'Insufficient permissions');
+});
+
+test('DELETE /api/species-traits/:id returns 404 for missing records', async () => {
+  resetData();
+
+  const { server, baseUrl } = await startServer();
+  const response = await fetch(`${baseUrl}/api/species-traits/missing`, {
+    method: 'DELETE',
+    headers: {
+      'X-Roles': TAXONOMY_ROLE,
+    },
+  });
+  await closeServer(server);
+
+  assert.equal(response.status, 404);
+});
