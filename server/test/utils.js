@@ -108,6 +108,7 @@ function createTaxonomyTestContext() {
       findFirst: prisma.taxonomyVersion?.findFirst,
       findMany: prisma.taxonomyVersion?.findMany,
       update: prisma.taxonomyVersion?.update,
+      updateMany: prisma.taxonomyVersion?.updateMany,
       delete: prisma.taxonomyVersion?.delete,
     },
     $transaction: prisma.$transaction,
@@ -379,6 +380,16 @@ function createTaxonomyTestContext() {
       versionStore.set(where.id, updated);
       return { ...updated };
     };
+    prisma.taxonomyVersion.updateMany = async ({ where = {}, data = {} } = {}) => {
+      let count = 0;
+      for (const [id, row] of versionStore) {
+        if (where.id !== undefined && row.id !== where.id) continue;
+        if (where.status !== undefined && row.status !== where.status) continue;
+        versionStore.set(id, { ...row, ...data, updatedAt: new Date() });
+        count += 1;
+      }
+      return { count };
+    };
     prisma.taxonomyVersion.delete = async ({ where = {} } = {}) => {
       const row = versionStore.get(where.id);
       if (!row) {
@@ -430,7 +441,7 @@ function createTaxonomyTestContext() {
     }
     if (original.$transaction) prisma.$transaction = original.$transaction;
     if (prisma.taxonomyVersion) {
-      for (const op of ['create', 'findUnique', 'findFirst', 'findMany', 'update', 'delete']) {
+      for (const op of ['create', 'findUnique', 'findFirst', 'findMany', 'update', 'updateMany', 'delete']) {
         if (original.taxonomyVersion && original.taxonomyVersion[op]) prisma.taxonomyVersion[op] = original.taxonomyVersion[op];
         else delete prisma.taxonomyVersion[op];
       }

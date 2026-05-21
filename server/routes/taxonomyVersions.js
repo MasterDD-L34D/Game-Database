@@ -91,11 +91,19 @@ router.post('/:tag/release', requireAdmin, async (req, res) => {
     }
     const releasedBy = req.user || null;
     const { counts, updated } = await prisma.$transaction(async (tx) => {
-      const c = await snapshotAllMasters(tx, version.id);
-      const u = await tx.taxonomyVersion.update({
-        where: { id: version.id },
+      // Atomic transition: condition the flip on still-being-a-draft so two
+      // concurrent releases can't both pass the pre-check and double-release
+      // (overwriting releasedAt/releasedBy + a duplicate audit). The loser's
+      // updateMany matches 0 rows -> abort + rollback the snapshot.
+      const flip = await tx.taxonomyVersion.updateMany({
+        where: { id: version.id, status: 'draft' },
         data: { status: 'released', releasedAt: new Date(), releasedBy },
       });
+      if (flip.count !== 1) {
+        throw new AppError(409, 'INVALID_STATE', 'Version is no longer a draft (released concurrently)');
+      }
+      const c = await snapshotAllMasters(tx, version.id);
+      const u = await tx.taxonomyVersion.findUnique({ where: { id: version.id } });
       return { counts: c, updated: u };
     });
     await logAudit(req, 'TaxonomyVersion', version.id, 'UPDATE', { tag: version.tag, status: 'released', counts });
