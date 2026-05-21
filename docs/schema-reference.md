@@ -88,7 +88,7 @@ For dominio/runtime/operational context (not schema), see
 | Field | Type | Modifiers |
 | --- | --- | --- |
 | `id` | `String` | @id @default(cuid()) |
-| `slug` | `String` | @unique |
+| `slug` | `String` | @unique @db.VarChar(80) |
 | `name` | `String` | — |
 | `description` | `String?` | — |
 | `category` | `String?` | — |
@@ -121,7 +121,7 @@ For dominio/runtime/operational context (not schema), see
 | Field | Type | Modifiers |
 | --- | --- | --- |
 | `id` | `String` | @id @default(cuid()) |
-| `slug` | `String` | @unique |
+| `slug` | `String` | @unique @db.VarChar(80) |
 | `name` | `String` | — |
 | `description` | `String?` | — |
 | `climate` | `String?` | — |
@@ -148,7 +148,7 @@ For dominio/runtime/operational context (not schema), see
 | Field | Type | Modifiers |
 | --- | --- | --- |
 | `id` | `String` | @id @default(cuid()) |
-| `slug` | `String` | @unique |
+| `slug` | `String` | @unique @db.VarChar(80) |
 | `scientificName` | `String` | — |
 | `commonName` | `String?` | — |
 | `kingdom` | `String?` | — |
@@ -238,7 +238,7 @@ For dominio/runtime/operational context (not schema), see
 | Field | Type | Modifiers |
 | --- | --- | --- |
 | `id` | `String` | @id @default(cuid()) |
-| `slug` | `String` | @unique |
+| `slug` | `String` | @unique @db.VarChar(80) |
 | `name` | `String` | — |
 | `description` | `String?` | — |
 | `region` | `String?` | — |
