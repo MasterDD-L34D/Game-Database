@@ -73,3 +73,24 @@ npm run dev:setup
 Assicurati che `DATABASE_URL` punti al database di staging e che le credenziali abbiano i permessi per applicare le migrazioni. In pipeline CI/CD puoi riutilizzare il job `Verify Prisma seed` che esegue le stesse operazioni contro un Postgres effimero.
 
 > Suggerimento: tieni `DATABASE_URL` e gli eventuali token/API key in un secret manager (GitHub Actions Secrets, Vault, ecc.) e impostali come variabili d'ambiente prima di eseguire `npm run dev:setup`.
+
+## Modifiche allo schema (`prisma migrate dev`) e indici GIN pg_trgm
+
+Gli 11 indici GIN `gin_trgm_ops` che alimentano la ricerca fuzzy (`/api/search`, PR #151) sono creati dalla migrazione hand-written `20260521130000_pg_trgm_search` **e** modellati in `schema.prisma` con `@@index([...], type: Gin, ops: raw("gin_trgm_ops"), map: "<nome>")`.
+
+Sono modellati apposta: su **Prisma 5.22** un `@@index` GIN assente da `schema.prisma` viene re-interpretato come *drift* e `prisma migrate dev` genera un `DROP INDEX` per ciascuno. Applicare quei DROP spezza silenziosamente la ricerca fuzzy (è già successo durante la migrazione Phase A `20260521125933_taxonomy_versioning`, dove le righe `DROP INDEX` sono state rimosse a mano). Modellando gli indici, il diff resta vuoto.
+
+L'estensione `pg_trgm` è creata via SQL grezzo nella migrazione e lasciata **non gestita** da Prisma (nessun `extensions = [...]` sul datasource): così il diff resta completamente vuoto, senza un residuo `CREATE EXTENSION`.
+
+Regola operativa: dopo qualsiasi modifica a `schema.prisma`, verifica che `migrate dev` non proponga DROP/CREATE inattesi rieseguendo lo stesso diff che usa internamente (non distruttivo, gira su un DB shadow usa-e-getta):
+
+```bash
+cd server
+npx prisma migrate diff \
+  --from-migrations prisma/migrations \
+  --to-schema-datamodel prisma/schema.prisma \
+  --shadow-database-url "postgresql://postgres:postgres@localhost:5433/game_shadow?schema=public" \
+  --script
+```
+
+L'output atteso è `-- This is an empty migration.`. Se compaiono `DROP INDEX` sui `*_trgm_idx`, **non** accettarli: modella l'indice mancante in `schema.prisma`. Il test `server/test/schemaIndexes.test.js` (eseguito da `npm test`) fa da guardia: fallisce se un indice trgm presente nella migrazione non è modellato nello schema. La ricerca fuzzy end-to-end è coperta dal job CI `search-db`.

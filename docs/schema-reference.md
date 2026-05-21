@@ -64,6 +64,8 @@ For dominio/runtime/operational context (not schema), see
 - `@@index([pattern])`
 - `@@index([peso])`
 - `@@index([curvatura])`
+- `@@index([nome(ops: raw("gin_trgm_ops"))], type: Gin, map: "Record_nome_trgm_idx")`
+- `@@index([descrizione(ops: raw("gin_trgm_ops"))], type: Gin, map: "Record_descrizione_trgm_idx")`
 
 ### AuditLog
 
@@ -116,6 +118,11 @@ For dominio/runtime/operational context (not schema), see
 
 - `speciesValues`: `SpeciesTrait[]`
 
+**Block directives**
+
+- `@@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "Trait_name_trgm_idx")`
+- `@@index([slug(ops: raw("gin_trgm_ops"))], type: Gin, map: "Trait_slug_trgm_idx")`
+
 ### Biome
 
 | Field | Type | Modifiers |
@@ -142,6 +149,11 @@ For dominio/runtime/operational context (not schema), see
 - `children`: `Biome[]` — @relation("BiomeChildren")
 - `species`: `SpeciesBiome[]`
 - `ecosystems`: `EcosystemBiome[]`
+
+**Block directives**
+
+- `@@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "Biome_name_trgm_idx")`
+- `@@index([slug(ops: raw("gin_trgm_ops"))], type: Gin, map: "Biome_slug_trgm_idx")`
 
 ### Species
 
@@ -185,6 +197,9 @@ For dominio/runtime/operational context (not schema), see
 
 - `@@index([scientificName])`
 - `@@index([commonName])`
+- `@@index([scientificName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Species_sciName_trgm_idx")`
+- `@@index([commonName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Species_commonName_trgm_idx")`
+- `@@index([slug(ops: raw("gin_trgm_ops"))], type: Gin, map: "Species_slug_trgm_idx")`
 
 ### SpeciesTrait
 
@@ -250,6 +265,11 @@ For dominio/runtime/operational context (not schema), see
 
 - `biomes`: `EcosystemBiome[]`
 - `species`: `EcosystemSpecies[]`
+
+**Block directives**
+
+- `@@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "Ecosystem_name_trgm_idx")`
+- `@@index([slug(ops: raw("gin_trgm_ops"))], type: Gin, map: "Ecosystem_slug_trgm_idx")`
 
 ### EcosystemBiome
 
