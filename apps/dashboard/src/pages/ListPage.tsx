@@ -202,6 +202,8 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
   const [editDialog, setEditDialog] = useState<{ open: boolean; item: TItem | null }>({ open: false, item: null });
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: TItem | null }>({ open: false, item: null });
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkInProgress, setBulkInProgress] = useState(false);
 
   const createResolver = useMemo(
     () => (createConfig ? createZodResolver(createConfig.schema) : undefined),
@@ -425,6 +427,29 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
     await queryClient.invalidateQueries({ queryKey: baseKey, exact: false });
   }, [baseKey, queryClient]);
 
+  const handleBulkDelete = useCallback(async () => {
+    if (!deleteConfig || selectedItems.length === 0) return;
+    setBulkInProgress(true);
+    try {
+      const targets = selectedItems;
+      const results = await Promise.allSettled(targets.map((it) => deleteConfig.mutation(it)));
+      const success = results.filter((r) => r.status === 'fulfilled').length;
+      const failed = results.length - success;
+      if (failed === 0) {
+        enqueueSnackbar(t('common:bulk.deleteSuccess', { count: success }), { variant: 'success' });
+      } else if (success === 0) {
+        enqueueSnackbar(t('common:bulk.deleteAllFailed', { count: failed }), { variant: 'error' });
+      } else {
+        enqueueSnackbar(t('common:bulk.deletePartial', { success, failed }), { variant: 'warning' });
+      }
+      setBulkDeleteOpen(false);
+      setRowSelection({});
+      await refreshList();
+    } finally {
+      setBulkInProgress(false);
+    }
+  }, [deleteConfig, selectedItems, enqueueSnackbar, t, refreshList]);
+
   const createMutation = useMutation<void, unknown, { values: TValues; config: CreateConfig<TValues> }>({
     mutationFn: async ({ values, config }) => {
       await config.onSubmit(values);
@@ -606,9 +631,20 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
         >
           <Typography variant="body2">{t('common:bulk.selectedCount', { count: selectedCount })}</Typography>
           <Box sx={{ flexGrow: 1 }} />
-          <Button size="small" variant="text" onClick={clearSelection}>
+          <Button size="small" variant="text" onClick={clearSelection} disabled={bulkInProgress}>
             {t('common:bulk.deselectAll')}
           </Button>
+          {bulkConfig?.enableDelete && deleteConfig && (
+            <Button
+              size="small"
+              color="error"
+              variant="contained"
+              onClick={() => setBulkDeleteOpen(true)}
+              disabled={bulkInProgress}
+            >
+              {t('common:bulk.deleteButton', { count: selectedCount })}
+            </Button>
+          )}
         </Stack>
       )}
       {isError && !isFetching && (
@@ -694,6 +730,33 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
             </Button>
             <Button color="error" variant="contained" onClick={handleConfirmDelete} disabled={isDeleting}>
               {isDeleting ? t('common:actions.deleteInProgress') : deleteConfirmLabel}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
+      {bulkConfig?.enableDelete && deleteConfig && (
+        <Dialog
+          open={bulkDeleteOpen}
+          onClose={() => !bulkInProgress && setBulkDeleteOpen(false)}
+          fullWidth
+          maxWidth="xs"
+        >
+          <DialogTitle>{bulkConfig.deleteDialogTitle ?? t('common:bulk.deleteConfirmTitle')}</DialogTitle>
+          <DialogContent>
+            <Typography>{t('common:bulk.deleteConfirmBody', { count: selectedCount })}</Typography>
+            <Box component="ul" sx={(theme) => ({ mt: theme.spacing(1), pl: theme.spacing(3) })}>
+              {selectedItems.slice(0, 5).map((it) => (
+                <li key={it.id}>{resolveItemLabel(it)}</li>
+              ))}
+              {selectedCount > 5 && <li>{t('common:bulk.andMore', { count: selectedCount - 5 })}</li>}
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setBulkDeleteOpen(false)} disabled={bulkInProgress}>
+              {t('common:actions.cancel')}
+            </Button>
+            <Button color="error" variant="contained" onClick={handleBulkDelete} disabled={bulkInProgress}>
+              {bulkInProgress ? t('common:actions.deleteInProgress') : t('common:bulk.deleteButton', { count: selectedCount })}
             </Button>
           </DialogActions>
         </Dialog>

@@ -82,4 +82,29 @@ describe('ListPage bulk selection', () => {
 
     await waitFor(() => expect(screen.queryByText(/selezionati/i)).not.toBeInTheDocument());
   });
+
+  it('bulk-deletes all selected rows and refreshes', async () => {
+    const deleteFn = vi.fn().mockResolvedValue(undefined);
+    const fetcher = makeFetcher(baseItems);
+    renderBulk(deleteFn, fetcher);
+    await screen.findByText('Alpha');
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('checkbox', { name: 'Seleziona tutte le righe' }));
+    await screen.findByText('3 selezionati');
+
+    await user.click(screen.getByRole('button', { name: 'Elimina 3' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Alpha')).toBeInTheDocument();
+    // Confirm
+    await user.click(within(dialog).getByRole('button', { name: 'Elimina 3' }));
+
+    await waitFor(() => expect(deleteFn).toHaveBeenCalledTimes(3));
+    await screen.findByText('3 elementi eliminati.');
+    // Refresh triggered (invalidate -> refetch)
+    await waitFor(() => expect(fetcher.mock.calls.length).toBeGreaterThanOrEqual(2));
+    // Selection cleared
+    await waitFor(() => expect(screen.queryByText(/selezionati/i)).not.toBeInTheDocument());
+  });
 });
