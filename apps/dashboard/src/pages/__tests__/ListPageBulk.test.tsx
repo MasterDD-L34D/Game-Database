@@ -48,4 +48,23 @@ describe('ListPage bulk selection', () => {
     expect(screen.getByRole('checkbox', { name: 'Seleziona tutte le righe' })).toBeInTheDocument();
     expect(screen.getAllByRole('checkbox', { name: 'Seleziona riga' })).toHaveLength(3);
   });
+
+  it('shows the bulk toolbar with count when rows selected, hidden at zero', async () => {
+    renderBulk();
+    await waitFor(() => expect(screen.getByText('Alpha')).toBeInTheDocument());
+
+    // Hidden initially
+    expect(screen.queryByText(/selezionati/i)).not.toBeInTheDocument();
+
+    const user = userEvent.setup();
+    const rowChecks = screen.getAllByRole('checkbox', { name: 'Seleziona riga' });
+    await user.click(rowChecks[0]);
+    await user.click(rowChecks[1]);
+
+    expect(await screen.findByText('2 selezionati')).toBeInTheDocument();
+
+    // Deselect all clears it
+    await user.click(screen.getByRole('button', { name: 'Deseleziona tutto' }));
+    await waitFor(() => expect(screen.queryByText(/selezionati/i)).not.toBeInTheDocument());
+  });
 });

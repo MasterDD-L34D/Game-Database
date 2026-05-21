@@ -366,6 +366,7 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
     [items, rowSelection],
   );
   const selectedCount = selectedItems.length;
+  const clearSelection = useCallback(() => setRowSelection({}), []);
 
   const handleOpenCreate = useCallback(() => {
     if (!createConfig) return;
@@ -586,6 +587,26 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
           onKeyDown={handleKeyDown}
         />
       </Stack>
+      {bulkEnabled && selectedCount > 0 && (
+        <Stack
+          direction="row"
+          spacing={2}
+          alignItems="center"
+          sx={(theme) => ({
+            mb: theme.spacing(3),
+            px: theme.spacing(2),
+            py: theme.spacing(1.5),
+            borderRadius: 1,
+            backgroundColor: theme.palette.action.selected,
+          })}
+        >
+          <Typography variant="body2">{t('common:bulk.selectedCount', { count: selectedCount })}</Typography>
+          <Box sx={{ flexGrow: 1 }} />
+          <Button size="small" variant="text" onClick={clearSelection}>
+            {t('common:bulk.deselectAll')}
+          </Button>
+        </Stack>
+      )}
       {isError && !isFetching && (
         <Alert severity="error" sx={(theme) => ({ mb: theme.spacing(3) })}>
           {error instanceof Error ? error.message : t('common:feedback.loadError')}
