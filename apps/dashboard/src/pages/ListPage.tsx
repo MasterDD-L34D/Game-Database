@@ -367,9 +367,10 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
   const showSkeleton = isFetching && !data;
   const crudEnabled = Boolean(createConfig || editConfig || deleteConfig);
   const bulkEnabled = Boolean(bulkConfig?.enableDelete);
+  const resolveRowId = useCallback((row: TItem, index: number) => row.id ?? `__row_${index}`, []);
   const selectedItems = useMemo(
-    () => items.filter((it) => Boolean(it.id) && Boolean(rowSelection[it.id as string])),
-    [items, rowSelection],
+    () => items.filter((it, idx) => Boolean(rowSelection[resolveRowId(it, idx)])),
+    [items, rowSelection, resolveRowId],
   );
   const selectedCount = selectedItems.length;
   const clearSelection = useCallback(() => setRowSelection({}), []);
@@ -658,7 +659,7 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
         selectable={bulkEnabled}
         rowSelection={rowSelection}
         onRowSelectionChange={setRowSelection}
-        getRowId={(row) => row.id ?? ''}
+        getRowId={resolveRowId}
         loading={showSkeleton}
         pagination={paginationState}
         onPaginationChange={handlePaginationChange}

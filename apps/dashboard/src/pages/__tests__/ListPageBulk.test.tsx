@@ -129,4 +129,26 @@ describe('ListPage bulk selection', () => {
     await waitFor(() => expect(deleteFn).toHaveBeenCalledTimes(3));
     await screen.findByText('2 eliminati, 1 falliti.');
   });
+
+  it('does not co-toggle distinct rows that lack an id (unique fallback keys)', async () => {
+    // Regression for Codex PR #145 P2: getRowId `row.id ?? ''` collapsed all
+    // id-less rows to one selection key, so selecting one toggled all of them.
+    const noIdItems = [{ name: 'NoId Uno' }, { name: 'NoId Due' }] as unknown as Item[];
+    const fetcher = makeFetcher(noIdItems);
+    renderBulk(vi.fn().mockResolvedValue(undefined), fetcher);
+    await screen.findByText('NoId Uno');
+
+    const user = userEvent.setup();
+    const rowChecks = screen.getAllByRole('checkbox', { name: 'Seleziona riga' });
+    await user.click(rowChecks[0]);
+
+    // Only one row toggled, and it surfaces in selectedItems (toolbar count = 1)
+    expect(await screen.findByText('1 selezionati')).toBeInTheDocument();
+    await waitFor(() => {
+      const checked = screen
+        .getAllByRole('checkbox', { name: 'Seleziona riga' })
+        .filter((cb) => (cb as HTMLInputElement).checked);
+      expect(checked).toHaveLength(1);
+    });
+  });
 });
