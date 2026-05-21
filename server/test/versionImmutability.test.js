@@ -2,10 +2,11 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startServer, closeServer, createTaxonomyTestContext } = require('./utils');
 
-// RFC #1 Phase A immutability guard: a master row captured in a *released*
-// taxonomy version must not be hard-deletable (the FK onDelete: Cascade would
-// otherwise erase its frozen released snapshots). The route guard returns 409
-// VERSION_IMMUTABLE in that case. Soft-delete is deferred to Phase B (Q7).
+// RFC #1 Phase B (Q7): masters captured in a *released* taxonomy version are
+// soft-deletable. Soft-delete only sets deletedAt -- the row (and its frozen
+// released snapshots) survives, so the FK onDelete: Cascade never fires. The
+// Phase A hard-delete guard (409 VERSION_IMMUTABLE) is therefore superseded:
+// DELETE now hides the master from default reads while preserving its history.
 
 const taxonomy = createTaxonomyTestContext();
 taxonomy.mock();
@@ -27,7 +28,7 @@ const CASES = [
 ];
 
 for (const { entity, path, create } of CASES) {
-  test(`DELETE /api/${path}/:id is blocked (409) when captured in a released version`, async () => {
+  test(`DELETE /api/${path}/:id soft-deletes (200) even when captured in a released version`, async () => {
     taxonomy.reset();
     const master = create(taxonomy);
     taxonomy.markReleased(entity, master.id);
@@ -38,13 +39,18 @@ for (const { entity, path, create } of CASES) {
         method: 'DELETE',
         headers: { 'X-Roles': 'taxonomy:write' },
       });
-      assert.equal(res.status, 409);
+      assert.equal(res.status, 200);
       const body = await res.json();
-      assert.equal(body.code, 'VERSION_IMMUTABLE');
+      assert.equal(body.success, true);
 
-      // Master must survive the blocked delete.
-      const stillThere = await fetch(`${baseUrl}/api/${path}/${master.id}`);
-      assert.equal(stillThere.status, 200);
+      // Soft-delete hides the master from default reads...
+      const hidden = await fetch(`${baseUrl}/api/${path}/${master.id}`);
+      assert.equal(hidden.status, 404);
+
+      // ...but the row survives (not hard-deleted), so its released snapshots
+      // are never cascade-erased. It stays fetchable with includeDeleted.
+      const survived = await fetch(`${baseUrl}/api/${path}/${master.id}?includeDeleted=true`);
+      assert.equal(survived.status, 200);
     } finally {
       await closeServer(server);
     }

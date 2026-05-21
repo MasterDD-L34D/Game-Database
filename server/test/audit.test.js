@@ -13,6 +13,7 @@ const originalAuditLog = {
 const originalTrait = {
   findUnique: prisma.trait?.findUnique,
   create: prisma.trait?.create,
+  update: prisma.trait?.update,
 };
 
 const traitStore = new Map();
@@ -162,6 +163,18 @@ function installMock() {
     traitStore.set(data.id, clone(record));
     return clone(record);
   };
+  prisma.trait.update = async ({ where, data } = {}) => {
+    if (!where || !where.id) return null;
+    const found = traitStore.get(where.id);
+    if (!found) {
+      const err = new Error('Record to update not found.');
+      err.code = 'P2025';
+      throw err;
+    }
+    const updated = { ...found, ...data };
+    traitStore.set(where.id, clone(updated));
+    return clone(updated);
+  };
 }
 
 function restoreMock() {
@@ -171,6 +184,8 @@ function restoreMock() {
   if (originalAuditLog.create) prisma.auditLog.create = originalAuditLog.create;
   if (originalTrait.findUnique) prisma.trait.findUnique = originalTrait.findUnique;
   if (originalTrait.create) prisma.trait.create = originalTrait.create;
+  if (originalTrait.update) prisma.trait.update = originalTrait.update;
+  else if (prisma.trait) delete prisma.trait.update;
 }
 
 installMock();
@@ -798,6 +813,45 @@ test('POST /api/audit/:logId/revert resurrects DELETE-tombstoned trait', async (
     const createEntry = allAudit.find((r) => r.action === 'CREATE');
     assert.ok(createEntry, 'a CREATE audit entry should be logged for the revert');
     assert.equal(createEntry.payload._revertedFrom, auditEntry.id);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('POST /api/audit/:logId/revert restores a soft-deleted master (Phase B)', async () => {
+  resetStore();
+  // Phase B: DELETE soft-deletes, so the row still exists with deletedAt set.
+  traitStore.set('trait-soft-1', {
+    id: 'trait-soft-1', slug: 'soft', name: 'Soft', dataType: 'TEXT', deletedAt: new Date(),
+  });
+  const auditEntry = seedAuditLog({
+    id: 'audit-delete-soft',
+    entity: 'Trait',
+    entityId: 'trait-soft-1',
+    action: 'DELETE',
+    payload: { id: 'trait-soft-1', slug: 'soft', name: 'Soft', dataType: 'TEXT' },
+  });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/audit/${auditEntry.id}/revert`, {
+      method: 'POST',
+      headers: { 'X-Roles': 'taxonomy:write' },
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.success, true);
+    assert.equal(body.id, 'trait-soft-1');
+    assert.equal(body.revertedFrom, auditEntry.id);
+
+    // deletedAt cleared -> row is live again (restored, not duplicated)
+    const restored = await prisma.trait.findUnique({ where: { id: 'trait-soft-1' } });
+    assert.equal(restored.deletedAt, null);
+
+    // revert of a soft-deleted row is logged as UPDATE{restored} for traceability
+    const updateEntry = store.find((r) => r.entity === 'Trait' && r.action === 'UPDATE');
+    assert.ok(updateEntry, 'revert of soft-deleted row should log an UPDATE entry');
+    assert.equal(updateEntry.payload._revertedFrom, auditEntry.id);
   } finally {
     await closeServer(server);
   }

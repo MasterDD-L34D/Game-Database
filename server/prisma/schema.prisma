@@ -155,6 +155,7 @@ model Trait {
   weakness                  String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+  deletedAt     DateTime?
 
   speciesValues SpeciesTrait[]
   versions      TraitVersion[]
@@ -162,6 +163,7 @@ model Trait {
   // pg_trgm fuzzy search (PR #151, /api/search). See Record model for rationale.
   @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "Trait_name_trgm_idx")
   @@index([slug(ops: raw("gin_trgm_ops"))], type: Gin, map: "Trait_slug_trgm_idx")
+  @@index([deletedAt])
 }
 
 model Biome {
@@ -182,6 +184,7 @@ model Biome {
   sizeMax        Int?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
 
   species     SpeciesBiome[]
   ecosystems  EcosystemBiome[]
@@ -190,6 +193,7 @@ model Biome {
   // pg_trgm fuzzy search (PR #151, /api/search). See Record model for rationale.
   @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "Biome_name_trgm_idx")
   @@index([slug(ops: raw("gin_trgm_ops"))], type: Gin, map: "Biome_slug_trgm_idx")
+  @@index([deletedAt])
 }
 
 model Species {
@@ -220,6 +224,7 @@ model Species {
   telemetry           Json?
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
+  deletedAt           DateTime?
 
   traits         SpeciesTrait[]
   biomes         SpeciesBiome[]
@@ -232,6 +237,7 @@ model Species {
   @@index([scientificName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Species_sciName_trgm_idx")
   @@index([commonName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Species_commonName_trgm_idx")
   @@index([slug(ops: raw("gin_trgm_ops"))], type: Gin, map: "Species_slug_trgm_idx")
+  @@index([deletedAt])
 }
 
 model SpeciesTrait {
@@ -278,6 +284,7 @@ model Ecosystem {
   climate     String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
 
   biomes      EcosystemBiome[]
   species     EcosystemSpecies[]
@@ -286,6 +293,7 @@ model Ecosystem {
   // pg_trgm fuzzy search (PR #151, /api/search). See Record model for rationale.
   @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "Ecosystem_name_trgm_idx")
   @@index([slug(ops: raw("gin_trgm_ops"))], type: Gin, map: "Ecosystem_slug_trgm_idx")
+  @@index([deletedAt])
 }
 
 model EcosystemBiome {

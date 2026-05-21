@@ -119,6 +119,7 @@ For dominio/runtime/operational context (not schema), see
 | `weakness` | `String?` | — |
 | `createdAt` | `DateTime` | @default(now()) |
 | `updatedAt` | `DateTime` | @updatedAt |
+| `deletedAt` | `DateTime?` | — |
 
 **Relations**
 
@@ -129,6 +130,7 @@ For dominio/runtime/operational context (not schema), see
 
 - `@@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "Trait_name_trgm_idx")`
 - `@@index([slug(ops: raw("gin_trgm_ops"))], type: Gin, map: "Trait_slug_trgm_idx")`
+- `@@index([deletedAt])`
 
 ### Biome
 
@@ -149,6 +151,7 @@ For dominio/runtime/operational context (not schema), see
 | `sizeMax` | `Int?` | — |
 | `createdAt` | `DateTime` | @default(now()) |
 | `updatedAt` | `DateTime` | @updatedAt |
+| `deletedAt` | `DateTime?` | — |
 
 **Relations**
 
@@ -162,6 +165,7 @@ For dominio/runtime/operational context (not schema), see
 
 - `@@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "Biome_name_trgm_idx")`
 - `@@index([slug(ops: raw("gin_trgm_ops"))], type: Gin, map: "Biome_slug_trgm_idx")`
+- `@@index([deletedAt])`
 
 ### Species
 
@@ -194,6 +198,7 @@ For dominio/runtime/operational context (not schema), see
 | `telemetry` | `Json?` | — |
 | `createdAt` | `DateTime` | @default(now()) |
 | `updatedAt` | `DateTime` | @updatedAt |
+| `deletedAt` | `DateTime?` | — |
 
 **Relations**
 
@@ -209,6 +214,7 @@ For dominio/runtime/operational context (not schema), see
 - `@@index([scientificName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Species_sciName_trgm_idx")`
 - `@@index([commonName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Species_commonName_trgm_idx")`
 - `@@index([slug(ops: raw("gin_trgm_ops"))], type: Gin, map: "Species_slug_trgm_idx")`
+- `@@index([deletedAt])`
 
 ### SpeciesTrait
 
@@ -269,6 +275,7 @@ For dominio/runtime/operational context (not schema), see
 | `climate` | `String?` | — |
 | `createdAt` | `DateTime` | @default(now()) |
 | `updatedAt` | `DateTime` | @updatedAt |
+| `deletedAt` | `DateTime?` | — |
 
 **Relations**
 
@@ -280,6 +287,7 @@ For dominio/runtime/operational context (not schema), see
 
 - `@@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "Ecosystem_name_trgm_idx")`
 - `@@index([slug(ops: raw("gin_trgm_ops"))], type: Gin, map: "Ecosystem_slug_trgm_idx")`
+- `@@index([deletedAt])`
 
 ### EcosystemBiome
 
