@@ -175,6 +175,33 @@ describe('ListPage bulk selection', () => {
     expect(screen.getByRole('button', { name: 'Modifica 2' })).toBeInTheDocument();
   });
 
+  it('bulk-edits the chosen field across selected rows with full per-row payload', async () => {
+    const editFn = vi.fn().mockResolvedValue(undefined);
+    renderBulkEdit(editFn);
+    await screen.findByText('Alpha');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('checkbox', { name: 'Seleziona tutte le righe' }));
+    await screen.findByText('2 selezionati');
+    await user.click(screen.getByRole('button', { name: 'Modifica 2' }));
+
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByLabelText('Campo da modificare'));
+    await user.click(await screen.findByRole('option', { name: 'Categoria' }));
+    await user.type(within(dialog).getByLabelText('Nuovo valore'), 'Z');
+    await user.click(within(dialog).getByRole('button', { name: 'Applica a 2' }));
+
+    await waitFor(() => expect(editFn).toHaveBeenCalledTimes(2));
+    expect(editFn).toHaveBeenCalledWith(
+      expect.objectContaining({ id: '1' }),
+      { name: 'Alpha', category: 'Z' },
+    );
+    expect(editFn).toHaveBeenCalledWith(
+      expect.objectContaining({ id: '2' }),
+      { name: 'Beta', category: 'Z' },
+    );
+    await screen.findByText('2 elementi aggiornati.');
+  });
+
   it('does not co-toggle distinct rows that lack an id (unique fallback keys)', async () => {
     // Regression for Codex PR #145 P2: getRowId `row.id ?? ''` collapsed all
     // id-less rows to one selection key, so selecting one toggled all of them.

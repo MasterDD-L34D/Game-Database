@@ -466,6 +466,38 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
     }
   }, [deleteConfig, selectedItems, enqueueSnackbar, t, refreshList]);
 
+  const handleBulkEdit = useCallback(async () => {
+    if (!editConfig || !bulkEditFieldName || selectedItems.length === 0) return;
+    setBulkInProgress(true);
+    try {
+      const targets = selectedItems;
+      const results = await Promise.allSettled(
+        targets.map((it) =>
+          editConfig.onSubmit(it, {
+            ...editConfig.getInitialValues(it),
+            [bulkEditFieldName]: bulkEditValue,
+          } as TValues),
+        ),
+      );
+      const success = results.filter((r) => r.status === 'fulfilled').length;
+      const failed = results.length - success;
+      if (failed === 0) {
+        enqueueSnackbar(t('common:bulk.editSuccess', { count: success }), { variant: 'success' });
+      } else if (success === 0) {
+        enqueueSnackbar(t('common:bulk.editAllFailed', { count: failed }), { variant: 'error' });
+      } else {
+        enqueueSnackbar(t('common:bulk.editPartial', { success, failed }), { variant: 'warning' });
+      }
+      setBulkEditOpen(false);
+      setBulkEditFieldName('');
+      setBulkEditValue('');
+      setRowSelection({});
+      await refreshList();
+    } finally {
+      setBulkInProgress(false);
+    }
+  }, [editConfig, bulkEditFieldName, bulkEditValue, selectedItems, enqueueSnackbar, t, refreshList]);
+
   const createMutation = useMutation<void, unknown, { values: TValues; config: CreateConfig<TValues> }>({
     mutationFn: async ({ values, config }) => {
       await config.onSubmit(values);
@@ -784,6 +816,65 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
             </Button>
             <Button color="error" variant="contained" onClick={handleBulkDelete} disabled={bulkInProgress}>
               {bulkInProgress ? t('common:actions.deleteInProgress') : t('common:bulk.deleteButton', { count: selectedCount })}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
+      {bulkEditEnabled && editConfig && (
+        <Dialog
+          open={bulkEditOpen}
+          onClose={() => !bulkInProgress && setBulkEditOpen(false)}
+          fullWidth
+          maxWidth="xs"
+        >
+          <DialogTitle>{bulkConfig?.editDialogTitle ?? t('common:bulk.editDialogTitle')}</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <TextField
+                select
+                label={t('common:bulk.editFieldLabel')}
+                value={bulkEditFieldName}
+                onChange={(e) => handleBulkEditFieldChange(e.target.value)}
+              >
+                {bulkEditFields.map((f) => (
+                  <MenuItem key={f.name} value={f.name}>
+                    {f.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+              {bulkEditFieldName && (() => {
+                const field = bulkEditFields.find((f) => f.name === bulkEditFieldName);
+                const isSelect = field?.type === 'select';
+                return (
+                  <TextField
+                    label={t('common:bulk.editValueLabel')}
+                    value={bulkEditValue}
+                    onChange={(e) => setBulkEditValue(e.target.value)}
+                    select={isSelect}
+                    type={field?.type === 'number' ? 'number' : undefined}
+                    fullWidth
+                  >
+                    {isSelect &&
+                      field?.options?.map((o) => (
+                        <MenuItem key={o.value} value={o.value}>
+                          {o.label}
+                        </MenuItem>
+                      ))}
+                  </TextField>
+                );
+              })()}
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setBulkEditOpen(false)} disabled={bulkInProgress}>
+              {t('common:actions.cancel')}
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleBulkEdit}
+              disabled={bulkInProgress || !bulkEditFieldName}
+            >
+              {t('common:bulk.editApply', { count: selectedCount })}
             </Button>
           </DialogActions>
         </Dialog>
