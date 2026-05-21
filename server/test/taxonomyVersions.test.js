@@ -107,3 +107,57 @@ test('GET /:tag 404 for unknown tag', async () => {
     assert.equal(res.status, 404);
   } finally { await closeServer(server); }
 });
+
+test('release flips draft -> released and snapshots masters (counts)', async () => {
+  taxonomy.reset();
+  taxonomy.createTrait({ name: 'T1' });
+  taxonomy.createBiome({ name: 'B1' });
+  const { server, baseUrl } = await startServer();
+  try {
+    await createDraft(baseUrl, 'v1.1.0');
+    const res = await fetch(`${baseUrl}/api/taxonomy/versions/v1.1.0/release`, { method: 'POST', headers: ADMIN });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.version.status, 'released');
+    assert.ok(body.version.releasedAt, 'releasedAt set');
+    assert.equal(body.counts.trait, 1);
+    assert.equal(body.counts.biome, 1);
+  } finally { await closeServer(server); }
+});
+
+test('release on a non-draft is rejected (409 INVALID_STATE)', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    await createDraft(baseUrl, 'v1.1.0');
+    await fetch(`${baseUrl}/api/taxonomy/versions/v1.1.0/release`, { method: 'POST', headers: ADMIN });
+    const res = await fetch(`${baseUrl}/api/taxonomy/versions/v1.1.0/release`, { method: 'POST', headers: ADMIN });
+    assert.equal(res.status, 409);
+    assert.equal((await res.json()).code, 'INVALID_STATE');
+  } finally { await closeServer(server); }
+});
+
+test('retire on a non-released is rejected (409)', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    await createDraft(baseUrl, 'v1.1.0');
+    const res = await fetch(`${baseUrl}/api/taxonomy/versions/v1.1.0/retire`, { method: 'POST', headers: ADMIN });
+    assert.equal(res.status, 409);
+  } finally { await closeServer(server); }
+});
+
+test('DELETE removes a draft but not a released version', async () => {
+  taxonomy.reset();
+  const { server, baseUrl } = await startServer();
+  try {
+    await createDraft(baseUrl, 'v1.1.0');
+    const okDel = await fetch(`${baseUrl}/api/taxonomy/versions/v1.1.0`, { method: 'DELETE', headers: ADMIN });
+    assert.equal(okDel.status, 200);
+
+    await createDraft(baseUrl, 'v1.2.0');
+    await fetch(`${baseUrl}/api/taxonomy/versions/v1.2.0/release`, { method: 'POST', headers: ADMIN });
+    const badDel = await fetch(`${baseUrl}/api/taxonomy/versions/v1.2.0`, { method: 'DELETE', headers: ADMIN });
+    assert.equal(badDel.status, 409);
+  } finally { await closeServer(server); }
+});
