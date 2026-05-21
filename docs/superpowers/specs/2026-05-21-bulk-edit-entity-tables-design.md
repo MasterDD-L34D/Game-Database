@@ -2,7 +2,7 @@
 
 **Date**: 2026-05-21
 **Author**: parallel-#2 session (Ryzen, Claude opus-4.7)
-**Status**: DRAFT — awaiting user review before writing-plans
+**Status**: PR1 + PR2 MERGED (2026-05-21) — PR1 selection+bulk-DELETE `58f26e0` (#145), PR2 bulk-EDIT single-field `7f43343` (#146). PR3 (multi-field polish) deferred.
 **Scope**: Game-Database dashboard only (`apps/dashboard/`). Zero backend change, zero cross-repo touch.
 **Spec reference**: `docs/superpowers/specs/2026-05-20-game-database-value-roadmap-design.md` § Fase 2 deliverable 2 "Bulk edit"
 
@@ -171,7 +171,7 @@ the complexity of reconciling a half-applied optimistic batch.
 
 Repo convention is small incremental PRs (#115–#144). Three PRs:
 
-### PR 1 — Selection plumbing + bulk-DELETE (all 8 tables)
+### PR 1 — Selection plumbing + bulk-DELETE (all 8 tables) — MERGED `58f26e0` (#145)
 
 - `bulkConfig` prop on ListPage; `selectable`/`rowSelection`/`getRowId` wired.
 - Bulk toolbar (count + deselect + delete) shown when `selectedCount >= 1`.
@@ -182,10 +182,14 @@ Repo convention is small incremental PRs (#115–#144). Three PRs:
 - i18n keys (`common:bulk.*`).
 - Tests (see below).
 
-### PR 2 — Bulk-EDIT single-field (all 8 tables)
+### PR 2 — Bulk-EDIT single-field (all 8 tables) — MERGED `7f43343` (#146)
 
 - `bulkEditable` flag on `FormFieldConfig`; mark safe fields in each entity's
-  `editConfig` (e.g. Trait: category/unit/dataType; junctions: proportion/value).
+  `editConfig`. Final set: Trait category/unit (dataType excluded per Codex P2 —
+  needs `allowedValues` coupling); Biome climate; Species kingdom/phylum/class/
+  order/family/genus/status; Ecosystem region/climate; SpeciesTrait category;
+  SpeciesBiome presence; EcosystemSpecies role; EcosystemBiome none (button hidden).
+- Apply gated on non-empty value for required fields (Codex P2).
 - Bulk-edit dialog (field selector + typed value input) reusing the field
   renderer.
 - Per-row full-payload merge + `Promise.allSettled` over `editConfig.onSubmit`.
