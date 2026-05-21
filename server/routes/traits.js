@@ -2,7 +2,8 @@ const express = require('express');
 const prisma = require('../db/prisma');
 const { requireTaxonomyWrite } = require('../middleware/permissions');
 const { logAudit } = require('../utils/audit');
-const { findExistingByIdOrSlug, assertNotInReleasedVersion } = require('../utils/taxonomyValidation');
+const { findExistingByIdOrSlug } = require('../utils/taxonomyValidation');
+const { liveFilter } = require('../utils/softDelete');
 const { AppError, sendError, handleError } = require('../utils/httpErrors');
 const { assertPagination, assertIdParam, assertString, assertEnum } = require('../utils/validation');
 const { normalizeSlug } = require('../utils/slug');
@@ -24,9 +25,10 @@ function notifyGameCacheInvalidation() {
 
 function buildWhere(req) {
   const q = (req.query.q || '').trim();
-  return q
+  const search = q
     ? { OR: [{ name: { contains: q, mode: 'insensitive' } }, { slug: { contains: q, mode: 'insensitive' } }] }
     : {};
+  return { ...liveFilter(req), ...search };
 }
 
 async function fetchPaginatedTraits(req) {
@@ -106,6 +108,7 @@ router.get('/', async (req, res) => {
 router.get('/glossary', async (req, res) => {
   try {
     const allTraits = await prisma.trait.findMany({
+      where: { deletedAt: null },
       select: { slug: true, name: true, description: true },
       orderBy: { name: 'asc' },
     });
@@ -125,6 +128,9 @@ router.get('/:id', async (req, res) => {
     const id = assertIdParam(req.params);
     const item = await findExistingByIdOrSlug(prisma.trait, id, res, 'Trait not found');
     if (!item) return null;
+    if (item.deletedAt && req.query.includeDeleted !== 'true') {
+      return sendError(res, 404, 'NOT_FOUND', 'Trait not found', { identifier: id });
+    }
     return res.json(item);
   } catch (error) {
     return handleError(res, error);
@@ -193,13 +199,34 @@ router.delete('/:id', requireTaxonomyWrite, async (req, res) => {
     const id = assertIdParam(req.params);
     const existing = await findExistingByIdOrSlug(prisma.trait, id, res, 'Trait not found');
     if (!existing) return null;
+    if (existing.deletedAt) {
+      return sendError(res, 409, 'ALREADY_DELETED', 'Trait is already deleted', { id: existing.id });
+    }
 
-    await assertNotInReleasedVersion(prisma.traitVersion, 'traitId', existing.id, 'trait');
-    await prisma.trait.delete({ where: { id: existing.id } });
+    const deleted = await prisma.trait.update({ where: { id: existing.id }, data: { deletedAt: new Date() } });
     await logAudit(req, 'Trait', existing.id, 'DELETE', existing);
     notifyGameCacheInvalidation();
 
-    return res.json({ success: true, id: existing.id });
+    return res.json({ success: true, id: deleted.id });
+  } catch (error) {
+    return handleError(res, error);
+  }
+});
+
+router.post('/:id/restore', requireTaxonomyWrite, async (req, res) => {
+  try {
+    const id = assertIdParam(req.params);
+    const existing = await findExistingByIdOrSlug(prisma.trait, id, res, 'Trait not found');
+    if (!existing) return null;
+    if (!existing.deletedAt) {
+      return sendError(res, 409, 'NOT_DELETED', 'Trait is not deleted', { id: existing.id });
+    }
+
+    const restored = await prisma.trait.update({ where: { id: existing.id }, data: { deletedAt: null } });
+    await logAudit(req, 'Trait', existing.id, 'UPDATE', { restored: true });
+    notifyGameCacheInvalidation();
+
+    return res.json({ success: true, id: restored.id });
   } catch (error) {
     return handleError(res, error);
   }

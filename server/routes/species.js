@@ -2,7 +2,8 @@ const express = require('express');
 const prisma = require('../db/prisma');
 const { requireTaxonomyWrite } = require('../middleware/permissions');
 const { logAudit } = require('../utils/audit');
-const { findExistingByIdOrSlug, assertNotInReleasedVersion } = require('../utils/taxonomyValidation');
+const { findExistingByIdOrSlug } = require('../utils/taxonomyValidation');
+const { liveFilter } = require('../utils/softDelete');
 const { AppError, sendError, handleError } = require('../utils/httpErrors');
 const { assertPagination, assertIdParam, assertString } = require('../utils/validation');
 const { normalizeSlug } = require('../utils/slug');
@@ -11,7 +12,7 @@ const router = express.Router();
 
 function buildWhere(req) {
   const q = (req.query.q || '').trim();
-  return q
+  const search = q
     ? {
         OR: [
           { scientificName: { contains: q, mode: 'insensitive' } },
@@ -20,6 +21,7 @@ function buildWhere(req) {
         ],
       }
     : {};
+  return { ...liveFilter(req), ...search };
 }
 
 async function fetchPaginatedSpecies(req) {
@@ -72,6 +74,9 @@ router.get('/:id', async (req, res) => {
     const id = assertIdParam(req.params);
     const item = await findExistingByIdOrSlug(prisma.species, id, res, 'Species not found');
     if (!item) return null;
+    if (item.deletedAt && req.query.includeDeleted !== 'true') {
+      return sendError(res, 404, 'NOT_FOUND', 'Species not found', { identifier: id });
+    }
     return res.json(item);
   } catch (error) {
     return handleError(res, error);
@@ -127,12 +132,32 @@ router.delete('/:id', requireTaxonomyWrite, async (req, res) => {
     const id = assertIdParam(req.params);
     const existing = await findExistingByIdOrSlug(prisma.species, id, res, 'Species not found');
     if (!existing) return null;
+    if (existing.deletedAt) {
+      return sendError(res, 409, 'ALREADY_DELETED', 'Species is already deleted', { id: existing.id });
+    }
 
-    await assertNotInReleasedVersion(prisma.speciesVersion, 'speciesId', existing.id, 'species');
-    await prisma.species.delete({ where: { id: existing.id } });
+    const deleted = await prisma.species.update({ where: { id: existing.id }, data: { deletedAt: new Date() } });
     await logAudit(req, 'Species', existing.id, 'DELETE', existing);
 
-    return res.json({ success: true, id: existing.id });
+    return res.json({ success: true, id: deleted.id });
+  } catch (error) {
+    return handleError(res, error);
+  }
+});
+
+router.post('/:id/restore', requireTaxonomyWrite, async (req, res) => {
+  try {
+    const id = assertIdParam(req.params);
+    const existing = await findExistingByIdOrSlug(prisma.species, id, res, 'Species not found');
+    if (!existing) return null;
+    if (!existing.deletedAt) {
+      return sendError(res, 409, 'NOT_DELETED', 'Species is not deleted', { id: existing.id });
+    }
+
+    const restored = await prisma.species.update({ where: { id: existing.id }, data: { deletedAt: null } });
+    await logAudit(req, 'Species', existing.id, 'UPDATE', { restored: true });
+
+    return res.json({ success: true, id: restored.id });
   } catch (error) {
     return handleError(res, error);
   }
