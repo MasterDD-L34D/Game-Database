@@ -34,7 +34,9 @@ Add to **Trait, Biome, Species, Ecosystem** (only):
   // ...
   @@index([deletedAt])
 ```
-Migration `<ts>_soft_delete_masters`: `ALTER TABLE "<M>" ADD COLUMN "deletedAt" TIMESTAMP(3);` + `CREATE INDEX "<M>_deletedAt_idx" ON "<M>"("deletedAt");` for each of the 4. Slug `@unique` unchanged. Regenerate `docs/schema-reference.md` (CI gate). Use `prisma migrate dev --create-only` then apply (the GIN indexes are now modeled per #155, so the diff is clean — only the 4 columns + indexes).
+Migration `<ts>_soft_delete_masters`: `ALTER TABLE "<M>" ADD COLUMN "deletedAt" TIMESTAMP(3);` + `CREATE INDEX "<M>_deletedAt_idx" ON "<M>"("deletedAt");` for each of the 4. Slug `@unique` unchanged. Regenerate `docs/schema-reference.md` (CI gate).
+
+**Non-interactive migrate (per issue #159 — `migrate dev` hung 5.4h on the name prompt in automation):** generate with `npx prisma migrate dev --create-only --name soft_delete_masters` (the `--name` flag supplies the name up-front so there is NO interactive prompt; `--create-only` skips applying), then apply with `npx prisma migrate deploy` (non-interactive). NEVER use bare `prisma migrate dev` in the agent/CI path. The GIN indexes are modeled per #155, so the diff is clean — only the 4 columns + indexes.
 
 ## Components
 
