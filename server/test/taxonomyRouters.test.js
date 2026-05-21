@@ -919,3 +919,86 @@ test('DELETE /api/ecosystems/:id returns 403 when user lacks taxonomy:write perm
     await closeServer(server);
   }
 });
+
+
+// ---- PUT guard: editing a soft-deleted master is blocked --------------------
+
+test('PUT /api/traits/:id returns 409 when the trait is soft-deleted', async () => {
+  taxonomy.reset();
+  const trait = taxonomy.createTrait({ name: 'Deleted Trait', deletedAt: new Date() });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/traits/${trait.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ name: 'Should not edit', dataType: 'TEXT' }),
+    });
+    assert.equal(response.status, 409);
+    const body = await response.json();
+    assert.equal(body.code, 'DELETED_ENTITY');
+    assert.deepEqual(body.details, { id: trait.id });
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('PUT /api/biomes/:id returns 409 when the biome is soft-deleted', async () => {
+  taxonomy.reset();
+  const biome = taxonomy.createBiome({ name: 'Deleted Biome', deletedAt: new Date() });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/biomes/${biome.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ name: 'Should not edit' }),
+    });
+    assert.equal(response.status, 409);
+    const body = await response.json();
+    assert.equal(body.code, 'DELETED_ENTITY');
+    assert.deepEqual(body.details, { id: biome.id });
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('PUT /api/species/:id returns 409 when the species is soft-deleted', async () => {
+  taxonomy.reset();
+  const species = taxonomy.createSpecies({ scientificName: 'Deleted Species', deletedAt: new Date() });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/species/${species.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ scientificName: 'Should not edit' }),
+    });
+    assert.equal(response.status, 409);
+    const body = await response.json();
+    assert.equal(body.code, 'DELETED_ENTITY');
+    assert.deepEqual(body.details, { id: species.id });
+  } finally {
+    await closeServer(server);
+  }
+});
+
+test('PUT /api/ecosystems/:id returns 409 when the ecosystem is soft-deleted', async () => {
+  taxonomy.reset();
+  const eco = taxonomy.createEcosystem({ name: 'Deleted Ecosystem', deletedAt: new Date() });
+
+  const { server, baseUrl } = await startServer();
+  try {
+    const response = await fetch(`${baseUrl}/api/ecosystems/${eco.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Roles': 'taxonomy:write' },
+      body: JSON.stringify({ name: 'Should not edit' }),
+    });
+    assert.equal(response.status, 409);
+    const body = await response.json();
+    assert.equal(body.code, 'DELETED_ENTITY');
+    assert.deepEqual(body.details, { id: eco.id });
+  } finally {
+    await closeServer(server);
+  }
+});

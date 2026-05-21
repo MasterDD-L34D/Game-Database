@@ -166,6 +166,9 @@ router.put('/:id', requireTaxonomyWrite, async (req, res) => {
     const id = assertIdParam(req.params);
     const existing = await findExistingByIdOrSlug(prisma.trait, id, res, 'Trait not found');
     if (!existing) return null;
+    if (existing.deletedAt) {
+      return sendError(res, 409, 'DELETED_ENTITY', 'Trait is deleted; restore it before editing', { id: existing.id });
+    }
 
     const validated = validateTraitPayload(req.body);
     if (validated.slug !== existing.slug) {

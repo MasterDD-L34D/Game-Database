@@ -104,6 +104,9 @@ router.put('/:id', requireTaxonomyWrite, async (req, res) => {
     const id = assertIdParam(req.params);
     const existing = await findExistingByIdOrSlug(prisma.ecosystem, id, res, 'Ecosystem not found');
     if (!existing) return null;
+    if (existing.deletedAt) {
+      return sendError(res, 409, 'DELETED_ENTITY', 'Ecosystem is deleted; restore it before editing', { id: existing.id });
+    }
 
     const validated = validateEcosystemPayload(req.body);
     const { slug } = validated;
