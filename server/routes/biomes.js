@@ -126,6 +126,9 @@ router.put('/:id', requireTaxonomyWrite, async (req, res) => {
     const id = assertIdParam(req.params);
     const existing = await findExistingByIdOrSlug(prisma.biome, id, res, 'Biome not found');
     if (!existing) return null;
+    if (existing.deletedAt) {
+      return sendError(res, 409, 'DELETED_ENTITY', 'Biome is deleted; restore it before editing', { id: existing.id });
+    }
 
     const validated = await validateBiomePayload(req.body, existing);
     const { name, slug, parentId, description, climate } = validated;
