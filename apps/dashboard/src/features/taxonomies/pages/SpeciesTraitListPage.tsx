@@ -307,6 +307,7 @@ export default function SpeciesTraitListPage() {
         successMessage: t('speciesTraits.feedback.deleted'),
         errorMessage: t('speciesTraits.feedback.deleteError'),
       }}
+      bulkConfig={{ enableDelete: true }}
       getItemLabel={item => `${speciesById[item.speciesId]?.scientificName ?? item.speciesId} / ${traitsById[item.traitId]?.name ?? item.traitId}`}
     />
   );

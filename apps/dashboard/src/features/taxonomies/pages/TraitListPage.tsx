@@ -305,6 +305,7 @@ export default function TraitListPage() {
         successMessage: t('traits.feedback.deleted'),
         errorMessage: t('traits.feedback.deleteError'),
       }}
+      bulkConfig={{ enableDelete: true }}
       getItemLabel={(item) => item.name ?? item.slug ?? ''}
     />
   );

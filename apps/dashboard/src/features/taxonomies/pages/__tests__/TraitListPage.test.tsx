@@ -199,4 +199,11 @@ describe('TraitListPage', () => {
     expect(taxonomyMocks.deleteTrait).toHaveBeenCalledWith('trait-2');
     await waitFor(() => expect(screen.queryByText('Massa corporea')).not.toBeInTheDocument());
   });
+
+  it('exposes bulk selection (select-all checkbox present)', async () => {
+    renderPage();
+    await waitFor(() => expect(taxonomyMocks.listTraits).toHaveBeenCalledTimes(1));
+    await screen.findByText('Lunghezza corpo');
+    expect(screen.getByRole('checkbox', { name: 'Seleziona tutte le righe' })).toBeInTheDocument();
+  });
 });
