@@ -198,6 +198,23 @@ router.post('/:logId/revert', requireTaxonomyWrite, async (req, res) => {
     // Check entity doesn't already exist (resurrection conflict on id)
     const existing = await prisma[modelKey].findUnique({ where: { id: projected.id } });
     if (existing) {
+      // Phase B (B2) soft-delete: DELETE now sets `deletedAt` instead of
+      // removing the row, so the master still exists after a delete. Reverting
+      // its DELETE log must clear the tombstone (restore) rather than 409 --
+      // otherwise soft-deleted masters are hidden but un-revertable. A LIVE row
+      // (deletedAt null/absent -- id reused, or never deleted; Record has no
+      // deletedAt) is a genuine conflict and still returns 409.
+      if (existing.deletedAt) {
+        const restored = await prisma[modelKey].update({
+          where: { id: existing.id },
+          data: { deletedAt: null },
+        });
+        await logAudit(req, auditEntry.entity, restored.id, 'UPDATE', {
+          restored: true,
+          _revertedFrom: logId,
+        });
+        return res.json({ success: true, id: restored.id, entity: auditEntry.entity, revertedFrom: logId });
+      }
       return sendError(res, 409, 'CONFLICT',
         `Entity ${auditEntry.entity}:${projected.id} already exists — nothing to revert`,
         { field: 'id', value: projected.id });
