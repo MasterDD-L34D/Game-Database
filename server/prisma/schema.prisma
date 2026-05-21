@@ -80,6 +80,12 @@ enum Role {
   other
 }
 
+enum TaxonomyVersionStatus {
+  draft
+  released
+  retired
+}
+
 model Record {
   id          String   @id @default(cuid())
   nome        String
@@ -151,6 +157,7 @@ model Trait {
   updatedAt     DateTime      @updatedAt
 
   speciesValues SpeciesTrait[]
+  versions      TraitVersion[]
 
   // pg_trgm fuzzy search (PR #151, /api/search). See Record model for rationale.
   @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "Trait_name_trgm_idx")
@@ -178,6 +185,7 @@ model Biome {
 
   species     SpeciesBiome[]
   ecosystems  EcosystemBiome[]
+  versions    BiomeVersion[]
 
   // pg_trgm fuzzy search (PR #151, /api/search). See Record model for rationale.
   @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "Biome_name_trgm_idx")
@@ -216,6 +224,7 @@ model Species {
   traits         SpeciesTrait[]
   biomes         SpeciesBiome[]
   ecosystems     EcosystemSpecies[]
+  versions       SpeciesVersion[]
 
   @@index([scientificName])
   @@index([commonName])
@@ -272,6 +281,7 @@ model Ecosystem {
 
   biomes      EcosystemBiome[]
   species     EcosystemSpecies[]
+  versions    EcosystemVersion[]
 
   // pg_trgm fuzzy search (PR #151, /api/search). See Record model for rationale.
   @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "Ecosystem_name_trgm_idx")
@@ -303,4 +313,140 @@ model EcosystemSpecies {
   species     Species   @relation(fields: [speciesId], references: [id])
 
   @@unique([ecosystemId, speciesId, role])
+}
+
+model TaxonomyVersion {
+  id          String                @id @default(cuid())
+  tag         String                @unique
+  status      TaxonomyVersionStatus @default(draft)
+  description String?
+  releasedAt  DateTime?
+  releasedBy  String?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  traitVersions     TraitVersion[]
+  biomeVersions     BiomeVersion[]
+  speciesVersions   SpeciesVersion[]
+  ecosystemVersions EcosystemVersion[]
+
+  @@index([status, releasedAt])
+}
+
+model TraitVersion {
+  id        String          @id @default(cuid())
+  traitId   String
+  trait     Trait           @relation(fields: [traitId], references: [id], onDelete: Cascade)
+  versionId String
+  version   TaxonomyVersion @relation(fields: [versionId], references: [id])
+
+  slug                      String        @db.VarChar(80)
+  name                      String
+  description               String?
+  category                  String?
+  unit                      String?
+  dataType                  TraitDataType
+  allowedValues             Json?
+  rangeMin                  Float?
+  rangeMax                  Float?
+  tier                      String?
+  familyType                String?
+  energyMaintenance         String?
+  slotProfile               Json?
+  usageTags                 Json?
+  synergies                 Json?
+  conflicts                 Json?
+  environmentalRequirements Json?
+  inducedMutation           String?
+  functionalUse             String?
+  selectiveDrive            String?
+  weakness                  String?
+
+  capturedAt DateTime       @default(now())
+
+  @@unique([traitId, versionId])
+  @@index([versionId])
+}
+
+model BiomeVersion {
+  id        String          @id @default(cuid())
+  biomeId   String
+  biome     Biome           @relation(fields: [biomeId], references: [id], onDelete: Cascade)
+  versionId String
+  version   TaxonomyVersion @relation(fields: [versionId], references: [id])
+
+  slug          String   @db.VarChar(80)
+  name          String
+  description   String?
+  climate       String?
+  parentId      String?
+  summary       String?
+  climateTags   Json?
+  hazard        Json?
+  ecology       Json?
+  roleTemplates Json?
+  sizeMin       Int?
+  sizeMax       Int?
+
+  capturedAt DateTime @default(now())
+
+  @@unique([biomeId, versionId])
+  @@index([versionId])
+}
+
+model SpeciesVersion {
+  id        String          @id @default(cuid())
+  speciesId String
+  species   Species         @relation(fields: [speciesId], references: [id], onDelete: Cascade)
+  versionId String
+  version   TaxonomyVersion @relation(fields: [versionId], references: [id])
+
+  slug                String   @db.VarChar(80)
+  scientificName      String
+  commonName          String?
+  kingdom             String?
+  phylum              String?
+  class               String?
+  order               String?
+  family              String?
+  genus               String?
+  epithet             String?
+  status              String?
+  description         String?
+  displayName         String?
+  trophicRole         String?
+  functionalTags      Json?
+  flags               Json?
+  balance             Json?
+  playableUnit        Boolean?
+  morphotype          String?
+  vcCoefficients      Json?
+  spawnRules          Json?
+  environmentAffinity Json?
+  jobsBias            Json?
+  telemetry           Json?
+
+  capturedAt DateTime @default(now())
+
+  @@unique([speciesId, versionId])
+  @@index([versionId])
+}
+
+model EcosystemVersion {
+  id          String          @id @default(cuid())
+  ecosystemId String
+  ecosystem   Ecosystem       @relation(fields: [ecosystemId], references: [id], onDelete: Cascade)
+  versionId   String
+  version     TaxonomyVersion @relation(fields: [versionId], references: [id])
+
+  slug        String  @db.VarChar(80)
+  name        String
+  description String?
+  region      String?
+  climate     String?
+
+  capturedAt DateTime @default(now())
+
+  @@unique([ecosystemId, versionId])
+  @@index([versionId])
 }

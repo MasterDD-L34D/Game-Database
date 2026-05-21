@@ -10,7 +10,7 @@ For dominio/runtime/operational context (not schema), see
 
 > Generator entry: `server/scripts/generate-schema-doc.js`
 > Source schema: `server/prisma/schema.prisma`
-> Models: 10 · Enums: 9
+> Models: 15 · Enums: 10
 
 ## Table of contents
 
@@ -25,6 +25,11 @@ For dominio/runtime/operational context (not schema), see
   - [Ecosystem](#ecosystem)
   - [EcosystemBiome](#ecosystembiome)
   - [EcosystemSpecies](#ecosystemspecies)
+  - [TaxonomyVersion](#taxonomyversion)
+  - [TraitVersion](#traitversion)
+  - [BiomeVersion](#biomeversion)
+  - [SpeciesVersion](#speciesversion)
+  - [EcosystemVersion](#ecosystemversion)
 - [Enums](#enums)
   - [RecordStato](#recordstato)
   - [Stile](#stile)
@@ -35,6 +40,7 @@ For dominio/runtime/operational context (not schema), see
   - [TraitDataType](#traitdatatype)
   - [Presence](#presence)
   - [Role](#role)
+  - [TaxonomyVersionStatus](#taxonomyversionstatus)
 
 ## Models
 
@@ -117,6 +123,7 @@ For dominio/runtime/operational context (not schema), see
 **Relations**
 
 - `speciesValues`: `SpeciesTrait[]`
+- `versions`: `TraitVersion[]`
 
 **Block directives**
 
@@ -149,6 +156,7 @@ For dominio/runtime/operational context (not schema), see
 - `children`: `Biome[]` — @relation("BiomeChildren")
 - `species`: `SpeciesBiome[]`
 - `ecosystems`: `EcosystemBiome[]`
+- `versions`: `BiomeVersion[]`
 
 **Block directives**
 
@@ -192,6 +200,7 @@ For dominio/runtime/operational context (not schema), see
 - `traits`: `SpeciesTrait[]`
 - `biomes`: `SpeciesBiome[]`
 - `ecosystems`: `EcosystemSpecies[]`
+- `versions`: `SpeciesVersion[]`
 
 **Block directives**
 
@@ -265,6 +274,7 @@ For dominio/runtime/operational context (not schema), see
 
 - `biomes`: `EcosystemBiome[]`
 - `species`: `EcosystemSpecies[]`
+- `versions`: `EcosystemVersion[]`
 
 **Block directives**
 
@@ -309,6 +319,168 @@ For dominio/runtime/operational context (not schema), see
 **Block directives**
 
 - `@@unique([ecosystemId, speciesId, role])`
+
+### TaxonomyVersion
+
+| Field | Type | Modifiers |
+| --- | --- | --- |
+| `id` | `String` | @id @default(cuid()) |
+| `tag` | `String` | @unique |
+| `status` | `TaxonomyVersionStatus` | @default(draft) |
+| `description` | `String?` | — |
+| `releasedAt` | `DateTime?` | — |
+| `releasedBy` | `String?` | — |
+| `createdAt` | `DateTime` | @default(now()) |
+| `updatedAt` | `DateTime` | @updatedAt |
+
+**Relations**
+
+- `traitVersions`: `TraitVersion[]`
+- `biomeVersions`: `BiomeVersion[]`
+- `speciesVersions`: `SpeciesVersion[]`
+- `ecosystemVersions`: `EcosystemVersion[]`
+
+**Block directives**
+
+- `@@index([status, releasedAt])`
+
+### TraitVersion
+
+| Field | Type | Modifiers |
+| --- | --- | --- |
+| `id` | `String` | @id @default(cuid()) |
+| `traitId` | `String` | — |
+| `versionId` | `String` | — |
+| `slug` | `String` | @db.VarChar(80) |
+| `name` | `String` | — |
+| `description` | `String?` | — |
+| `category` | `String?` | — |
+| `unit` | `String?` | — |
+| `dataType` | `TraitDataType` | — |
+| `allowedValues` | `Json?` | — |
+| `rangeMin` | `Float?` | — |
+| `rangeMax` | `Float?` | — |
+| `tier` | `String?` | — |
+| `familyType` | `String?` | — |
+| `energyMaintenance` | `String?` | — |
+| `slotProfile` | `Json?` | — |
+| `usageTags` | `Json?` | — |
+| `synergies` | `Json?` | — |
+| `conflicts` | `Json?` | — |
+| `environmentalRequirements` | `Json?` | — |
+| `inducedMutation` | `String?` | — |
+| `functionalUse` | `String?` | — |
+| `selectiveDrive` | `String?` | — |
+| `weakness` | `String?` | — |
+| `capturedAt` | `DateTime` | @default(now()) |
+
+**Relations**
+
+- `trait`: `Trait` — @relation(fields: [traitId], references: [id], onDelete: Cascade)
+- `version`: `TaxonomyVersion` — @relation(fields: [versionId], references: [id])
+
+**Block directives**
+
+- `@@unique([traitId, versionId])`
+- `@@index([versionId])`
+
+### BiomeVersion
+
+| Field | Type | Modifiers |
+| --- | --- | --- |
+| `id` | `String` | @id @default(cuid()) |
+| `biomeId` | `String` | — |
+| `versionId` | `String` | — |
+| `slug` | `String` | @db.VarChar(80) |
+| `name` | `String` | — |
+| `description` | `String?` | — |
+| `climate` | `String?` | — |
+| `parentId` | `String?` | — |
+| `summary` | `String?` | — |
+| `climateTags` | `Json?` | — |
+| `hazard` | `Json?` | — |
+| `ecology` | `Json?` | — |
+| `roleTemplates` | `Json?` | — |
+| `sizeMin` | `Int?` | — |
+| `sizeMax` | `Int?` | — |
+| `capturedAt` | `DateTime` | @default(now()) |
+
+**Relations**
+
+- `biome`: `Biome` — @relation(fields: [biomeId], references: [id], onDelete: Cascade)
+- `version`: `TaxonomyVersion` — @relation(fields: [versionId], references: [id])
+
+**Block directives**
+
+- `@@unique([biomeId, versionId])`
+- `@@index([versionId])`
+
+### SpeciesVersion
+
+| Field | Type | Modifiers |
+| --- | --- | --- |
+| `id` | `String` | @id @default(cuid()) |
+| `speciesId` | `String` | — |
+| `versionId` | `String` | — |
+| `slug` | `String` | @db.VarChar(80) |
+| `scientificName` | `String` | — |
+| `commonName` | `String?` | — |
+| `kingdom` | `String?` | — |
+| `phylum` | `String?` | — |
+| `class` | `String?` | — |
+| `order` | `String?` | — |
+| `family` | `String?` | — |
+| `genus` | `String?` | — |
+| `epithet` | `String?` | — |
+| `status` | `String?` | — |
+| `description` | `String?` | — |
+| `displayName` | `String?` | — |
+| `trophicRole` | `String?` | — |
+| `functionalTags` | `Json?` | — |
+| `flags` | `Json?` | — |
+| `balance` | `Json?` | — |
+| `playableUnit` | `Boolean?` | — |
+| `morphotype` | `String?` | — |
+| `vcCoefficients` | `Json?` | — |
+| `spawnRules` | `Json?` | — |
+| `environmentAffinity` | `Json?` | — |
+| `jobsBias` | `Json?` | — |
+| `telemetry` | `Json?` | — |
+| `capturedAt` | `DateTime` | @default(now()) |
+
+**Relations**
+
+- `species`: `Species` — @relation(fields: [speciesId], references: [id], onDelete: Cascade)
+- `version`: `TaxonomyVersion` — @relation(fields: [versionId], references: [id])
+
+**Block directives**
+
+- `@@unique([speciesId, versionId])`
+- `@@index([versionId])`
+
+### EcosystemVersion
+
+| Field | Type | Modifiers |
+| --- | --- | --- |
+| `id` | `String` | @id @default(cuid()) |
+| `ecosystemId` | `String` | — |
+| `versionId` | `String` | — |
+| `slug` | `String` | @db.VarChar(80) |
+| `name` | `String` | — |
+| `description` | `String?` | — |
+| `region` | `String?` | — |
+| `climate` | `String?` | — |
+| `capturedAt` | `DateTime` | @default(now()) |
+
+**Relations**
+
+- `ecosystem`: `Ecosystem` — @relation(fields: [ecosystemId], references: [id], onDelete: Cascade)
+- `version`: `TaxonomyVersion` — @relation(fields: [versionId], references: [id])
+
+**Block directives**
+
+- `@@unique([ecosystemId, versionId])`
+- `@@index([versionId])`
 
 ## Enums
 
@@ -391,3 +563,9 @@ For dominio/runtime/operational context (not schema), see
 - `common`
 - `invasive`
 - `other`
+
+### TaxonomyVersionStatus
+
+- `draft`
+- `released`
+- `retired`

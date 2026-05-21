@@ -2,7 +2,7 @@ const express = require('express');
 const prisma = require('../db/prisma');
 const { requireTaxonomyWrite } = require('../middleware/permissions');
 const { logAudit } = require('../utils/audit');
-const { findExistingByIdOrSlug } = require('../utils/taxonomyValidation');
+const { findExistingByIdOrSlug, assertNotInReleasedVersion } = require('../utils/taxonomyValidation');
 const { AppError, sendError, handleError } = require('../utils/httpErrors');
 const { assertPagination, assertIdParam, assertString, assertEnum } = require('../utils/validation');
 const { normalizeSlug } = require('../utils/slug');
@@ -194,6 +194,7 @@ router.delete('/:id', requireTaxonomyWrite, async (req, res) => {
     const existing = await findExistingByIdOrSlug(prisma.trait, id, res, 'Trait not found');
     if (!existing) return null;
 
+    await assertNotInReleasedVersion(prisma.traitVersion, 'traitId', existing.id, 'trait');
     await prisma.trait.delete({ where: { id: existing.id } });
     await logAudit(req, 'Trait', existing.id, 'DELETE', existing);
     notifyGameCacheInvalidation();

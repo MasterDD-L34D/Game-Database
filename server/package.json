@@ -21,7 +21,7 @@
   "scripts": {
     "dev": "node index.js",
     "dashboard:build": "npm --prefix ../apps/dashboard run build",
-    "dev:setup": "prisma generate && prisma migrate deploy && prisma db seed",
+    "dev:setup": "prisma generate && prisma migrate deploy && prisma db seed && node scripts/backfill-v1-snapshots.js",
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "prisma:seed": "prisma db seed",
