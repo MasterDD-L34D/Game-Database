@@ -41,6 +41,7 @@ type FormFieldConfig<TValues extends Record<string, any>> = {
   helperText?: string;
   options?: { label: string; value: string }[];
   showIf?: (values: TValues) => boolean;
+  bulkEditable?: boolean;
 };
 
 type CreateConfig<TValues extends Record<string, any>> = {
@@ -79,6 +80,8 @@ type DeleteConfig<T> = {
 type BulkConfig = {
   enableDelete?: boolean;
   deleteDialogTitle?: string;
+  enableEdit?: boolean;
+  editDialogTitle?: string;
 };
 
 type ListPageProps<TItem, TValues extends Record<string, any>> = {
@@ -204,6 +207,9 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkInProgress, setBulkInProgress] = useState(false);
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [bulkEditFieldName, setBulkEditFieldName] = useState('');
+  const [bulkEditValue, setBulkEditValue] = useState('');
 
   const createResolver = useMemo(
     () => (createConfig ? createZodResolver(createConfig.schema) : undefined),
@@ -374,6 +380,15 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
   );
   const selectedCount = selectedItems.length;
   const clearSelection = useCallback(() => setRowSelection({}), []);
+  const bulkEditFields = useMemo(
+    () => (editConfig?.fields ?? []).filter((f) => f.bulkEditable),
+    [editConfig?.fields],
+  );
+  const bulkEditEnabled = Boolean(bulkConfig?.enableEdit && editConfig && bulkEditFields.length > 0);
+  const handleBulkEditFieldChange = useCallback((name: string) => {
+    setBulkEditFieldName(name);
+    setBulkEditValue('');
+  }, []);
 
   const handleOpenCreate = useCallback(() => {
     if (!createConfig) return;
@@ -617,7 +632,7 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
           onKeyDown={handleKeyDown}
         />
       </Stack>
-      {bulkEnabled && selectedCount > 0 && (
+      {(bulkEnabled || bulkEditEnabled) && selectedCount > 0 && (
         <Stack
           direction="row"
           spacing={2}
@@ -635,6 +650,17 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
           <Button size="small" variant="text" onClick={clearSelection} disabled={bulkInProgress}>
             {t('common:bulk.deselectAll')}
           </Button>
+          {bulkEditEnabled && (
+            <Button
+              size="small"
+              color="primary"
+              variant="contained"
+              onClick={() => setBulkEditOpen(true)}
+              disabled={bulkInProgress}
+            >
+              {t('common:bulk.editButton', { count: selectedCount })}
+            </Button>
+          )}
           {bulkConfig?.enableDelete && deleteConfig && (
             <Button
               size="small"
@@ -656,7 +682,7 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
       <DataTable<TItem>
         data={items}
         columns={columnsWithActions}
-        selectable={bulkEnabled}
+        selectable={bulkEnabled || bulkEditEnabled}
         rowSelection={rowSelection}
         onRowSelectionChange={setRowSelection}
         getRowId={resolveRowId}

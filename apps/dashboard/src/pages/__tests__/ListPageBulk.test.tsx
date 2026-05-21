@@ -1,9 +1,45 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 import { renderListPage, userEvent } from '../../testUtils/renderWithProviders';
 
 type Item = { id: string; name: string };
+
+type EditItem = { id: string; name: string; category: string };
+
+function renderBulkEdit(editFn = vi.fn().mockResolvedValue(undefined)) {
+  const items: EditItem[] = [
+    { id: '1', name: 'Alpha', category: 'X' },
+    { id: '2', name: 'Beta', category: 'Y' },
+  ];
+  const fetcher = vi
+    .fn<(q: string, p?: number, ps?: number) => Promise<{ items: EditItem[]; total: number; page: number; pageSize: number }>>()
+    .mockResolvedValue({ items, total: items.length, page: 0, pageSize: 25 });
+  renderListPage<EditItem>({
+    title: 'Elementi',
+    columns: [{ accessorKey: 'name', header: 'Nome', cell: (info) => info.getValue() }],
+    fetcher,
+    queryKeyBase: ['bulk-edit-items'],
+    autoloadOnMount: true,
+    editConfig: {
+      dialogTitle: 'Modifica',
+      fields: [
+        { name: 'name', label: 'Nome', required: true },
+        { name: 'category', label: 'Categoria', bulkEditable: true },
+      ],
+      schema: z.object({ name: z.string().min(1), category: z.string() }),
+      getInitialValues: (item) => ({ name: item.name, category: item.category }),
+      onSubmit: async (item, values) => {
+        await editFn(item, values);
+      },
+      successMessage: 'Aggiornato',
+    },
+    bulkConfig: { enableEdit: true },
+    getItemLabel: (item) => item.name,
+  });
+  return { editFn, fetcher };
+}
 
 const columns: ColumnDef<Item, any>[] = [
   { accessorKey: 'name', header: 'Nome', cell: (info) => info.getValue() },
@@ -128,6 +164,15 @@ describe('ListPage bulk selection', () => {
 
     await waitFor(() => expect(deleteFn).toHaveBeenCalledTimes(3));
     await screen.findByText('2 eliminati, 1 falliti.');
+  });
+
+  it('shows the bulk-edit button only when a bulkEditable field exists', async () => {
+    renderBulkEdit();
+    await screen.findByText('Alpha');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('checkbox', { name: 'Seleziona tutte le righe' }));
+    await screen.findByText('2 selezionati');
+    expect(screen.getByRole('button', { name: 'Modifica 2' })).toBeInTheDocument();
   });
 
   it('does not co-toggle distinct rows that lack an id (unique fallback keys)', async () => {
