@@ -107,4 +107,26 @@ describe('ListPage bulk selection', () => {
     // Selection cleared
     await waitFor(() => expect(screen.queryByText(/selezionati/i)).not.toBeInTheDocument());
   });
+
+  it('reports partial-failure counts when some deletes reject', async () => {
+    const deleteFn = vi
+      .fn()
+      .mockResolvedValueOnce(undefined) // id 1 ok
+      .mockRejectedValueOnce(new Error('boom')) // id 2 fail
+      .mockResolvedValueOnce(undefined); // id 3 ok
+    const fetcher = makeFetcher(baseItems);
+    renderBulk(deleteFn, fetcher);
+    await screen.findByText('Alpha');
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('checkbox', { name: 'Seleziona tutte le righe' }));
+    await screen.findByText('3 selezionati');
+    await user.click(screen.getByRole('button', { name: 'Elimina 3' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'Elimina 3' }));
+
+    await waitFor(() => expect(deleteFn).toHaveBeenCalledTimes(3));
+    await screen.findByText('2 eliminati, 1 falliti.');
+  });
 });
