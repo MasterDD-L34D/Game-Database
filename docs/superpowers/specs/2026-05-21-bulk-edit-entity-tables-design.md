@@ -2,7 +2,7 @@
 
 **Date**: 2026-05-21
 **Author**: parallel-#2 session (Ryzen, Claude opus-4.7)
-**Status**: PR1 + PR2 MERGED (2026-05-21) — PR1 selection+bulk-DELETE `58f26e0` (#145), PR2 bulk-EDIT single-field `7f43343` (#146). PR3 (multi-field polish) deferred.
+**Status**: COMPLETE (2026-05-21) — PR1 selection+bulk-DELETE `58f26e0` (#145), PR2 bulk-EDIT single-field `7f43343` (#146), PR3 multi-field `b78845a` (#148). Full epic merged. 4 Codex P2 caught+fixed pre-merge across the chain.
 **Scope**: Game-Database dashboard only (`apps/dashboard/`). Zero backend change, zero cross-repo touch.
 **Spec reference**: `docs/superpowers/specs/2026-05-20-game-database-value-roadmap-design.md` § Fase 2 deliverable 2 "Bulk edit"
 
@@ -196,11 +196,12 @@ Repo convention is small incremental PRs (#115–#144). Three PRs:
 - Same partial-failure tally/toast/refresh.
 - Tests.
 
-### PR 3 — Polish (deferrable)
+### PR 3 — Multi-field bulk-edit — MERGED `b78845a` (#148)
 
-- Multi-field-in-one-pass bulk-edit.
-- Edge-case hardening surfaced by PR 1/2 research docs.
-- Optional; ship only if value justifies.
+- Multi-field-in-one-pass bulk-edit: `bulkEdits` array, per-row field+value with
+  Aggiungi/Rimuovi, merge all pairs into per-row override. Single default row keeps
+  PR2 behavior. Add-row capped on total rows (Codex P2). Used fields disabled in
+  other rows; required-empty gating per row.
 
 ## Testing & quality gates (CLAUDE.md Release Standard)
 
