@@ -8,6 +8,8 @@
 const CHUNK = 1000;
 const BASELINE_TAG = 'v1.0.0';
 
+// Frozen v1.0.0 scalar field set. Do NOT sync this to future schema changes:
+// a snapshot must capture the columns as they existed at v1.0.0 release.
 const FIELD_MAP = {
   trait: {
     delegate: 'trait',
