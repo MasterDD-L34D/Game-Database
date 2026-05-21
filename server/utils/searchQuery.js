@@ -6,10 +6,10 @@ const { AppError } = require('./httpErrors');
 // All identifiers are double-quoted because the Prisma schema uses default
 // (case-sensitive PascalCase/camelCase) mapping — no @@map.
 const ENTITY_MAP = {
-  trait:     { table: 'Trait',     cols: ['name', 'slug'],                         label: 'name',           slug: 'slug', entity: 'Trait' },
-  biome:     { table: 'Biome',     cols: ['name', 'slug'],                         label: 'name',           slug: 'slug', entity: 'Biome' },
-  ecosystem: { table: 'Ecosystem', cols: ['name', 'slug'],                         label: 'name',           slug: 'slug', entity: 'Ecosystem' },
-  species:   { table: 'Species',   cols: ['scientificName', 'commonName', 'slug'], label: 'scientificName', slug: 'slug', entity: 'Species' },
+  trait:     { table: 'Trait',     cols: ['name', 'slug'],                         label: 'name',           slug: 'slug', entity: 'Trait', softDeletable: true },
+  biome:     { table: 'Biome',     cols: ['name', 'slug'],                         label: 'name',           slug: 'slug', entity: 'Biome', softDeletable: true },
+  ecosystem: { table: 'Ecosystem', cols: ['name', 'slug'],                         label: 'name',           slug: 'slug', entity: 'Ecosystem', softDeletable: true },
+  species:   { table: 'Species',   cols: ['scientificName', 'commonName', 'slug'], label: 'scientificName', slug: 'slug', entity: 'Species', softDeletable: true },
   record:    { table: 'Record',    cols: ['nome', 'descrizione'],                  label: 'nome',           slug: null,   entity: 'Record' },
 };
 
@@ -51,10 +51,11 @@ function armFor(key, q) {
   const matchExprs = cols.map((c) => Prisma.sql`${ident(c)} % ${q}`);
   const whereMatch = Prisma.join(matchExprs, ' OR ');
   const slugExpr = slug ? Prisma.sql`${ident(slug)}` : Prisma.sql`NULL`;
+  const live = ENTITY_MAP[key].softDeletable ? Prisma.sql` AND "deletedAt" IS NULL` : Prisma.empty;
   return Prisma.sql`
     SELECT ${entity}::text AS entity, "id", ${slugExpr} AS slug, ${ident(label)} AS label, ${score} AS score
       FROM ${ident(table)}
-     WHERE (${whereMatch})`;
+     WHERE (${whereMatch})${live}`;
 }
 
 function buildFuzzySearchSql({ entities, q, limit }) {

@@ -59,19 +59,20 @@ test('computeDashboardStats aggregates data and formats trends', async () => {
     },
     biome: {
       async count(args = {}) {
-        if (args.where) return 1;
+        // Orphan query carries relation filters; the total query only filters deletedAt.
+        if (args.where && (args.where.species || args.where.ecosystems)) return 1;
         return 6;
       },
     },
     species: {
       async count(args = {}) {
-        if (args.where) return 2;
+        if (args.where && (args.where.traits || args.where.biomes || args.where.ecosystems)) return 2;
         return 24;
       },
     },
     ecosystem: {
       async count(args = {}) {
-        if (args.where) return 1;
+        if (args.where && (args.where.biomes || args.where.species)) return 1;
         return 4;
       },
     },
