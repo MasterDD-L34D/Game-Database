@@ -223,6 +223,7 @@ PR-δ (audit endpoint) ──→ independent
 **Prerequisito**: Fase 2 audit/diff infrastructure stabile.
 
 1. **Schema versioning**: `taxonomy_version` table (semver) + `version_id` on entities + `GET /api/taxonomy/versions` + Game build-time version pin flag
+   - **Phase A — IN-PROGRESS / merged `1f642ee` (#154, RFC #1)**: `TaxonomyVersion` + 4 snapshot tables + baseline `v1.0.0` + chunked backfill + app-layer immutability guard (`409 VERSION_IMMUTABLE`). Masters untouched. Phase B (write-path + soft-delete) and Phase C (read-path `?versionId=` + Game `EVO_TAXONOMY_VERSION`) deferred to separate RFCs/PRs.
 2. **Branch/staging**: Postgres schema-per-branch (`taxonomy_staging` vs `taxonomy_main`) + promote-to-main workflow + playtest pin
 3. **Semantic search**: pg_trgm + tsvector index su descriptions + `GET /api/search?q=...&entities=trait,biome` ranked
 4. **Bidirectional sync** (RFC + implementation): Game ↔ DB canonical flow review. Migration plan: Fase 1 import-only → Fase 2 dual-write → Fase 3 export-only. **Cross-repo, Eduardo-sovereign gate mandatory**.

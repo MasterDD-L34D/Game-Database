@@ -2,7 +2,7 @@
 
 **Date**: 2026-05-21
 **Author**: parallel-#2 session (Ryzen, Claude opus-4.7)
-**Status**: IN-PROGRESS — Phase A landing. Eduardo ratified all 7 recommended resolutions (2026-05-21). Phase A merge SHA: _<fill post-merge>_
+**Status**: IN-PROGRESS — Phase A merged `1f642ee` (#154). Eduardo ratified all 7 recommended resolutions (2026-05-21). Phase B/C deferred to separate RFCs/PRs.
 **Scope**: Game-Database schema + Game build-time consumer + RFC-gated cross-repo touch
 **Spec reference**: `docs/superpowers/specs/2026-05-20-game-database-value-roadmap-design.md` § Fase 3 deliverable 1 "Schema versioning"
 
@@ -236,7 +236,7 @@ predated the Codex P1 revision and is superseded.
 - [x] `docs/schema-reference.md` regenerated (CI gate)
 - [x] 6 DB tests (`server/test/taxonomyVersion.db.test.js`): `TaxonomyVersion.tag` uniqueness, single-draft partial-unique enforcement, snapshot FK constraint, backfill row-count parity, idempotent re-run — wired into the `search-db` CI job
 - [x] Existing backend suite green (zero regression) — all 16 mocked test files pass
-- [ ] Spec doc updated with Phase A merge SHA + status flip to IN-PROGRESS (post-merge)
+- [x] Spec doc updated with Phase A merge SHA (`1f642ee`) + status flip to IN-PROGRESS
 
 ## Follow-up RFCs
 
