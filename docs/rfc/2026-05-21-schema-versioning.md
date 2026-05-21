@@ -206,7 +206,7 @@ ratify or override. Rationale leans YAGNI + "Phase A stays minimal".
 | 4 | Audit interaction | **Log version lifecycle to AuditLog `entity='TaxonomyVersion'`** (create/release/retire); **log-only, NOT revertable** | `logAudit` + the audit endpoint are already generic over the entity string. Gives free release history. `TaxonomyVersion` must NOT join `REVERTABLE_ENTITY_MODELS` (release/retire are state flips, not row resurrections). |
 | 5 | Records inclusion | **Exclude — confirmed non-goal** | Record = per-user artistic schede, not balance taxonomy; Game does not consume Records. Snapshot tables cover **4** masters (Trait/Biome/Species/Ecosystem), not 5. |
 | 6 | `@db.VarChar(80)` slug constraint | **Separate PR (PR-α2), NOT Phase A** | The schema currently has unconstrained `slug String @unique` (no length). The constraint mirrors app-level `normalizeSlug` max-80 — an orthogonal PR-α follow-up. Folding it into the versioning migration couples two concerns. Keep Phase A focused. |
-| 7 | Hard-delete drops snapshot history | **(a) soft-delete `deletedAt` — scheduled for Phase B, NOT Phase A** | True immutability needs the master row to survive; (b) SetNull orphans break FK semantics, (c) accept-loss violates the immutability goal. BUT Phase A only **adds** snapshot tables + backfills (master tables untouched, no deletes occur) so the cascade risk does not exist yet. `deletedAt` (cross-cutting: every GET must filter `deletedAt IS NULL`) lands with Phase B write-path adoption. |
+| 7 | Hard-delete drops snapshot history | **App-layer guard in Phase A; soft-delete `deletedAt` in Phase B** | True immutability needs the master row to survive; (b) SetNull orphans break FK semantics, (c) accept-loss violates the immutability goal. **Correction (PR #154 review):** the original "no deletes occur in Phase A" premise was wrong — the live DELETE endpoints (`prisma.<master>.delete`) predate Phase A, so once v1.0.0 is backfilled a normal DELETE cascades into released snapshots. Phase A therefore ships an **application-layer guard** (`assertNotInReleasedVersion`): hard-deleting a master captured in a released version returns `409 VERSION_IMMUTABLE`. FK stays `onDelete: Cascade` (unchanged). Full soft-delete (`deletedAt`, cross-cutting: every GET filters `deletedAt IS NULL`) still lands with Phase B write-path adoption. |
 
 ### Knock-on design clarifications
 
@@ -264,6 +264,6 @@ ratify (✓) or override each.
 - [x] Q4 audit interaction — log lifecycle, non-revertable (ratified; no write-path in Phase A)
 - [x] Q5 Records inclusion — exclude, 4 snapshot tables (ratified)
 - [x] Q6 slug constraint folding — separate PR, done in #153 (ratified)
-- [x] Q7 hard-delete cascade — soft-delete `deletedAt` in Phase B (ratified)
+- [x] Q7 hard-delete cascade — Phase A app-layer guard (`409 VERSION_IMMUTABLE`); soft-delete `deletedAt` in Phase B (ratified; guard added in PR #154 review after the "no deletes in Phase A" premise was falsified)
 - [x] Approve Phase A migration approach (snapshot tables, no master changes)
 - [ ] Sign off on the cross-repo Phase C contract (deferred — Phase C, not this PR)

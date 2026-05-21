@@ -75,10 +75,23 @@ function createTaxonomyTestContext() {
     ecosystem: 1,
   };
 
+  // Master ids that have a snapshot under a *released* version. Drives the
+  // *Version.count mock used by the Phase A immutability delete guard.
+  const releasedSnapshots = {
+    species: new Set(),
+    trait: new Set(),
+    biome: new Set(),
+    ecosystem: new Set(),
+  };
+
   const original = {
     auditLog: {
       create: prisma.auditLog?.create,
     },
+    traitVersion: { count: prisma.traitVersion?.count },
+    biomeVersion: { count: prisma.biomeVersion?.count },
+    speciesVersion: { count: prisma.speciesVersion?.count },
+    ecosystemVersion: { count: prisma.ecosystemVersion?.count },
     species: {
       count: prisma.species?.count,
       findMany: prisma.species?.findMany,
@@ -254,6 +267,21 @@ function createTaxonomyTestContext() {
   }
 
 
+  function createVersionMock(model) {
+    const fk = `${model}Id`;
+    const delegate = `${model}Version`;
+    prisma[delegate] = prisma[delegate] || {};
+    prisma[delegate].count = async ({ where = {} } = {}) => {
+      const isReleased = where.version && where.version.status === 'released';
+      const masterId = where[fk];
+      return isReleased && masterId != null && releasedSnapshots[model].has(masterId) ? 1 : 0;
+    };
+  }
+
+  function markReleased(model, masterId) {
+    releasedSnapshots[model].add(masterId);
+  }
+
   function mock() {
     prisma.auditLog = prisma.auditLog || {};
     prisma.auditLog.create = async () => ({ id: 'audit-mock-id' });
@@ -261,6 +289,10 @@ function createTaxonomyTestContext() {
     createModelMock('trait', stores.trait, 'name');
     createModelMock('biome', stores.biome, 'name');
     createModelMock('ecosystem', stores.ecosystem, 'name');
+    createVersionMock('species');
+    createVersionMock('trait');
+    createVersionMock('biome');
+    createVersionMock('ecosystem');
   }
 
   function restore() {
@@ -293,6 +325,11 @@ function createTaxonomyTestContext() {
     if (original.ecosystem.findUnique) prisma.ecosystem.findUnique = original.ecosystem.findUnique;
     if (original.ecosystem.update) prisma.ecosystem.update = original.ecosystem.update;
     if (original.ecosystem.delete) prisma.ecosystem.delete = original.ecosystem.delete;
+
+    for (const delegate of ['traitVersion', 'biomeVersion', 'speciesVersion', 'ecosystemVersion']) {
+      if (original[delegate] && original[delegate].count) prisma[delegate].count = original[delegate].count;
+      else if (prisma[delegate]) delete prisma[delegate].count;
+    }
   }
 
   function reset() {
@@ -304,12 +341,17 @@ function createTaxonomyTestContext() {
     counters.trait = 1;
     counters.biome = 1;
     counters.ecosystem = 1;
+    releasedSnapshots.species.clear();
+    releasedSnapshots.trait.clear();
+    releasedSnapshots.biome.clear();
+    releasedSnapshots.ecosystem.clear();
   }
 
   return {
     mock,
     restore,
     reset,
+    markReleased,
     createSpecies,
     createTrait,
     createBiome,

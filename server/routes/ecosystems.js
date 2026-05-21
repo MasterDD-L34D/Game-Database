@@ -3,7 +3,7 @@ const express = require('express');
 const prisma = require('../db/prisma');
 const { requireTaxonomyWrite } = require('../middleware/permissions');
 const { logAudit } = require('../utils/audit');
-const { findExistingByIdOrSlug } = require('../utils/taxonomyValidation');
+const { findExistingByIdOrSlug, assertNotInReleasedVersion } = require('../utils/taxonomyValidation');
 const { AppError, sendError, handleError } = require('../utils/httpErrors');
 const { assertPagination, assertIdParam, assertString } = require('../utils/validation');
 const { normalizeSlug } = require('../utils/slug');
@@ -130,6 +130,7 @@ router.delete('/:id', requireTaxonomyWrite, async (req, res) => {
     const existing = await findExistingByIdOrSlug(prisma.ecosystem, id, res, 'Ecosystem not found');
     if (!existing) return null;
 
+    await assertNotInReleasedVersion(prisma.ecosystemVersion, 'ecosystemId', existing.id, 'ecosystem');
     await prisma.ecosystem.delete({ where: { id: existing.id } });
 
     await logAudit(req, 'Ecosystem', existing.id, 'DELETE', existing);

@@ -7,10 +7,12 @@ const { backfillV1Snapshots } = require('../scripts/backfill-v1-snapshots');
 // Baseline version v1.0.0 is created by the taxonomy_versioning migration.
 
 const TEST_DRAFT_PREFIX = 'test-draft-';
+const TEST_IMMUT_PREFIX = 'test-immut-';
 
 test.after(async () => {
   try {
     await prisma.taxonomyVersion.deleteMany({ where: { tag: { startsWith: TEST_DRAFT_PREFIX } } });
+    await prisma.trait.deleteMany({ where: { slug: { startsWith: TEST_IMMUT_PREFIX } } });
   } finally {
     await prisma.$disconnect();
   }
@@ -84,4 +86,28 @@ test('re-running backfill is a no-op (idempotent)', async () => {
   const after = await prisma.traitVersion.count({ where: { versionId: baseline.id } });
   assert.equal(after, before, 'snapshot count must not change on re-run');
   assert.equal(summary.trait, 0, 'second backfill must insert zero trait snapshots');
+});
+
+test('backfill does NOT append newly-created masters to the released v1.0.0 baseline', async () => {
+  const baseline = await prisma.taxonomyVersion.findUnique({ where: { tag: 'v1.0.0' } });
+  const before = await prisma.traitVersion.count({ where: { versionId: baseline.id } });
+
+  // A master created AFTER the baseline was backfilled must not leak into the
+  // released v1.0.0 snapshot when dev:setup re-runs the backfill.
+  const probe = await prisma.trait.create({
+    data: { slug: `${TEST_IMMUT_PREFIX}${Date.now()}`, name: 'Immutability probe', dataType: 'TEXT' },
+  });
+  try {
+    const summary = await backfillV1Snapshots(prisma);
+    const after = await prisma.traitVersion.count({ where: { versionId: baseline.id } });
+    assert.equal(after, before, 'released baseline must not grow when new masters exist');
+    assert.equal(summary.trait, 0, 'gated backfill must insert zero trait snapshots');
+
+    const probeSnap = await prisma.traitVersion.count({
+      where: { versionId: baseline.id, traitId: probe.id },
+    });
+    assert.equal(probeSnap, 0, 'newly-created master must not be snapshotted into v1.0.0');
+  } finally {
+    await prisma.trait.delete({ where: { id: probe.id } });
+  }
 });
