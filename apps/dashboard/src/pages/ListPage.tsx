@@ -23,6 +23,11 @@ import RowActionsMenu from '../components/data-table/RowActionsMenu';
 import { useSnackbar } from '../components/SnackbarProvider';
 import { useSearch } from '../providers/SearchProvider';
 import { createZodResolver } from '../lib/zodResolver';
+import { runSettledWithConcurrency } from '../lib/concurrency';
+
+// Bulk mutations fan out one request per selected row. Cap concurrency so a
+// select-all bulk op cannot exhaust the backend Prisma connection pool.
+const BULK_CONCURRENCY = 5;
 
 type Fetcher<T> = (
   q: string,
@@ -466,7 +471,7 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
     setBulkInProgress(true);
     try {
       const targets = selectedItems;
-      const results = await Promise.allSettled(targets.map((it) => deleteConfig.mutation(it)));
+      const results = await runSettledWithConcurrency(targets, (it) => deleteConfig.mutation(it), BULK_CONCURRENCY);
       const success = results.filter((r) => r.status === 'fulfilled').length;
       const failed = results.length - success;
       if (failed === 0) {
@@ -489,10 +494,10 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
     const overrides = Object.fromEntries(bulkEditValidEdits.map((e) => [e.field, e.value]));
     setBulkInProgress(true);
     try {
-      const results = await Promise.allSettled(
-        selectedItems.map((it) =>
-          editConfig.onSubmit(it, { ...editConfig.getInitialValues(it), ...overrides } as TValues),
-        ),
+      const results = await runSettledWithConcurrency(
+        selectedItems,
+        (it) => editConfig.onSubmit(it, { ...editConfig.getInitialValues(it), ...overrides } as TValues),
+        BULK_CONCURRENCY,
       );
       const success = results.filter((r) => r.status === 'fulfilled').length;
       const failed = results.length - success;
