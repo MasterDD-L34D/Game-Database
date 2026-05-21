@@ -32,3 +32,42 @@ jobs:
       - name: Run dashboard targeted tests
         working-directory: apps/dashboard
         run: npm test -- --run src/features/records/components/__tests__/RecordTable.test.tsx src/features/records/pages/__tests__/RecordDetailsPage.test.tsx src/features/records/pages/__tests__/RecordEditPage.test.tsx src/features/taxonomies/pages/__tests__/TraitListPage.test.tsx src/features/taxonomies/pages/__tests__/TaxonomyCrudPages.test.tsx src/features/taxonomies/pages/__tests__/TaxonomyDetailsPages.test.tsx src/features/taxonomies/pages/__tests__/TaxonomyRelationPages.test.tsx src/components/data-table/__tests__/DataTable.test.tsx
+
+  search-db:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: game
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d game"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/game?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install backend dependencies
+        working-directory: server
+        run: npm ci
+      - name: Generate Prisma client
+        working-directory: server
+        run: npx prisma generate
+      - name: Apply migrations
+        working-directory: server
+        run: npx prisma migrate deploy
+      - name: Seed database
+        working-directory: server
+        run: npx prisma db seed
+      - name: Run fuzzy-search DB smoke
+        working-directory: server
+        run: node -e "require('./test/search.db.test.js')"
