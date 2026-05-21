@@ -42,7 +42,15 @@
     "andMore": "+{{count}} altri",
     "deleteSuccess": "{{count}} elementi eliminati.",
     "deletePartial": "{{success}} eliminati, {{failed}} falliti.",
-    "deleteAllFailed": "Eliminazione fallita per tutti i {{count}} elementi."
+    "deleteAllFailed": "Eliminazione fallita per tutti i {{count}} elementi.",
+    "editButton": "Modifica {{count}}",
+    "editDialogTitle": "Modifica elementi selezionati",
+    "editFieldLabel": "Campo da modificare",
+    "editValueLabel": "Nuovo valore",
+    "editApply": "Applica a {{count}}",
+    "editSuccess": "{{count}} elementi aggiornati.",
+    "editPartial": "{{success}} aggiornati, {{failed}} falliti.",
+    "editAllFailed": "Aggiornamento fallito per tutti i {{count}} elementi."
   },
   "feedback": {
     "loadError": "Impossibile caricare i dati.",

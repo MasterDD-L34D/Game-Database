@@ -67,7 +67,7 @@ export default function BiomeListPage() {
     () => [
       { name: 'slug', label: t('biomes.form.slug'), required: true },
       { name: 'name', label: t('biomes.form.name'), required: true },
-      { name: 'climate', label: t('biomes.form.climate') },
+      { name: 'climate', label: t('biomes.form.climate'), bulkEditable: true },
       { name: 'parentId', label: t('biomes.form.parentId') },
       { name: 'description', label: t('biomes.form.description'), type: 'textarea' },
     ],
@@ -165,7 +165,7 @@ export default function BiomeListPage() {
         successMessage: t('biomes.feedback.deleted'),
         errorMessage: t('biomes.feedback.deleteError'),
       }}
-      bulkConfig={{ enableDelete: true }}
+      bulkConfig={{ enableDelete: true, enableEdit: true }}
       getItemLabel={(item) => item.name ?? item.slug ?? ''}
     />
   );

@@ -99,7 +99,7 @@ export default function SpeciesBiomeListPage() {
     () => [
       { name: 'speciesId', label: t('speciesBiomes.form.species'), required: true, type: 'select', options: speciesOptions },
       { name: 'biomeId', label: t('speciesBiomes.form.biome'), required: true, type: 'select', options: biomeOptions },
-      { name: 'presence', label: t('speciesBiomes.form.presence'), required: true, type: 'select', options: PRESENCE_OPTIONS.map(option => ({ value: option, label: option })) },
+      { name: 'presence', label: t('speciesBiomes.form.presence'), required: true, type: 'select', options: PRESENCE_OPTIONS.map(option => ({ value: option, label: option })), bulkEditable: true },
       { name: 'abundance', label: t('speciesBiomes.form.abundance'), type: 'number' },
       { name: 'notes', label: t('speciesBiomes.form.notes'), type: 'textarea' },
     ],
@@ -193,7 +193,7 @@ export default function SpeciesBiomeListPage() {
         successMessage: t('speciesBiomes.feedback.deleted'),
         errorMessage: t('speciesBiomes.feedback.deleteError'),
       }}
-      bulkConfig={{ enableDelete: true }}
+      bulkConfig={{ enableDelete: true, enableEdit: true }}
       getItemLabel={item => `${speciesById[item.speciesId]?.scientificName ?? item.speciesId} / ${biomesById[item.biomeId]?.name ?? item.biomeId}`}
     />
   );

@@ -143,7 +143,7 @@ export default function SpeciesTraitListPage() {
     () => [
       { name: 'speciesId', label: t('speciesTraits.form.species'), required: true, type: 'select', options: speciesOptions },
       { name: 'traitId', label: t('speciesTraits.form.trait'), required: true, type: 'select', options: traitOptions },
-      { name: 'category', label: t('speciesTraits.form.category') },
+      { name: 'category', label: t('speciesTraits.form.category'), bulkEditable: true },
       {
         name: 'boolValue',
         label: t('speciesTraits.form.boolValue'),
@@ -307,7 +307,7 @@ export default function SpeciesTraitListPage() {
         successMessage: t('speciesTraits.feedback.deleted'),
         errorMessage: t('speciesTraits.feedback.deleteError'),
       }}
-      bulkConfig={{ enableDelete: true }}
+      bulkConfig={{ enableDelete: true, enableEdit: true }}
       getItemLabel={item => `${speciesById[item.speciesId]?.scientificName ?? item.speciesId} / ${traitsById[item.traitId]?.name ?? item.traitId}`}
     />
   );

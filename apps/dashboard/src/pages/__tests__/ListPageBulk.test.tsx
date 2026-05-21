@@ -1,9 +1,90 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 import { renderListPage, userEvent } from '../../testUtils/renderWithProviders';
 
 type Item = { id: string; name: string };
+
+type EditItem = { id: string; name: string; category: string };
+
+function renderBulkEdit(editFn = vi.fn().mockResolvedValue(undefined)) {
+  const items: EditItem[] = [
+    { id: '1', name: 'Alpha', category: 'X' },
+    { id: '2', name: 'Beta', category: 'Y' },
+  ];
+  const fetcher = vi
+    .fn<(q: string, p?: number, ps?: number) => Promise<{ items: EditItem[]; total: number; page: number; pageSize: number }>>()
+    .mockResolvedValue({ items, total: items.length, page: 0, pageSize: 25 });
+  renderListPage<EditItem>({
+    title: 'Elementi',
+    columns: [{ accessorKey: 'name', header: 'Nome', cell: (info) => info.getValue() }],
+    fetcher,
+    queryKeyBase: ['bulk-edit-items'],
+    autoloadOnMount: true,
+    editConfig: {
+      dialogTitle: 'Modifica',
+      fields: [
+        { name: 'name', label: 'Nome', required: true },
+        { name: 'category', label: 'Categoria', bulkEditable: true },
+      ],
+      schema: z.object({ name: z.string().min(1), category: z.string() }),
+      getInitialValues: (item) => ({ name: item.name, category: item.category }),
+      onSubmit: async (item, values) => {
+        await editFn(item, values);
+      },
+      successMessage: 'Aggiornato',
+    },
+    bulkConfig: { enableEdit: true },
+    getItemLabel: (item) => item.name,
+  });
+  return { editFn, fetcher };
+}
+
+type ReqItem = { id: string; name: string; presence: string };
+
+function renderBulkEditRequired(editFn = vi.fn().mockResolvedValue(undefined)) {
+  const items: ReqItem[] = [
+    { id: '1', name: 'Alpha', presence: 'resident' },
+    { id: '2', name: 'Beta', presence: 'migrant' },
+  ];
+  const fetcher = vi
+    .fn<(q: string, p?: number, ps?: number) => Promise<{ items: ReqItem[]; total: number; page: number; pageSize: number }>>()
+    .mockResolvedValue({ items, total: items.length, page: 0, pageSize: 25 });
+  renderListPage<ReqItem>({
+    title: 'Elementi',
+    columns: [{ accessorKey: 'name', header: 'Nome', cell: (info) => info.getValue() }],
+    fetcher,
+    queryKeyBase: ['bulk-edit-required'],
+    autoloadOnMount: true,
+    editConfig: {
+      dialogTitle: 'Modifica',
+      fields: [
+        { name: 'name', label: 'Nome', required: true },
+        {
+          name: 'presence',
+          label: 'Presenza',
+          required: true,
+          type: 'select',
+          options: [
+            { value: 'resident', label: 'Residente' },
+            { value: 'migrant', label: 'Migrante' },
+          ],
+          bulkEditable: true,
+        },
+      ],
+      schema: z.object({ name: z.string().min(1), presence: z.string().min(1) }),
+      getInitialValues: (item) => ({ name: item.name, presence: item.presence }),
+      onSubmit: async (item, values) => {
+        await editFn(item, values);
+      },
+      successMessage: 'Aggiornato',
+    },
+    bulkConfig: { enableEdit: true },
+    getItemLabel: (item) => item.name,
+  });
+  return { editFn, fetcher };
+}
 
 const columns: ColumnDef<Item, any>[] = [
   { accessorKey: 'name', header: 'Nome', cell: (info) => info.getValue() },
@@ -128,6 +209,89 @@ describe('ListPage bulk selection', () => {
 
     await waitFor(() => expect(deleteFn).toHaveBeenCalledTimes(3));
     await screen.findByText('2 eliminati, 1 falliti.');
+  });
+
+  it('shows the bulk-edit button only when a bulkEditable field exists', async () => {
+    renderBulkEdit();
+    await screen.findByText('Alpha');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('checkbox', { name: 'Seleziona tutte le righe' }));
+    await screen.findByText('2 selezionati');
+    expect(screen.getByRole('button', { name: 'Modifica 2' })).toBeInTheDocument();
+  });
+
+  it('bulk-edits the chosen field across selected rows with full per-row payload', async () => {
+    const editFn = vi.fn().mockResolvedValue(undefined);
+    renderBulkEdit(editFn);
+    await screen.findByText('Alpha');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('checkbox', { name: 'Seleziona tutte le righe' }));
+    await screen.findByText('2 selezionati');
+    await user.click(screen.getByRole('button', { name: 'Modifica 2' }));
+
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByLabelText('Campo da modificare'));
+    await user.click(await screen.findByRole('option', { name: 'Categoria' }));
+    await user.type(within(dialog).getByLabelText('Nuovo valore'), 'Z');
+    await user.click(within(dialog).getByRole('button', { name: 'Applica a 2' }));
+
+    await waitFor(() => expect(editFn).toHaveBeenCalledTimes(2));
+    expect(editFn).toHaveBeenCalledWith(
+      expect.objectContaining({ id: '1' }),
+      { name: 'Alpha', category: 'Z' },
+    );
+    expect(editFn).toHaveBeenCalledWith(
+      expect.objectContaining({ id: '2' }),
+      { name: 'Beta', category: 'Z' },
+    );
+    await screen.findByText('2 elementi aggiornati.');
+  });
+
+  it('reports partial-failure counts when some bulk-edits reject', async () => {
+    const editFn = vi
+      .fn()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('boom'));
+    renderBulkEdit(editFn);
+    await screen.findByText('Alpha');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('checkbox', { name: 'Seleziona tutte le righe' }));
+    await screen.findByText('2 selezionati');
+    await user.click(screen.getByRole('button', { name: 'Modifica 2' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByLabelText('Campo da modificare'));
+    await user.click(await screen.findByRole('option', { name: 'Categoria' }));
+    await user.type(within(dialog).getByLabelText('Nuovo valore'), 'Z');
+    await user.click(within(dialog).getByRole('button', { name: 'Applica a 2' }));
+
+    await waitFor(() => expect(editFn).toHaveBeenCalledTimes(2));
+    await screen.findByText('1 aggiornati, 1 falliti.');
+  });
+
+  it('keeps bulk-edit apply disabled until a required field has a value', async () => {
+    const editFn = vi.fn().mockResolvedValue(undefined);
+    renderBulkEditRequired(editFn);
+    await screen.findByText('Alpha');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('checkbox', { name: 'Seleziona tutte le righe' }));
+    await screen.findByText('2 selezionati');
+    await user.click(screen.getByRole('button', { name: 'Modifica 2' }));
+
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByLabelText('Campo da modificare'));
+    await user.click(await screen.findByRole('option', { name: 'Presenza' }));
+
+    // Required field, value still empty -> apply disabled
+    const apply = within(dialog).getByRole('button', { name: 'Applica a 2' });
+    expect(apply).toBeDisabled();
+
+    await user.click(within(dialog).getByLabelText('Nuovo valore'));
+    await user.click(await screen.findByRole('option', { name: 'Migrante' }));
+    expect(apply).toBeEnabled();
+
+    await user.click(apply);
+    await waitFor(() => expect(editFn).toHaveBeenCalledTimes(2));
+    expect(editFn).toHaveBeenCalledWith(expect.objectContaining({ id: '1' }), { name: 'Alpha', presence: 'migrant' });
   });
 
   it('does not co-toggle distinct rows that lack an id (unique fallback keys)', async () => {

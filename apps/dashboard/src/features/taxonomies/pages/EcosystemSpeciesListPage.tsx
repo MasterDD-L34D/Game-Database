@@ -99,7 +99,7 @@ export default function EcosystemSpeciesListPage() {
     () => [
       { name: 'ecosystemId', label: t('ecosystemSpecies.form.ecosystem'), required: true, type: 'select', options: ecosystemOptions },
       { name: 'speciesId', label: t('ecosystemSpecies.form.species'), required: true, type: 'select', options: speciesOptions },
-      { name: 'role', label: t('ecosystemSpecies.form.role'), required: true, type: 'select', options: ROLE_OPTIONS.map(option => ({ value: option, label: option })) },
+      { name: 'role', label: t('ecosystemSpecies.form.role'), required: true, type: 'select', options: ROLE_OPTIONS.map(option => ({ value: option, label: option })), bulkEditable: true },
       { name: 'abundance', label: t('ecosystemSpecies.form.abundance'), type: 'number' },
       { name: 'notes', label: t('ecosystemSpecies.form.notes'), type: 'textarea' },
     ],
@@ -193,7 +193,7 @@ export default function EcosystemSpeciesListPage() {
         successMessage: t('ecosystemSpecies.feedback.deleted'),
         errorMessage: t('ecosystemSpecies.feedback.deleteError'),
       }}
-      bulkConfig={{ enableDelete: true }}
+      bulkConfig={{ enableDelete: true, enableEdit: true }}
       getItemLabel={item => `${ecosystemsById[item.ecosystemId]?.name ?? item.ecosystemId} / ${speciesById[item.speciesId]?.scientificName ?? item.speciesId}`}
     />
   );
