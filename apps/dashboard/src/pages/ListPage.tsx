@@ -388,6 +388,12 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
     [editConfig?.fields],
   );
   const bulkEditEnabled = Boolean(bulkConfig?.enableEdit && editConfig && bulkEditFields.length > 0);
+  const bulkEditSelectedField = useMemo(
+    () => bulkEditFields.find((f) => f.name === bulkEditFieldName),
+    [bulkEditFields, bulkEditFieldName],
+  );
+  const bulkEditApplyDisabled =
+    bulkInProgress || !bulkEditFieldName || (Boolean(bulkEditSelectedField?.required) && !bulkEditValue);
   const handleBulkEditFieldChange = useCallback((name: string) => {
     setBulkEditFieldName(name);
     setBulkEditValue('');
@@ -875,7 +881,7 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
             <Button
               variant="contained"
               onClick={handleBulkEdit}
-              disabled={bulkInProgress || !bulkEditFieldName}
+              disabled={bulkEditApplyDisabled}
             >
               {t('common:bulk.editApply', { count: selectedCount })}
             </Button>

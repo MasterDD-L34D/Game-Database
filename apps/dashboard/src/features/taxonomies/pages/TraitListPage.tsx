@@ -151,7 +151,7 @@ export default function TraitListPage() {
       { name: 'slug', label: t('traits.form.slug'), required: true },
       { name: 'name', label: t('traits.form.name'), required: true },
       { name: 'category', label: t('traits.form.category'), bulkEditable: true },
-      { name: 'dataType', label: t('traits.form.dataType'), required: true, type: 'select', options: dataTypeOptions, bulkEditable: true },
+      { name: 'dataType', label: t('traits.form.dataType'), required: true, type: 'select', options: dataTypeOptions },
       { name: 'unit', label: t('traits.form.unit'), bulkEditable: true },
       { name: 'description', label: t('traits.form.description'), type: 'textarea' },
       {
