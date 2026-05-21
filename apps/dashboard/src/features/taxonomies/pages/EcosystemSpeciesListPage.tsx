@@ -193,6 +193,7 @@ export default function EcosystemSpeciesListPage() {
         successMessage: t('ecosystemSpecies.feedback.deleted'),
         errorMessage: t('ecosystemSpecies.feedback.deleteError'),
       }}
+      bulkConfig={{ enableDelete: true }}
       getItemLabel={item => `${ecosystemsById[item.ecosystemId]?.name ?? item.ecosystemId} / ${speciesById[item.speciesId]?.scientificName ?? item.speciesId}`}
     />
   );

@@ -193,6 +193,7 @@ export default function SpeciesBiomeListPage() {
         successMessage: t('speciesBiomes.feedback.deleted'),
         errorMessage: t('speciesBiomes.feedback.deleteError'),
       }}
+      bulkConfig={{ enableDelete: true }}
       getItemLabel={item => `${speciesById[item.speciesId]?.scientificName ?? item.speciesId} / ${biomesById[item.biomeId]?.name ?? item.biomeId}`}
     />
   );

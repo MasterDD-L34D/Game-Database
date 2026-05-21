@@ -33,6 +33,17 @@
     "ariaLabel": "Cerca",
     "pressEnter": "Premi Invio per cercare."
   },
+  "bulk": {
+    "selectedCount": "{{count}} selezionati",
+    "deselectAll": "Deseleziona tutto",
+    "deleteButton": "Elimina {{count}}",
+    "deleteConfirmTitle": "Elimina elementi selezionati",
+    "deleteConfirmBody": "Confermi l'eliminazione di {{count}} elementi? L'azione non e reversibile.",
+    "andMore": "+{{count}} altri",
+    "deleteSuccess": "{{count}} elementi eliminati.",
+    "deletePartial": "{{success}} eliminati, {{failed}} falliti.",
+    "deleteAllFailed": "Eliminazione fallita per tutti i {{count}} elementi."
+  },
   "feedback": {
     "loadError": "Impossibile caricare i dati.",
     "recordLoadError": "Impossibile caricare il record.",

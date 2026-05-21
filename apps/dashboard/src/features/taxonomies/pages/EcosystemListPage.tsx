@@ -165,6 +165,7 @@ export default function EcosystemListPage() {
         successMessage: t('ecosystems.feedback.deleted'),
         errorMessage: t('ecosystems.feedback.deleteError'),
       }}
+      bulkConfig={{ enableDelete: true }}
       getItemLabel={(item) => item.name ?? item.slug ?? ''}
     />
   );

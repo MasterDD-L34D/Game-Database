@@ -207,6 +207,7 @@ export default function SpeciesListPage() {
         successMessage: t('species.feedback.deleted'),
         errorMessage: t('species.feedback.deleteError'),
       }}
+      bulkConfig={{ enableDelete: true }}
       getItemLabel={(item) => item.scientificName ?? item.commonName ?? item.slug ?? ''}
     />
   );

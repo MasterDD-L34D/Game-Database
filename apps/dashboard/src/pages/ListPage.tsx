@@ -13,7 +13,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { ColumnDef, type PaginationState, type SortingState } from '@tanstack/react-table';
+import { ColumnDef, type PaginationState, type RowSelectionState, type SortingState } from '@tanstack/react-table';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Controller, useForm, type UseFormReturn } from 'react-hook-form';
 import type { z } from 'zod';
@@ -76,6 +76,11 @@ type DeleteConfig<T> = {
   errorMessage?: string;
 };
 
+type BulkConfig = {
+  enableDelete?: boolean;
+  deleteDialogTitle?: string;
+};
+
 type ListPageProps<TItem, TValues extends Record<string, any>> = {
   title: string;
   columns: ColumnDef<TItem, any>[];
@@ -90,6 +95,7 @@ type ListPageProps<TItem, TValues extends Record<string, any>> = {
   createConfig?: CreateConfig<TValues>;
   editConfig?: EditConfig<TItem, TValues>;
   deleteConfig?: DeleteConfig<TItem>;
+  bulkConfig?: BulkConfig;
   getItemLabel?: (item: TItem) => string;
 };
 
@@ -163,6 +169,7 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
   createConfig,
   editConfig,
   deleteConfig,
+  bulkConfig,
   getItemLabel,
 }: ListPageProps<TItem, TValues>) {
   const { t } = useTranslation();
@@ -194,6 +201,9 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
   const [createOpen, setCreateOpen] = useState(false);
   const [editDialog, setEditDialog] = useState<{ open: boolean; item: TItem | null }>({ open: false, item: null });
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: TItem | null }>({ open: false, item: null });
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkInProgress, setBulkInProgress] = useState(false);
 
   const createResolver = useMemo(
     () => (createConfig ? createZodResolver(createConfig.schema) : undefined),
@@ -266,6 +276,10 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
   useEffect(() => {
     onStateChange?.(criteria);
   }, [criteria, onStateChange]);
+
+  useEffect(() => {
+    setRowSelection({});
+  }, [criteria.query, criteria.page, criteria.pageSize, criteria.sort]);
 
   useEffect(() => {
     if (!shouldFetchRef.current) return;
@@ -352,6 +366,14 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
   const items = pagedData.items ?? [];
   const showSkeleton = isFetching && !data;
   const crudEnabled = Boolean(createConfig || editConfig || deleteConfig);
+  const bulkEnabled = Boolean(bulkConfig?.enableDelete);
+  const resolveRowId = useCallback((row: TItem, index: number) => row.id ?? `__row_${index}`, []);
+  const selectedItems = useMemo(
+    () => items.filter((it, idx) => Boolean(rowSelection[resolveRowId(it, idx)])),
+    [items, rowSelection, resolveRowId],
+  );
+  const selectedCount = selectedItems.length;
+  const clearSelection = useCallback(() => setRowSelection({}), []);
 
   const handleOpenCreate = useCallback(() => {
     if (!createConfig) return;
@@ -405,6 +427,29 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
     shouldFetchRef.current = false;
     await queryClient.invalidateQueries({ queryKey: baseKey, exact: false });
   }, [baseKey, queryClient]);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (!deleteConfig || selectedItems.length === 0) return;
+    setBulkInProgress(true);
+    try {
+      const targets = selectedItems;
+      const results = await Promise.allSettled(targets.map((it) => deleteConfig.mutation(it)));
+      const success = results.filter((r) => r.status === 'fulfilled').length;
+      const failed = results.length - success;
+      if (failed === 0) {
+        enqueueSnackbar(t('common:bulk.deleteSuccess', { count: success }), { variant: 'success' });
+      } else if (success === 0) {
+        enqueueSnackbar(t('common:bulk.deleteAllFailed', { count: failed }), { variant: 'error' });
+      } else {
+        enqueueSnackbar(t('common:bulk.deletePartial', { success, failed }), { variant: 'warning' });
+      }
+      setBulkDeleteOpen(false);
+      setRowSelection({});
+      await refreshList();
+    } finally {
+      setBulkInProgress(false);
+    }
+  }, [deleteConfig, selectedItems, enqueueSnackbar, t, refreshList]);
 
   const createMutation = useMutation<void, unknown, { values: TValues; config: CreateConfig<TValues> }>({
     mutationFn: async ({ values, config }) => {
@@ -572,6 +617,37 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
           onKeyDown={handleKeyDown}
         />
       </Stack>
+      {bulkEnabled && selectedCount > 0 && (
+        <Stack
+          direction="row"
+          spacing={2}
+          alignItems="center"
+          sx={(theme) => ({
+            mb: theme.spacing(3),
+            px: theme.spacing(2),
+            py: theme.spacing(1.5),
+            borderRadius: 1,
+            backgroundColor: theme.palette.action.selected,
+          })}
+        >
+          <Typography variant="body2">{t('common:bulk.selectedCount', { count: selectedCount })}</Typography>
+          <Box sx={{ flexGrow: 1 }} />
+          <Button size="small" variant="text" onClick={clearSelection} disabled={bulkInProgress}>
+            {t('common:bulk.deselectAll')}
+          </Button>
+          {bulkConfig?.enableDelete && deleteConfig && (
+            <Button
+              size="small"
+              color="error"
+              variant="contained"
+              onClick={() => setBulkDeleteOpen(true)}
+              disabled={bulkInProgress}
+            >
+              {t('common:bulk.deleteButton', { count: selectedCount })}
+            </Button>
+          )}
+        </Stack>
+      )}
       {isError && !isFetching && (
         <Alert severity="error" sx={(theme) => ({ mb: theme.spacing(3) })}>
           {error instanceof Error ? error.message : t('common:feedback.loadError')}
@@ -580,7 +656,10 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
       <DataTable<TItem>
         data={items}
         columns={columnsWithActions}
-        selectable={false}
+        selectable={bulkEnabled}
+        rowSelection={rowSelection}
+        onRowSelectionChange={setRowSelection}
+        getRowId={resolveRowId}
         loading={showSkeleton}
         pagination={paginationState}
         onPaginationChange={handlePaginationChange}
@@ -652,6 +731,33 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
             </Button>
             <Button color="error" variant="contained" onClick={handleConfirmDelete} disabled={isDeleting}>
               {isDeleting ? t('common:actions.deleteInProgress') : deleteConfirmLabel}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
+      {bulkConfig?.enableDelete && deleteConfig && (
+        <Dialog
+          open={bulkDeleteOpen}
+          onClose={() => !bulkInProgress && setBulkDeleteOpen(false)}
+          fullWidth
+          maxWidth="xs"
+        >
+          <DialogTitle>{bulkConfig.deleteDialogTitle ?? t('common:bulk.deleteConfirmTitle')}</DialogTitle>
+          <DialogContent>
+            <Typography>{t('common:bulk.deleteConfirmBody', { count: selectedCount })}</Typography>
+            <Box component="ul" sx={(theme) => ({ mt: theme.spacing(1), pl: theme.spacing(3) })}>
+              {selectedItems.slice(0, 5).map((it) => (
+                <li key={it.id}>{resolveItemLabel(it)}</li>
+              ))}
+              {selectedCount > 5 && <li>{t('common:bulk.andMore', { count: selectedCount - 5 })}</li>}
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setBulkDeleteOpen(false)} disabled={bulkInProgress}>
+              {t('common:actions.cancel')}
+            </Button>
+            <Button color="error" variant="contained" onClick={handleBulkDelete} disabled={bulkInProgress}>
+              {bulkInProgress ? t('common:actions.deleteInProgress') : t('common:bulk.deleteButton', { count: selectedCount })}
             </Button>
           </DialogActions>
         </Dialog>

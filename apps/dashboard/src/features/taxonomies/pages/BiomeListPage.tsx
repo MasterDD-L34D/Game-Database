@@ -165,6 +165,7 @@ export default function BiomeListPage() {
         successMessage: t('biomes.feedback.deleted'),
         errorMessage: t('biomes.feedback.deleteError'),
       }}
+      bulkConfig={{ enableDelete: true }}
       getItemLabel={(item) => item.name ?? item.slug ?? ''}
     />
   );
