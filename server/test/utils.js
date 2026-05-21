@@ -170,6 +170,7 @@ function createTaxonomyTestContext() {
       epithet: data.epithet ?? null,
       status: data.status ?? null,
       description: data.description ?? null,
+      deletedAt: data.deletedAt ?? null,
     };
     ensureUniqueSlug(stores.species, record.slug, id);
     stores.species.set(id, clone(record));
@@ -191,6 +192,7 @@ function createTaxonomyTestContext() {
       allowedValues: data.allowedValues ?? null,
       rangeMin: data.rangeMin ?? null,
       rangeMax: data.rangeMax ?? null,
+      deletedAt: data.deletedAt ?? null,
     };
     ensureUniqueSlug(stores.trait, record.slug, id);
     stores.trait.set(id, clone(record));
@@ -208,6 +210,7 @@ function createTaxonomyTestContext() {
       description: data.description ?? null,
       climate: data.climate ?? null,
       parentId: data.parentId ?? null,
+      deletedAt: data.deletedAt ?? null,
     };
     ensureUniqueSlug(stores.biome, record.slug, id);
     stores.biome.set(id, clone(record));
@@ -225,6 +228,7 @@ function createTaxonomyTestContext() {
       description: data.description ?? null,
       region: data.region ?? null,
       climate: data.climate ?? null,
+      deletedAt: data.deletedAt ?? null,
     };
     ensureUniqueSlug(stores.ecosystem, record.slug, id);
     stores.ecosystem.set(id, clone(record));
