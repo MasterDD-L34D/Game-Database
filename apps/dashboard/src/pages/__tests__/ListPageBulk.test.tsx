@@ -298,6 +298,19 @@ describe('ListPage bulk selection', () => {
     );
   });
 
+  it('hides "Aggiungi campo" when only one bulk-editable field exists', async () => {
+    // Codex PR #148 P2: add-row cap must count all rows, not just filled ones,
+    // so single-field entities cannot spawn dead-end empty rows.
+    renderBulkEditRequired();
+    await screen.findByText('Alpha');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('checkbox', { name: 'Seleziona tutte le righe' }));
+    await screen.findByText('2 selezionati');
+    await user.click(screen.getByRole('button', { name: 'Modifica 2' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).queryByRole('button', { name: 'Aggiungi campo' })).not.toBeInTheDocument();
+  });
+
   it('keeps bulk-edit apply disabled until a required field has a value', async () => {
     const editFn = vi.fn().mockResolvedValue(undefined);
     renderBulkEditRequired(editFn);

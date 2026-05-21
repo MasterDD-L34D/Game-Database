@@ -893,7 +893,7 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
                   </Stack>
                 );
               })}
-              {bulkEditValidEdits.length < bulkEditFields.length && (
+              {bulkEdits.length < bulkEditFields.length && (
                 <Button size="small" onClick={addBulkEditRow} sx={{ alignSelf: 'flex-start' }}>
                   {t('common:bulk.editAddField')}
                 </Button>
