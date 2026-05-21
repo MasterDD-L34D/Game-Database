@@ -276,6 +276,10 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
   }, [criteria, onStateChange]);
 
   useEffect(() => {
+    setRowSelection({});
+  }, [criteria.query, criteria.page, criteria.pageSize, criteria.sort]);
+
+  useEffect(() => {
     if (!shouldFetchRef.current) return;
     shouldFetchRef.current = false;
     setHasSearched(true);

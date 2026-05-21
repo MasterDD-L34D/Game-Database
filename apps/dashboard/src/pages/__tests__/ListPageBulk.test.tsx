@@ -67,4 +67,19 @@ describe('ListPage bulk selection', () => {
     await user.click(screen.getByRole('button', { name: 'Deseleziona tutto' }));
     await waitFor(() => expect(screen.queryByText(/selezionati/i)).not.toBeInTheDocument());
   });
+
+  it('clears selection when the search query changes', async () => {
+    renderBulk();
+    await waitFor(() => expect(screen.getByText('Alpha')).toBeInTheDocument());
+
+    const user = userEvent.setup();
+    await user.click(screen.getAllByRole('checkbox', { name: 'Seleziona riga' })[0]);
+    expect(await screen.findByText('1 selezionati')).toBeInTheDocument();
+
+    // Typing a query + Enter changes criteria -> selection must clear
+    const searchBox = screen.getByPlaceholderText('Cerca');
+    await user.type(searchBox, 'Alpha{Enter}');
+
+    await waitFor(() => expect(screen.queryByText(/selezionati/i)).not.toBeInTheDocument());
+  });
 });
