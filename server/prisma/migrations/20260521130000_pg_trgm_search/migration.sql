@@ -1,5 +1,10 @@
--- pg_trgm fuzzy search support (Fase 2 #3). Hand-written; Prisma does not
--- manage GIN gin_trgm_ops indexes but will not drop them.
+-- pg_trgm fuzzy search support (Fase 2 #3). Hand-written CREATE EXTENSION + GIN
+-- indexes. The 11 GIN gin_trgm_ops indexes below ARE modeled in schema.prisma
+-- (@@index([...], type: Gin, ops: raw("gin_trgm_ops")) on the master models), so
+-- `prisma migrate dev` reproduces them and does NOT propose DROP INDEX as drift.
+-- (Earlier note here wrongly claimed Prisma "will not drop them" — on Prisma 5.22
+-- migrate dev DOES emit DROP INDEX for any GIN index missing from schema.prisma.)
+-- The pg_trgm extension is created here via raw SQL and left unmanaged by Prisma.
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE INDEX IF NOT EXISTS "Trait_name_trgm_idx"          ON "Trait"     USING gin ("name" gin_trgm_ops);

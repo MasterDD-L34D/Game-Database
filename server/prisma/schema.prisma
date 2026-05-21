@@ -107,6 +107,13 @@ model Record {
   @@index([pattern])
   @@index([peso])
   @@index([curvatura])
+  // pg_trgm fuzzy-search indexes (PR #151, backs /api/search). Modeled here so
+  // `prisma migrate dev` reproduces them exactly and does NOT propose DROP INDEX
+  // as drift. The pg_trgm extension itself is created by the raw-SQL migration
+  // 20260521130000_pg_trgm_search and is intentionally left unmanaged by Prisma
+  // (no `extensions = [...]`), which keeps the migrate diff fully empty.
+  @@index([nome(ops: raw("gin_trgm_ops"))], type: Gin, map: "Record_nome_trgm_idx")
+  @@index([descrizione(ops: raw("gin_trgm_ops"))], type: Gin, map: "Record_descrizione_trgm_idx")
 }
 
 model AuditLog {
@@ -151,6 +158,10 @@ model Trait {
 
   speciesValues SpeciesTrait[]
   versions      TraitVersion[]
+
+  // pg_trgm fuzzy search (PR #151, /api/search). See Record model for rationale.
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "Trait_name_trgm_idx")
+  @@index([slug(ops: raw("gin_trgm_ops"))], type: Gin, map: "Trait_slug_trgm_idx")
 }
 
 model Biome {
@@ -175,6 +186,10 @@ model Biome {
   species     SpeciesBiome[]
   ecosystems  EcosystemBiome[]
   versions    BiomeVersion[]
+
+  // pg_trgm fuzzy search (PR #151, /api/search). See Record model for rationale.
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "Biome_name_trgm_idx")
+  @@index([slug(ops: raw("gin_trgm_ops"))], type: Gin, map: "Biome_slug_trgm_idx")
 }
 
 model Species {
@@ -213,6 +228,10 @@ model Species {
 
   @@index([scientificName])
   @@index([commonName])
+  // pg_trgm fuzzy search (PR #151, /api/search). See Record model for rationale.
+  @@index([scientificName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Species_sciName_trgm_idx")
+  @@index([commonName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Species_commonName_trgm_idx")
+  @@index([slug(ops: raw("gin_trgm_ops"))], type: Gin, map: "Species_slug_trgm_idx")
 }
 
 model SpeciesTrait {
@@ -263,6 +282,10 @@ model Ecosystem {
   biomes      EcosystemBiome[]
   species     EcosystemSpecies[]
   versions    EcosystemVersion[]
+
+  // pg_trgm fuzzy search (PR #151, /api/search). See Record model for rationale.
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "Ecosystem_name_trgm_idx")
+  @@index([slug(ops: raw("gin_trgm_ops"))], type: Gin, map: "Ecosystem_slug_trgm_idx")
 }
 
 model EcosystemBiome {
