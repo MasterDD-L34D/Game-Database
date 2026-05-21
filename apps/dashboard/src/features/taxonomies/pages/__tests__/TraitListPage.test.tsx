@@ -206,4 +206,12 @@ describe('TraitListPage', () => {
     await screen.findByText('Lunghezza corpo');
     expect(screen.getByRole('checkbox', { name: 'Seleziona tutte le righe' })).toBeInTheDocument();
   });
+
+  it('exposes bulk-edit (Modifica button after select-all)', async () => {
+    const { user } = renderPage();
+    await waitFor(() => expect(taxonomyMocks.listTraits).toHaveBeenCalledTimes(1));
+    await screen.findByText('Lunghezza corpo');
+    await user.click(screen.getByRole('checkbox', { name: 'Seleziona tutte le righe' }));
+    expect(await screen.findByRole('button', { name: /Modifica \d+/ })).toBeInTheDocument();
+  });
 });

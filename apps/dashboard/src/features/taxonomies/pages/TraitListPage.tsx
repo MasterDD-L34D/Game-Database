@@ -150,9 +150,9 @@ export default function TraitListPage() {
     () => [
       { name: 'slug', label: t('traits.form.slug'), required: true },
       { name: 'name', label: t('traits.form.name'), required: true },
-      { name: 'category', label: t('traits.form.category') },
-      { name: 'dataType', label: t('traits.form.dataType'), required: true, type: 'select', options: dataTypeOptions },
-      { name: 'unit', label: t('traits.form.unit') },
+      { name: 'category', label: t('traits.form.category'), bulkEditable: true },
+      { name: 'dataType', label: t('traits.form.dataType'), required: true, type: 'select', options: dataTypeOptions, bulkEditable: true },
+      { name: 'unit', label: t('traits.form.unit'), bulkEditable: true },
       { name: 'description', label: t('traits.form.description'), type: 'textarea' },
       {
         name: 'allowedValues',
@@ -305,7 +305,7 @@ export default function TraitListPage() {
         successMessage: t('traits.feedback.deleted'),
         errorMessage: t('traits.feedback.deleteError'),
       }}
-      bulkConfig={{ enableDelete: true }}
+      bulkConfig={{ enableDelete: true, enableEdit: true }}
       getItemLabel={(item) => item.name ?? item.slug ?? ''}
     />
   );

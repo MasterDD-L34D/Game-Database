@@ -188,7 +188,7 @@ export default function EcosystemBiomeListPage() {
         successMessage: t('ecosystemBiomes.feedback.deleted'),
         errorMessage: t('ecosystemBiomes.feedback.deleteError'),
       }}
-      bulkConfig={{ enableDelete: true }}
+      bulkConfig={{ enableDelete: true, enableEdit: true }}
       getItemLabel={item => `${ecosystemsById[item.ecosystemId]?.name ?? item.ecosystemId} / ${biomesById[item.biomeId]?.name ?? item.biomeId}`}
     />
   );

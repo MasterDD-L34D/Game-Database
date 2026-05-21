@@ -89,14 +89,14 @@ export default function SpeciesListPage() {
       { name: 'slug', label: t('species.form.slug'), required: true },
       { name: 'scientificName', label: t('species.form.scientificName'), required: true },
       { name: 'commonName', label: t('species.form.commonName') },
-      { name: 'kingdom', label: t('species.form.kingdom') },
-      { name: 'phylum', label: t('species.form.phylum') },
-      { name: 'className', label: t('species.form.class') },
-      { name: 'order', label: t('species.form.order') },
-      { name: 'family', label: t('species.form.family') },
-      { name: 'genus', label: t('species.form.genus') },
+      { name: 'kingdom', label: t('species.form.kingdom'), bulkEditable: true },
+      { name: 'phylum', label: t('species.form.phylum'), bulkEditable: true },
+      { name: 'className', label: t('species.form.class'), bulkEditable: true },
+      { name: 'order', label: t('species.form.order'), bulkEditable: true },
+      { name: 'family', label: t('species.form.family'), bulkEditable: true },
+      { name: 'genus', label: t('species.form.genus'), bulkEditable: true },
       { name: 'epithet', label: t('species.form.epithet') },
-      { name: 'status', label: t('species.form.status') },
+      { name: 'status', label: t('species.form.status'), bulkEditable: true },
       { name: 'description', label: t('species.form.description'), type: 'textarea' },
     ],
     [t],
@@ -207,7 +207,7 @@ export default function SpeciesListPage() {
         successMessage: t('species.feedback.deleted'),
         errorMessage: t('species.feedback.deleteError'),
       }}
-      bulkConfig={{ enableDelete: true }}
+      bulkConfig={{ enableDelete: true, enableEdit: true }}
       getItemLabel={(item) => item.scientificName ?? item.commonName ?? item.slug ?? ''}
     />
   );

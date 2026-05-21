@@ -67,8 +67,8 @@ export default function EcosystemListPage() {
     () => [
       { name: 'slug', label: t('ecosystems.form.slug'), required: true },
       { name: 'name', label: t('ecosystems.form.name'), required: true },
-      { name: 'region', label: t('ecosystems.form.region') },
-      { name: 'climate', label: t('ecosystems.form.climate') },
+      { name: 'region', label: t('ecosystems.form.region'), bulkEditable: true },
+      { name: 'climate', label: t('ecosystems.form.climate'), bulkEditable: true },
       { name: 'description', label: t('ecosystems.form.description'), type: 'textarea' },
     ],
     [t],
@@ -165,7 +165,7 @@ export default function EcosystemListPage() {
         successMessage: t('ecosystems.feedback.deleted'),
         errorMessage: t('ecosystems.feedback.deleteError'),
       }}
-      bulkConfig={{ enableDelete: true }}
+      bulkConfig={{ enableDelete: true, enableEdit: true }}
       getItemLabel={(item) => item.name ?? item.slug ?? ''}
     />
   );
