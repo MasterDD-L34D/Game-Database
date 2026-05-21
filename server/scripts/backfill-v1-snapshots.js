@@ -2,95 +2,20 @@
 'use strict';
 // RFC #1 Phase A backfill: copy every master row into its *Version snapshot
 // table under the baseline v1.0.0 version. Idempotent (createMany +
-// skipDuplicates against the (<entity>Id, versionId) unique pair), chunked at
-// 1000 rows, line-buffered progress log.
+// skipDuplicates), chunked, line-buffered progress log.
 //
 // Runs once: if the v1.0.0 baseline already holds any snapshot, the backfill is
 // skipped. Otherwise re-running after new master rows were created (e.g.
 // `dev:setup` re-invokes this script) would append those newer rows into the
-// *released* baseline, mutating what v1.0.0 means (it must stay the original
-// release state). The first run defines v1.0.0; later runs are no-ops.
+// *released* baseline, mutating what v1.0.0 means. The first run defines
+// v1.0.0; later runs are no-ops.
 
-const CHUNK = 1000;
+const { FIELD_MAP, snapshotAllMasters, baselineSnapshotCount } = require('../utils/versionSnapshot');
+
 const BASELINE_TAG = 'v1.0.0';
-
-// Frozen v1.0.0 scalar field set. Do NOT sync this to future schema changes:
-// a snapshot must capture the columns as they existed at v1.0.0 release.
-const FIELD_MAP = {
-  trait: {
-    delegate: 'trait',
-    snapshot: 'traitVersion',
-    fk: 'traitId',
-    fields: [
-      'slug', 'name', 'description', 'category', 'unit', 'dataType',
-      'allowedValues', 'rangeMin', 'rangeMax', 'tier', 'familyType',
-      'energyMaintenance', 'slotProfile', 'usageTags', 'synergies',
-      'conflicts', 'environmentalRequirements', 'inducedMutation',
-      'functionalUse', 'selectiveDrive', 'weakness',
-    ],
-  },
-  biome: {
-    delegate: 'biome',
-    snapshot: 'biomeVersion',
-    fk: 'biomeId',
-    fields: [
-      'slug', 'name', 'description', 'climate', 'parentId', 'summary',
-      'climateTags', 'hazard', 'ecology', 'roleTemplates', 'sizeMin', 'sizeMax',
-    ],
-  },
-  species: {
-    delegate: 'species',
-    snapshot: 'speciesVersion',
-    fk: 'speciesId',
-    fields: [
-      'slug', 'scientificName', 'commonName', 'kingdom', 'phylum', 'class',
-      'order', 'family', 'genus', 'epithet', 'status', 'description',
-      'displayName', 'trophicRole', 'functionalTags', 'flags', 'balance',
-      'playableUnit', 'morphotype', 'vcCoefficients', 'spawnRules',
-      'environmentAffinity', 'jobsBias', 'telemetry',
-    ],
-  },
-  ecosystem: {
-    delegate: 'ecosystem',
-    snapshot: 'ecosystemVersion',
-    fk: 'ecosystemId',
-    fields: ['slug', 'name', 'description', 'region', 'climate'],
-  },
-};
 
 function log(msg) {
   process.stdout.write(`${msg}\n`);
-}
-
-async function backfillEntity(prisma, versionId, cfg) {
-  let skip = 0;
-  let total = 0;
-  for (;;) {
-    const rows = await prisma[cfg.delegate].findMany({
-      skip,
-      take: CHUNK,
-      orderBy: { id: 'asc' },
-    });
-    if (rows.length === 0) break;
-    const data = rows.map((row) => {
-      const snap = { [cfg.fk]: row.id, versionId };
-      for (const f of cfg.fields) snap[f] = row[f];
-      return snap;
-    });
-    const res = await prisma[cfg.snapshot].createMany({ data, skipDuplicates: true });
-    total += res.count;
-    skip += rows.length;
-    log(`  ${cfg.delegate}: processed ${skip}, inserted ${total} (skipped ${skip - total} existing)`);
-    if (rows.length < CHUNK) break;
-  }
-  return total;
-}
-
-async function baselineSnapshotCount(prisma, versionId) {
-  const counts = await Promise.all(
-    Object.values(FIELD_MAP).map((cfg) => prisma[cfg.snapshot].count({ where: { versionId } })),
-  );
-  return counts.reduce((sum, n) => sum + n, 0);
 }
 
 async function backfillV1Snapshots(prisma) {
@@ -107,10 +32,7 @@ async function backfillV1Snapshots(prisma) {
   }
 
   log(`Backfilling snapshots into ${BASELINE_TAG} (${baseline.id})...`);
-  const summary = {};
-  for (const key of Object.keys(FIELD_MAP)) {
-    summary[key] = await backfillEntity(prisma, baseline.id, FIELD_MAP[key]);
-  }
+  const summary = await snapshotAllMasters(prisma, baseline.id, log);
   log(`Backfill complete: ${JSON.stringify(summary)}`);
   return summary;
 }

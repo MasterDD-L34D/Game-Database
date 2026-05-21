@@ -16,6 +16,7 @@ const testFiles = [
   'testInfraRestore.test.js',
   'slug.test.js',
   'versionImmutability.test.js',
+  'taxonomyVersions.test.js',
   'schemaIndexes.test.js',
   'searchQuery.test.js',
   'search.test.js',

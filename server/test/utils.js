@@ -84,14 +84,34 @@ function createTaxonomyTestContext() {
     ecosystem: new Set(),
   };
 
+  // Phase B1: in-memory TaxonomyVersion rows + snapshot rows for route tests.
+  const versionStore = new Map(); // id -> version row
+  let versionCounter = 1;
+  const snapshotRows = {
+    traitVersion: [],
+    biomeVersion: [],
+    speciesVersion: [],
+    ecosystemVersion: [],
+  };
+
   const original = {
     auditLog: {
       create: prisma.auditLog?.create,
     },
-    traitVersion: { count: prisma.traitVersion?.count },
-    biomeVersion: { count: prisma.biomeVersion?.count },
-    speciesVersion: { count: prisma.speciesVersion?.count },
-    ecosystemVersion: { count: prisma.ecosystemVersion?.count },
+    traitVersion: { count: prisma.traitVersion?.count, createMany: prisma.traitVersion?.createMany },
+    biomeVersion: { count: prisma.biomeVersion?.count, createMany: prisma.biomeVersion?.createMany },
+    speciesVersion: { count: prisma.speciesVersion?.count, createMany: prisma.speciesVersion?.createMany },
+    ecosystemVersion: { count: prisma.ecosystemVersion?.count, createMany: prisma.ecosystemVersion?.createMany },
+    taxonomyVersion: {
+      create: prisma.taxonomyVersion?.create,
+      findUnique: prisma.taxonomyVersion?.findUnique,
+      findFirst: prisma.taxonomyVersion?.findFirst,
+      findMany: prisma.taxonomyVersion?.findMany,
+      update: prisma.taxonomyVersion?.update,
+      updateMany: prisma.taxonomyVersion?.updateMany,
+      delete: prisma.taxonomyVersion?.delete,
+    },
+    $transaction: prisma.$transaction,
     species: {
       count: prisma.species?.count,
       findMany: prisma.species?.findMany,
@@ -272,9 +292,16 @@ function createTaxonomyTestContext() {
     const delegate = `${model}Version`;
     prisma[delegate] = prisma[delegate] || {};
     prisma[delegate].count = async ({ where = {} } = {}) => {
+      if (where.versionId !== undefined) {
+        return snapshotRows[delegate].filter((r) => r.versionId === where.versionId).length;
+      }
       const isReleased = where.version && where.version.status === 'released';
       const masterId = where[fk];
       return isReleased && masterId != null && releasedSnapshots[model].has(masterId) ? 1 : 0;
+    };
+    prisma[delegate].createMany = async ({ data = [] } = {}) => {
+      for (const row of data) snapshotRows[delegate].push(row);
+      return { count: data.length };
     };
   }
 
@@ -293,6 +320,86 @@ function createTaxonomyTestContext() {
     createVersionMock('trait');
     createVersionMock('biome');
     createVersionMock('ecosystem');
+    prisma.$transaction = async (fn) => fn(prisma);
+    prisma.taxonomyVersion = prisma.taxonomyVersion || {};
+    prisma.taxonomyVersion.create = async ({ data }) => {
+      if ([...versionStore.values()].some((v) => v.tag === data.tag)) {
+        const err = new Error('Unique constraint failed');
+        err.code = 'P2002';
+        err.meta = { target: ['tag'] };
+        throw err;
+      }
+      const id = `ver-${versionCounter}`;
+      versionCounter += 1;
+      const row = {
+        id,
+        tag: data.tag,
+        status: data.status || 'draft',
+        description: data.description ?? null,
+        releasedAt: data.releasedAt ?? null,
+        releasedBy: data.releasedBy ?? null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      versionStore.set(id, { ...row });
+      return { ...row };
+    };
+    prisma.taxonomyVersion.findUnique = async ({ where = {} } = {}) => {
+      if (where.id) return versionStore.has(where.id) ? { ...versionStore.get(where.id) } : null;
+      if (where.tag) {
+        const found = [...versionStore.values()].find((v) => v.tag === where.tag);
+        return found ? { ...found } : null;
+      }
+      return null;
+    };
+    // NOTE: the single-draft invariant is DB-enforced (partial unique index) in
+    // production; this mock only does first-match and cannot surface a duplicate-draft bug.
+    prisma.taxonomyVersion.findFirst = async ({ where = {} } = {}) => {
+      const found = [...versionStore.values()].find((v) => !where.status || v.status === where.status);
+      return found ? { ...found } : null;
+    };
+    // NOTE: only the list-endpoint query shape (`where.status.not`) is modeled.
+    prisma.taxonomyVersion.findMany = async ({ where = {} } = {}) => {
+      let rows = [...versionStore.values()];
+      if (where.status && where.status.not) rows = rows.filter((v) => v.status !== where.status.not);
+      rows.sort((a, b) => {
+        const av = a.releasedAt ? new Date(a.releasedAt).getTime() : Infinity;
+        const bv = b.releasedAt ? new Date(b.releasedAt).getTime() : Infinity;
+        return bv - av; // releasedAt desc, nulls (drafts) first
+      });
+      return rows.map((v) => ({ ...v }));
+    };
+    prisma.taxonomyVersion.update = async ({ where = {}, data = {} } = {}) => {
+      const row = versionStore.get(where.id);
+      if (!row) {
+        const err = new Error('Record to update not found.');
+        err.code = 'P2025';
+        throw err;
+      }
+      const updated = { ...row, ...data, updatedAt: new Date() };
+      versionStore.set(where.id, updated);
+      return { ...updated };
+    };
+    prisma.taxonomyVersion.updateMany = async ({ where = {}, data = {} } = {}) => {
+      let count = 0;
+      for (const [id, row] of versionStore) {
+        if (where.id !== undefined && row.id !== where.id) continue;
+        if (where.status !== undefined && row.status !== where.status) continue;
+        versionStore.set(id, { ...row, ...data, updatedAt: new Date() });
+        count += 1;
+      }
+      return { count };
+    };
+    prisma.taxonomyVersion.delete = async ({ where = {} } = {}) => {
+      const row = versionStore.get(where.id);
+      if (!row) {
+        const err = new Error('Record to delete does not exist.');
+        err.code = 'P2025';
+        throw err;
+      }
+      versionStore.delete(where.id);
+      return { ...row };
+    };
   }
 
   function restore() {
@@ -329,6 +436,15 @@ function createTaxonomyTestContext() {
     for (const delegate of ['traitVersion', 'biomeVersion', 'speciesVersion', 'ecosystemVersion']) {
       if (original[delegate] && original[delegate].count) prisma[delegate].count = original[delegate].count;
       else if (prisma[delegate]) delete prisma[delegate].count;
+      if (original[delegate] && original[delegate].createMany) prisma[delegate].createMany = original[delegate].createMany;
+      else if (prisma[delegate]) delete prisma[delegate].createMany;
+    }
+    if (original.$transaction) prisma.$transaction = original.$transaction;
+    if (prisma.taxonomyVersion) {
+      for (const op of ['create', 'findUnique', 'findFirst', 'findMany', 'update', 'updateMany', 'delete']) {
+        if (original.taxonomyVersion && original.taxonomyVersion[op]) prisma.taxonomyVersion[op] = original.taxonomyVersion[op];
+        else delete prisma.taxonomyVersion[op];
+      }
     }
   }
 
@@ -345,6 +461,12 @@ function createTaxonomyTestContext() {
     releasedSnapshots.trait.clear();
     releasedSnapshots.biome.clear();
     releasedSnapshots.ecosystem.clear();
+    versionStore.clear();
+    versionCounter = 1;
+    snapshotRows.traitVersion.length = 0;
+    snapshotRows.biomeVersion.length = 0;
+    snapshotRows.speciesVersion.length = 0;
+    snapshotRows.ecosystemVersion.length = 0;
   }
 
   return {
