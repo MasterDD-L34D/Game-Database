@@ -351,16 +351,19 @@ function createTaxonomyTestContext() {
       }
       return null;
     };
+    // NOTE: the single-draft invariant is DB-enforced (partial unique index) in
+    // production; this mock only does first-match and cannot surface a duplicate-draft bug.
     prisma.taxonomyVersion.findFirst = async ({ where = {} } = {}) => {
       const found = [...versionStore.values()].find((v) => !where.status || v.status === where.status);
       return found ? { ...found } : null;
     };
+    // NOTE: only the list-endpoint query shape (`where.status.not`) is modeled.
     prisma.taxonomyVersion.findMany = async ({ where = {} } = {}) => {
       let rows = [...versionStore.values()];
       if (where.status && where.status.not) rows = rows.filter((v) => v.status !== where.status.not);
       rows.sort((a, b) => {
-        const av = a.releasedAt ? a.releasedAt.getTime() : Infinity;
-        const bv = b.releasedAt ? b.releasedAt.getTime() : Infinity;
+        const av = a.releasedAt ? new Date(a.releasedAt).getTime() : Infinity;
+        const bv = b.releasedAt ? new Date(b.releasedAt).getTime() : Infinity;
         return bv - av; // releasedAt desc, nulls (drafts) first
       });
       return rows.map((v) => ({ ...v }));
