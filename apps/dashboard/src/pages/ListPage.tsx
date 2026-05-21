@@ -13,7 +13,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { ColumnDef, type PaginationState, type SortingState } from '@tanstack/react-table';
+import { ColumnDef, type PaginationState, type RowSelectionState, type SortingState } from '@tanstack/react-table';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Controller, useForm, type UseFormReturn } from 'react-hook-form';
 import type { z } from 'zod';
@@ -76,6 +76,11 @@ type DeleteConfig<T> = {
   errorMessage?: string;
 };
 
+type BulkConfig = {
+  enableDelete?: boolean;
+  deleteDialogTitle?: string;
+};
+
 type ListPageProps<TItem, TValues extends Record<string, any>> = {
   title: string;
   columns: ColumnDef<TItem, any>[];
@@ -90,6 +95,7 @@ type ListPageProps<TItem, TValues extends Record<string, any>> = {
   createConfig?: CreateConfig<TValues>;
   editConfig?: EditConfig<TItem, TValues>;
   deleteConfig?: DeleteConfig<TItem>;
+  bulkConfig?: BulkConfig;
   getItemLabel?: (item: TItem) => string;
 };
 
@@ -163,6 +169,7 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
   createConfig,
   editConfig,
   deleteConfig,
+  bulkConfig,
   getItemLabel,
 }: ListPageProps<TItem, TValues>) {
   const { t } = useTranslation();
@@ -194,6 +201,7 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
   const [createOpen, setCreateOpen] = useState(false);
   const [editDialog, setEditDialog] = useState<{ open: boolean; item: TItem | null }>({ open: false, item: null });
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: TItem | null }>({ open: false, item: null });
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   const createResolver = useMemo(
     () => (createConfig ? createZodResolver(createConfig.schema) : undefined),
@@ -352,6 +360,12 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
   const items = pagedData.items ?? [];
   const showSkeleton = isFetching && !data;
   const crudEnabled = Boolean(createConfig || editConfig || deleteConfig);
+  const bulkEnabled = Boolean(bulkConfig?.enableDelete);
+  const selectedItems = useMemo(
+    () => items.filter((it) => Boolean(it.id) && Boolean(rowSelection[it.id as string])),
+    [items, rowSelection],
+  );
+  const selectedCount = selectedItems.length;
 
   const handleOpenCreate = useCallback(() => {
     if (!createConfig) return;
@@ -580,7 +594,10 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
       <DataTable<TItem>
         data={items}
         columns={columnsWithActions}
-        selectable={false}
+        selectable={bulkEnabled}
+        rowSelection={rowSelection}
+        onRowSelectionChange={setRowSelection}
+        getRowId={(row) => row.id ?? ''}
         loading={showSkeleton}
         pagination={paginationState}
         onPaginationChange={handlePaginationChange}
