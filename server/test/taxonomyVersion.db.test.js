@@ -9,8 +9,11 @@ const { backfillV1Snapshots } = require('../scripts/backfill-v1-snapshots');
 const TEST_DRAFT_PREFIX = 'test-draft-';
 
 test.after(async () => {
-  await prisma.taxonomyVersion.deleteMany({ where: { tag: { startsWith: TEST_DRAFT_PREFIX } } });
-  await prisma.$disconnect();
+  try {
+    await prisma.taxonomyVersion.deleteMany({ where: { tag: { startsWith: TEST_DRAFT_PREFIX } } });
+  } finally {
+    await prisma.$disconnect();
+  }
 });
 
 test('baseline v1.0.0 exists and is released', async () => {
