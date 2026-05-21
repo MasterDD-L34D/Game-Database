@@ -285,6 +285,9 @@ export default function ListPage<TItem extends { id?: string }, TValues extends 
 
   useEffect(() => {
     setRowSelection({});
+    setBulkEditOpen(false);
+    setBulkEditFieldName('');
+    setBulkEditValue('');
   }, [criteria.query, criteria.page, criteria.pageSize, criteria.sort]);
 
   useEffect(() => {
