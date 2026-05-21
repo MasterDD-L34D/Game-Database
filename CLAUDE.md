@@ -107,6 +107,16 @@ cd Game && npm run start:api                 # API on 3334
 # Game backend will fetch trait glossary from http://localhost:3333
 ```
 
+## Migration discipline (issue #159)
+
+`prisma migrate dev` is **interactive** (prompts for the migration name + confirmations) AND, on Prisma 5.x, **refuses to run in a non-interactive environment at all** — in an agent/CI context with no TTY it either hangs forever waiting for input (a real run hung ~5.4h) or errors out. In any automated path:
+
+- **Author** a migration: `npx prisma migrate diff --from-schema-datamodel <prev> --to-schema-datamodel prisma/schema.prisma --script > prisma/migrations/<ts>_<name>/migration.sql` (read-only diff; `migrate dev --create-only --name` is NOT a reliable substitute — it is also blocked non-interactively on Prisma 5.x).
+- **Apply**: `npx prisma migrate deploy` (non-interactive).
+- **Inspect only**: `npx prisma migrate diff ...` (read-only).
+
+NEVER run bare `npx prisma migrate dev` in automation. Always run prisma from `server/` (the root resolves a different binary with different flags). A leftover hung `migrate dev` can also hold a Postgres advisory lock — if `migrate deploy` errors P1002, look for an idle backend holding `pg_advisory_lock` and terminate that single backend (do not reset the DB).
+
 ## Code review protocol (MANDATORY pre-merge)
 
 **Before squash-merging ANY PR, you MUST check inline review comments.**

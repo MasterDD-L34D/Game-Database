@@ -2,7 +2,7 @@
 
 **Date**: 2026-05-21
 **Author**: parallel-#2 session (Ryzen, Claude opus-4.7)
-**Status**: IN-PROGRESS — Phase A merged `1f642ee` (#154). Eduardo ratified all 7 recommended resolutions (2026-05-21). Phase B/C deferred to separate RFCs/PRs.
+**Status**: IN-PROGRESS — Phase A merged `1f642ee` (#154), Phase B1 (version lifecycle) merged `617215f` (#158), Phase B2 (soft-delete + restore) merged `4c85f49` (#160) + PUT-on-deleted guard `b2fa883` (#161). Eduardo ratified all 7 recommended resolutions (2026-05-21). **Remaining: Phase C** (read-path `?versionId=` filter + Game `EVO_TAXONOMY_VERSION` env pin) — cross-repo, Eduardo-gated, separate RFC/PR.
 **Scope**: Game-Database schema + Game build-time consumer + RFC-gated cross-repo touch
 **Spec reference**: `docs/superpowers/specs/2026-05-20-game-database-value-roadmap-design.md` § Fase 3 deliverable 1 "Schema versioning"
 
