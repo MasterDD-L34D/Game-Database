@@ -15,6 +15,7 @@ const ecosystemSpeciesRouter = require('./routes/ecosystemSpecies');
 const ecosystemsRouter = require('./routes/ecosystems');
 const dashboardRouter = require('./routes/dashboard');
 const auditRouter = require('./routes/audit');
+const taxonomyVersionsRouter = require('./routes/taxonomyVersions');
 const searchRouter = require('./routes/search');
 
 function createApp() {
@@ -62,6 +63,7 @@ function createApp() {
   app.use('/api/ecosystem-species', ecosystemSpeciesRouter);
   app.use('/api/ecosystems', ecosystemsRouter);
   app.use('/api/audit', auditRouter);
+  app.use('/api/taxonomy/versions', taxonomyVersionsRouter);
   app.use('/api/search', searchRouter);
 
   if (process.env.SERVE_DASHBOARD === '1') {
