@@ -64,7 +64,14 @@ router.post('/', requireAdmin, async (req, res) => {
     try {
       created = await prisma.taxonomyVersion.create({ data: { tag, description, status: 'draft' } });
     } catch (err) {
-      if (err.code === 'P2002') return sendError(res, 409, 'TAG_EXISTS', 'Version tag already exists', { tag });
+      if (err.code === 'P2002') {
+        // Two unique constraints can fire: the `tag` index, or the single-draft
+        // partial index (race: a concurrent create slipped past the pre-check).
+        // Discriminate so a draft race isn't mislabeled as a duplicate tag.
+        const target = Array.isArray(err.meta?.target) ? err.meta.target.join(',') : String(err.meta?.target || '');
+        if (target.includes('tag')) return sendError(res, 409, 'TAG_EXISTS', 'Version tag already exists', { tag });
+        return sendError(res, 409, 'DRAFT_EXISTS', 'A draft version already exists; release or delete it first');
+      }
       throw err;
     }
 
@@ -83,15 +90,14 @@ router.post('/:tag/release', requireAdmin, async (req, res) => {
       return sendError(res, 409, 'INVALID_STATE', `Only a draft can be released (status=${version.status})`);
     }
     const releasedBy = req.user || null;
-    const counts = await prisma.$transaction(async (tx) => {
+    const { counts, updated } = await prisma.$transaction(async (tx) => {
       const c = await snapshotAllMasters(tx, version.id);
-      await tx.taxonomyVersion.update({
+      const u = await tx.taxonomyVersion.update({
         where: { id: version.id },
         data: { status: 'released', releasedAt: new Date(), releasedBy },
       });
-      return c;
+      return { counts: c, updated: u };
     });
-    const updated = await prisma.taxonomyVersion.findUnique({ where: { id: version.id } });
     await logAudit(req, 'TaxonomyVersion', version.id, 'UPDATE', { tag: version.tag, status: 'released', counts });
     return res.json({ version: updated, counts });
   } catch (error) {
