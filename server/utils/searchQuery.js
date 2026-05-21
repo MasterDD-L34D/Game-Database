@@ -40,20 +40,26 @@ function ident(name) {
   return Prisma.raw(`"${name}"`);
 }
 
-function armFor(key, q, threshold) {
+function armFor(key, q) {
   const { table, cols, label, slug, entity } = ENTITY_MAP[key];
   const simExprs = cols.map((c) => Prisma.sql`similarity(${ident(c)}, ${q})`);
   const score = Prisma.sql`GREATEST(${Prisma.join(simExprs, ', ')})`;
+  // WHERE uses the pg_trgm `%` operator (GIN-trgm-index accelerated). The
+  // similarity floor is supplied per-request via set_limit() (see route), so
+  // `col % q` means similarity(col, q) >= the session threshold. similarity()
+  // is still computed in SELECT for ranking only.
+  const matchExprs = cols.map((c) => Prisma.sql`${ident(c)} % ${q}`);
+  const whereMatch = Prisma.join(matchExprs, ' OR ');
   const slugExpr = slug ? Prisma.sql`${ident(slug)}` : Prisma.sql`NULL`;
   return Prisma.sql`
     SELECT ${entity}::text AS entity, "id", ${slugExpr} AS slug, ${ident(label)} AS label, ${score} AS score
       FROM ${ident(table)}
-     WHERE ${score} >= ${threshold}`;
+     WHERE (${whereMatch})`;
 }
 
-function buildFuzzySearchSql({ entities, q, threshold, limit }) {
+function buildFuzzySearchSql({ entities, q, limit }) {
   const list = parseEntities(entities);
-  const arms = list.map((key) => armFor(key, q, threshold));
+  const arms = list.map((key) => armFor(key, q));
   return Prisma.sql`
     SELECT entity, id, slug, label, score FROM (
       ${Prisma.join(arms, ' UNION ALL ')}

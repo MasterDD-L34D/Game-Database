@@ -1,4 +1,5 @@
 const express = require('express');
+const { Prisma } = require('@prisma/client');
 const prisma = require('../db/prisma');
 const { AppError, handleError } = require('../utils/httpErrors');
 const { buildFuzzySearchSql } = require('../utils/searchQuery');
@@ -25,8 +26,14 @@ router.get('/', async (req, res) => {
     const limit = Math.trunc(clampNumber(req.query.limit, DEFAULT_LIMIT, 1, MAX_LIMIT));
     const threshold = clampNumber(req.query.threshold, DEFAULT_THRESHOLD, 0, 1);
 
-    const sql = buildFuzzySearchSql({ entities: req.query.entities, q, threshold, limit });
-    const rows = await prisma.$queryRaw(sql);
+    const sql = buildFuzzySearchSql({ entities: req.query.entities, q, limit });
+    // set_limit() sets pg_trgm.similarity_threshold for the connection so the
+    // `col % q` filter (GIN-trgm accelerated) means similarity >= threshold.
+    // Both statements must share one connection ⇒ run inside a transaction.
+    const rows = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw(Prisma.sql`SELECT set_limit(${threshold}::real)`);
+      return tx.$queryRaw(sql);
+    });
 
     const results = rows.map((r) => ({
       entity: r.entity,

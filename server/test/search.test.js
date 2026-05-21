@@ -3,17 +3,31 @@ const assert = require('node:assert/strict');
 const prisma = require('../db/prisma');
 const { startServer, closeServer } = require('./utils');
 
-// The route uses prisma.$queryRaw (tagged template). Stub it to return fixtures.
-function stubQueryRaw(rows) {
-  const original = prisma.$queryRaw;
-  prisma.$queryRaw = async () => rows;
+// The route runs inside prisma.$transaction(cb), calling tx.$queryRaw twice
+// (set_limit, then the search). Stub $transaction to supply a fake tx whose
+// $queryRaw returns the fixture rows for the search call (and a no-op for
+// set_limit). Capture the search SQL object for assertions.
+function stubTransaction(rows, onSearchSql) {
+  const original = prisma.$transaction;
+  prisma.$transaction = async (cb) => {
+    let call = 0;
+    const tx = {
+      $queryRaw: async (sqlObj) => {
+        call += 1;
+        if (call === 1) return [{ set_limit: 0.3 }]; // set_limit
+        if (onSearchSql) onSearchSql(sqlObj);
+        return rows;
+      },
+    };
+    return cb(tx);
+  };
   return () => {
-    prisma.$queryRaw = original;
+    prisma.$transaction = original;
   };
 }
 
 test('GET /api/search returns shaped ranked results', async () => {
-  const restore = stubQueryRaw([
+  const restore = stubTransaction([
     { entity: 'Species', id: 'sp1', slug: 'lynx-lynx', label: 'Lynx lynx', score: 0.45 },
     { entity: 'Trait', id: 'tr1', slug: 'lince', label: 'Lince', score: 0.31 },
   ]);
@@ -60,12 +74,10 @@ test('GET /api/search 400 on unknown entity', async () => {
 });
 
 test('GET /api/search clamps limit and passes it through', async () => {
-  const original = prisma.$queryRaw;
   let capturedSql = null;
-  prisma.$queryRaw = async (sqlObj) => {
+  const restore = stubTransaction([], (sqlObj) => {
     capturedSql = sqlObj;
-    return [];
-  };
+  });
   const { server, baseUrl } = await startServer();
   try {
     const res = await fetch(`${baseUrl}/api/search?q=x&limit=9999`);
@@ -73,6 +85,6 @@ test('GET /api/search clamps limit and passes it through', async () => {
     assert.equal(capturedSql.values[capturedSql.values.length - 1], 50);
   } finally {
     await closeServer(server);
-    prisma.$queryRaw = original;
+    restore();
   }
 });
