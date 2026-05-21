@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Goals (S/M/L)
+
+> Canonical per-repo goals. Hub mirror: `codemasterdd/GOALS.md`. Horizons: Short=weeks / Mid=1-2mo / Long=3-6mo.
+
+- **Short**: Fase 3 schema versioning Phase A (#154 TaxonomyVersion + snapshot tables); DB hygiene (#155 GIN indexes, slug constraints).
+- **Mid**: complete schema versioning (revertable taxonomy changes); curator audit-UI maturity (Fase 2 done).
+- **Long**: robust canonical content backend -- versioned, auditable taxonomy provider feeding Game via `evo:import`.
+
 ## Project overview
 
 **Game-Database** is a taxonomy CMS for the Evo-Tactics project. It provides a CRUD dashboard (React) and REST API (Express + Prisma + PostgreSQL) for managing traits, species, biomes, and ecosystems. Most docs and commit messages are in **Italian** — match that language when editing docs, but code identifiers stay English.
