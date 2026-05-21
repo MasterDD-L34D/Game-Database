@@ -193,6 +193,26 @@ Phase B/C each open a separate RFC + PR chain.
 6. **`@db.VarChar(80)` slug constraint deferral**: still pending from PR-α follow-up. Should it be part of Phase A migration or stay separate?
 7. **Hard-delete of master row drops snapshot history** (added 2026-05-21 per Codex P1 design revision): if we keep `onDelete: Cascade`, deleting Trait X destroys all its TraitVersion rows including released snapshots. Options: (a) add `deletedAt` soft-delete column to master tables; (b) change FK to `onDelete: SetNull` and keep orphaned snapshots; (c) accept this loss with explicit warning in delete UI. Recommend (a) for v1, but flag for review.
 
+## Recommended resolutions (DRAFT 2026-05-21 — for Eduardo + coordinator ratification)
+
+Research-backed recommendations for the 7 open questions. Not yet binding —
+ratify or override. Rationale leans YAGNI + "Phase A stays minimal".
+
+| # | Question | Recommended | Rationale |
+|---|---|---|---|
+| 1 | Initial seed tag | **`v1.0.0` released** | The data is already production-canonical (Game consumes it live via `/api/traits/glossary`). `v0.x` would falsely signal pre-release. Major=1 = stable baseline. |
+| 2 | Draft enforcement | **Single draft (partial unique index)** | N concurrent drafts needs an "active draft" pointer + merge resolution with zero current demand (YAGNI). Single draft = simplest correct; multi-draft is RFC #2 (branch/staging) territory. |
+| 3 | Per-entity vs taxonomy-wide | **Taxonomy-wide (4 masters as a set)** | A version = a coherent balance snapshot; independent per-entity versions explode the combination matrix and Game pins ONE taxonomy version. Per-entity = explicit v2 non-goal. |
+| 4 | Audit interaction | **Log version lifecycle to AuditLog `entity='TaxonomyVersion'`** (create/release/retire); **log-only, NOT revertable** | `logAudit` + the audit endpoint are already generic over the entity string. Gives free release history. `TaxonomyVersion` must NOT join `REVERTABLE_ENTITY_MODELS` (release/retire are state flips, not row resurrections). |
+| 5 | Records inclusion | **Exclude — confirmed non-goal** | Record = per-user artistic schede, not balance taxonomy; Game does not consume Records. Snapshot tables cover **4** masters (Trait/Biome/Species/Ecosystem), not 5. |
+| 6 | `@db.VarChar(80)` slug constraint | **Separate PR (PR-α2), NOT Phase A** | The schema currently has unconstrained `slug String @unique` (no length). The constraint mirrors app-level `normalizeSlug` max-80 — an orthogonal PR-α follow-up. Folding it into the versioning migration couples two concerns. Keep Phase A focused. |
+| 7 | Hard-delete drops snapshot history | **(a) soft-delete `deletedAt` — scheduled for Phase B, NOT Phase A** | True immutability needs the master row to survive; (b) SetNull orphans break FK semantics, (c) accept-loss violates the immutability goal. BUT Phase A only **adds** snapshot tables + backfills (master tables untouched, no deletes occur) so the cascade risk does not exist yet. `deletedAt` (cross-cutting: every GET must filter `deletedAt IS NULL`) lands with Phase B write-path adoption. |
+
+### Knock-on design clarifications
+
+- **Scope**: with #5 confirmed, the design's "5 entities" references should read **4** (Record excluded). The §1/§2 model text already lists 4 snapshot tables — consistent.
+- **Phase A minimality**: #6 + #7 both defer cross-cutting changes out of Phase A. Phase A = `TaxonomyVersion` model + enum + 4 snapshot tables + seed `v1.0.0` + backfill. No master-table column changes, no `deletedAt`, no slug constraint.
+
 ## Risk matrix
 
 | Risk | Severity | Mitigation |
@@ -205,12 +225,17 @@ Phase B/C each open a separate RFC + PR chain.
 
 ## Acceptance criteria (for Phase A landing)
 
-- [ ] `TaxonomyVersion` model + enum in `prisma/schema.prisma`
-- [ ] Migration SQL: CREATE TABLE + partial unique index + 4 ALTER TABLE ADD COLUMN versionId
-- [ ] Seed file inserts `v1.0.0` released + backfills all existing rows
+Updated 2026-05-21 to match the copy-on-write snapshot design (§2) and the
+recommended resolutions above — the prior `ADD COLUMN versionId` wording
+predated the Codex P1 revision and is superseded.
+
+- [ ] `TaxonomyVersion` model + `TaxonomyVersionStatus` enum in `prisma/schema.prisma`
+- [ ] 4 snapshot models: `TraitVersion`, `BiomeVersion`, `SpeciesVersion`, `EcosystemVersion` (Record excluded per Q5)
+- [ ] Migration SQL: CREATE TABLE (TaxonomyVersion + 4 snapshot tables) + partial unique index on `status='draft'`. **No** master-table column changes (no `versionId` on masters, no `deletedAt`, no slug constraint — Q6/Q7 deferred)
+- [ ] Seed/data migration inserts `v1.0.0` (status `released`) + backfills one snapshot row per existing master row, in 1000-row chunks with progress log
 - [ ] `docs/schema-reference.md` regenerated (CI gate)
-- [ ] 5+ unit tests on TaxonomyVersion uniqueness, single-draft enforcement, FK constraint
-- [ ] Existing 217 backend tests still verde (zero regression)
+- [ ] 5+ unit tests: `TaxonomyVersion.tag` uniqueness, single-draft partial-unique enforcement, snapshot FK constraint, backfill row-count parity
+- [ ] Existing backend suite green (zero regression) — current baseline ~231 `test()` calls; assert no drop
 - [ ] Spec doc updated with Phase A merge SHA + status flip to IN-PROGRESS
 
 ## Follow-up RFCs
@@ -229,11 +254,16 @@ Phase B/C each open a separate RFC + PR chain.
 
 ## Coordinator + Eduardo review checklist
 
+Recommended resolutions are in the "Recommended resolutions" section above —
+ratify (✓) or override each.
+
 - [ ] Confirm goals + non-goals are correct scope
-- [ ] Decide open question #1 (initial tag)
-- [ ] Decide open question #2 (single vs N draft policy)
-- [ ] Decide open question #3 (per-entity vs taxonomy-wide)
-- [ ] Decide open question #5 (Records inclusion)
-- [ ] Decide open question #6 (slug constraint folding)
-- [ ] Approve Phase A migration approach
+- [ ] Q1 initial tag — rec: `v1.0.0`
+- [ ] Q2 single vs N draft — rec: single draft
+- [ ] Q3 per-entity vs taxonomy-wide — rec: taxonomy-wide
+- [ ] Q4 audit interaction — rec: log lifecycle, non-revertable
+- [ ] Q5 Records inclusion — rec: exclude (4 snapshot tables)
+- [ ] Q6 slug constraint folding — rec: separate PR (not Phase A)
+- [ ] Q7 hard-delete cascade — rec: soft-delete `deletedAt` in Phase B (not Phase A)
+- [ ] Approve Phase A migration approach (snapshot tables, no master changes)
 - [ ] Sign off on the cross-repo Phase C contract
