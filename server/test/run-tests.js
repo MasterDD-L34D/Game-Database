@@ -15,6 +15,7 @@ const testFiles = [
   'basicAuth.test.js',
   'testInfraRestore.test.js',
   'slug.test.js',
+  'schemaIndexes.test.js',
   'searchQuery.test.js',
   'search.test.js',
   'audit.test.js',
