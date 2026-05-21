@@ -50,7 +50,9 @@
     "editApply": "Applica a {{count}}",
     "editSuccess": "{{count}} elementi aggiornati.",
     "editPartial": "{{success}} aggiornati, {{failed}} falliti.",
-    "editAllFailed": "Aggiornamento fallito per tutti i {{count}} elementi."
+    "editAllFailed": "Aggiornamento fallito per tutti i {{count}} elementi.",
+    "editAddField": "Aggiungi campo",
+    "editRemoveField": "Rimuovi campo"
   },
   "feedback": {
     "loadError": "Impossibile caricare i dati.",
