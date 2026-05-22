@@ -1,0 +1,71 @@
+{
+  "versions": {
+    "title": "Versioni tassonomia",
+    "includeRetired": "Mostra ritirate",
+    "columns": {
+      "tag": "Tag",
+      "status": "Stato",
+      "releasedAt": "Rilasciata il",
+      "description": "Descrizione",
+      "actions": "Azioni"
+    },
+    "status": {
+      "draft": "Bozza",
+      "released": "Rilasciata",
+      "retired": "Ritirata"
+    },
+    "actions": {
+      "create": "Nuova versione",
+      "release": "Rilascia",
+      "retire": "Ritira",
+      "delete": "Elimina",
+      "details": "Dettagli"
+    },
+    "create": {
+      "title": "Nuova versione",
+      "tag": "Tag (semver, es. v1.2.0)",
+      "description": "Descrizione",
+      "submit": "Crea bozza",
+      "invalidTag": "Il tag deve essere semver-like (es. v1.2.0)"
+    },
+    "detail": {
+      "title": "Dettagli versione",
+      "releasedBy": "Rilasciata da",
+      "counts": "Conteggi snapshot",
+      "trait": "Tratti",
+      "biome": "Biomi",
+      "species": "Specie",
+      "ecosystem": "Ecosistemi"
+    },
+    "confirm": {
+      "releaseTitle": "Rilasciare la versione?",
+      "releaseBody": "Rilasciare {{tag}} congela uno snapshot immutabile dei master correnti. L'operazione non e reversibile.",
+      "retireTitle": "Ritirare la versione?",
+      "retireBody": "Ritirare {{tag}}. Lo snapshot resta leggibile ma la versione esce dalla lista predefinita.",
+      "deleteTitle": "Eliminare la bozza?",
+      "deleteBody": "Eliminare la bozza {{tag}}. Solo le bozze possono essere eliminate.",
+      "confirm": "Conferma",
+      "cancel": "Annulla"
+    },
+    "feedback": {
+      "created": "Bozza creata",
+      "released": "Versione rilasciata",
+      "retired": "Versione ritirata",
+      "deleted": "Bozza eliminata"
+    },
+    "errors": {
+      "DRAFT_EXISTS": "Esiste gia una bozza: rilasciala o eliminala prima",
+      "TAG_EXISTS": "Esiste gia una versione con questo tag",
+      "INVALID_STATE": "Operazione non valida per lo stato attuale della versione",
+      "VALIDATION_ERROR": "Dati non validi",
+      "FORBIDDEN": "Permessi insufficienti: imposta VITE_API_ROLES=admin",
+      "generic": "Operazione non riuscita"
+    },
+    "picker": {
+      "label": "Versione",
+      "live": "Live (corrente)",
+      "readOnlyBanner": "Stai visualizzando lo snapshot {{tag}} -- sola lettura"
+    },
+    "empty": "Nessuna versione presente"
+  }
+}

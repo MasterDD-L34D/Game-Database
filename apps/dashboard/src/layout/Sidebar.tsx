@@ -12,6 +12,7 @@ import HubRoundedIcon from '@mui/icons-material/HubRounded';
 import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded';
 import MenuOpenRoundedIcon from '@mui/icons-material/MenuOpenRounded';
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
+import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded';
 import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
 
@@ -30,6 +31,7 @@ const NAV_GROUPS = [
       { to: '/biomes', key: 'biomes', icon: ForestRoundedIcon },
       { to: '/species', key: 'species', icon: PetsRoundedIcon },
       { to: '/ecosystems', key: 'ecosystems', icon: PublicRoundedIcon },
+      { to: '/taxonomy-versions', key: 'taxonomyVersions', icon: HistoryRoundedIcon },
     ],
   },
   {
