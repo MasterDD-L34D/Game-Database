@@ -481,9 +481,9 @@ import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded';
       { to: '/taxonomy-versions', key: 'taxonomyVersions', icon: HistoryRoundedIcon },
 ```
 
-- [ ] **Step 5: Typecheck + commit**
+- [ ] **Step 5: Build (bundle) check + commit**
 
-Run: `cd apps/dashboard && npx tsc --noEmit` (expected: no errors).
+Run: `cd apps/dashboard && npx vite build` (expected: build succeeds). NOTE: the project has NO `tsc`/`typecheck`/`lint` npm script and `npx tsc --noEmit` reports many PRE-EXISTING errors (missing `vite/client` types, `import.meta.env`, etc.) -- it is NOT a usable gate. The real gates are `npm test` (vitest) and `vite build` (esbuild bundle, catches broken imports/JSON). Use `vite build` here to confirm the new locale import + nav wiring bundle cleanly.
 
 ```bash
 cd /c/dev/Game-Database && git add apps/dashboard/src/i18n/locales/it/versions.json apps/dashboard/src/i18n/index.ts apps/dashboard/src/i18n/locales/it/navigation.json apps/dashboard/src/layout/Sidebar.tsx
@@ -1392,10 +1392,10 @@ EOF
 Run: `cd apps/dashboard && npm test`
 Expected: PASS (all suites, including the new version + trait-version tests).
 
-- [ ] **Step 2: Typecheck + lint**
+- [ ] **Step 2: Build (bundle) check**
 
-Run: `cd apps/dashboard && npx tsc --noEmit && npm run lint`
-Expected: no type errors; lint clean (fix any issues the lint surfaces, re-stage, amend into the relevant task is not allowed -- make a new fixup commit).
+Run: `cd apps/dashboard && npx vite build`
+Expected: build succeeds. NOTE: there is NO `tsc`/`typecheck`/`lint` npm script in this project, and `npx tsc --noEmit` floods with pre-existing errors (missing vite client types) -- do NOT use it as a gate. `vite build` (esbuild) is the bundle gate; combined with `npm test` (vitest) it covers correctness for this change. If `vite build` fails on a NEW import/syntax error in code this branch added, fix it in a new commit.
 
 - [ ] **Step 3: Manual browser smoke (UI correctness)**
 
