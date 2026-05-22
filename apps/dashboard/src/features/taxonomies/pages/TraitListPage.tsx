@@ -3,7 +3,6 @@ import { ColumnDef, createColumnHelper } from '@tanstack/react-table';
 import { Alert, Link as MuiLink, Stack } from '@mui/material';
 import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useTranslation as useTranslationBase } from 'react-i18next';
 import VersionPicker from '../components/VersionPicker';
 import { z } from 'zod';
 import ListPage from '../../../pages/ListPage';
@@ -24,7 +23,7 @@ function parseNumber(value: string | null, fallback: number) {
 export default function TraitListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useTranslation('taxonomy');
-  const { t: tv } = useTranslationBase('versions');
+  const { t: tv } = useTranslation('versions');
   const initialQuery = searchParams.get('q') ?? '';
   const initialPage = parseNumber(searchParams.get('page'), 0);
   const initialPageSize = parseNumber(searchParams.get('pageSize'), DEFAULT_PAGE_SIZE);
