@@ -8,14 +8,13 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-function mockFetchOnce(status: number, body: unknown, ok = status < 400) {
+function mockFetchOnce(status: number, body: unknown) {
   globalThis.fetch = vi.fn(async () =>
     new Response(JSON.stringify(body), {
       status,
       headers: { 'content-type': 'application/json' },
     }) as Response,
   ) as unknown as typeof fetch;
-  void ok;
 }
 
 describe('api client', () => {
@@ -39,7 +38,8 @@ describe('api client', () => {
 
   it('throws ApiError carrying status + code from the error body', async () => {
     mockFetchOnce(409, { code: 'DRAFT_EXISTS', message: 'A draft already exists' });
-    await expect(fetchJSON('/x')).rejects.toMatchObject({ status: 409, code: 'DRAFT_EXISTS' });
-    await expect(fetchJSON('/x')).rejects.toBeInstanceOf(ApiError);
+    const rejected = fetchJSON('/x');
+    await expect(rejected).rejects.toBeInstanceOf(ApiError);
+    await expect(rejected).rejects.toMatchObject({ status: 409, code: 'DRAFT_EXISTS' });
   });
 });
