@@ -17,6 +17,7 @@ const testFiles = [
   'slug.test.js',
   'versionImmutability.test.js',
   'taxonomyVersions.test.js',
+  'versionRead.test.js',
   'schemaIndexes.test.js',
   'searchQuery.test.js',
   'search.test.js',

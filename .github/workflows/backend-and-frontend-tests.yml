@@ -80,3 +80,6 @@ jobs:
       - name: Run taxonomy-version lifecycle DB tests
         working-directory: server
         run: node -e "require('./test/taxonomyVersions.db.test.js')"
+      - name: Run versioned-read DB tests
+        working-directory: server
+        run: node -e "require('./test/traitVersionRead.db.test.js')"
