@@ -79,10 +79,10 @@ test('unknown tag -> 404 VERSION_NOT_FOUND', async () => {
 test('draft tag -> 400 VERSION_NOT_RELEASED', async () => {
   const { server, baseUrl } = await startServer();
   try {
-    // ensure a clean draft exists; single-draft index may already hold one, so
-    // delete any existing draft first, then create ours
-    const existingDraft = await prisma.taxonomyVersion.findFirst({ where: { status: 'draft' } });
-    if (existingDraft) await prisma.taxonomyVersion.delete({ where: { id: existingDraft.id } });
+    // clean up only our own throwaway tag (never touch other drafts), then
+    // create ours. if a foreign draft holds the single-draft index this create
+    // fails loudly -- acceptable, and far safer than deleting real data.
+    await prisma.taxonomyVersion.deleteMany({ where: { tag: DRAFT_TAG } });
     await prisma.taxonomyVersion.create({ data: { tag: DRAFT_TAG, status: 'draft' } });
 
     const res = await fetch(`${baseUrl}/api/traits?versionId=${DRAFT_TAG}`);
