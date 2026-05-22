@@ -50,7 +50,27 @@ export type Ecosystem = {
   climate?: string | null;
   description?: string | null;
 };
-export const listTraits = (q = '', page=0, pageSize=25) => fetchJSON<Paged<Trait>>(`/traits?q=${encodeURIComponent(q)}&page=${page}&pageSize=${pageSize}`);
+
+export type VersionStatus = 'draft' | 'released' | 'retired';
+
+export type TaxonomyVersion = {
+  id: string;
+  tag: string;
+  status: VersionStatus;
+  description?: string | null;
+  releasedAt?: string | null;
+  releasedBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type VersionCounts = { trait: number; biome: number; species: number; ecosystem: number };
+
+export const listTraits = (q = '', page = 0, pageSize = 25, _sort = '', versionId = '') =>
+  fetchJSON<Paged<Trait> & { _version?: string }>(
+    `/traits?q=${encodeURIComponent(q)}&page=${page}&pageSize=${pageSize}` +
+      (versionId ? `&versionId=${encodeURIComponent(versionId)}` : ''),
+  );
 export const listBiomes = (q = '', page=0, pageSize=25) => fetchJSON<Paged<Biome>>(`/biomes?q=${encodeURIComponent(q)}&page=${page}&pageSize=${pageSize}`);
 export const listSpecies = (q = '', page=0, pageSize=25) => fetchJSON<Paged<Species>>(`/species?q=${encodeURIComponent(q)}&page=${page}&pageSize=${pageSize}`);
 export const listEcosystems = (q = '', page=0, pageSize=25) => fetchJSON<Paged<Ecosystem>>(`/ecosystems?q=${encodeURIComponent(q)}&page=${page}&pageSize=${pageSize}`);
@@ -108,3 +128,26 @@ export const deleteSpecies = (id: string) => deleteJSON(`/species/${id}`);
 export const createEcosystem = (body: EcosystemInput) => postJSON<EcosystemInput, Ecosystem>('/ecosystems', body);
 export const updateEcosystem = (id: string, body: Partial<EcosystemInput>) => postJSON<Partial<EcosystemInput>, Ecosystem>(`/ecosystems/${id}`, body, { method: 'PUT' });
 export const deleteEcosystem = (id: string) => deleteJSON(`/ecosystems/${id}`);
+
+export const listTaxonomyVersions = (includeRetired = false) =>
+  fetchJSON<{ versions: TaxonomyVersion[] }>(`/taxonomy/versions?includeRetired=${includeRetired ? 'true' : 'false'}`);
+
+export const getTaxonomyVersion = (tag: string) =>
+  fetchJSON<{ version: TaxonomyVersion; counts: VersionCounts }>(`/taxonomy/versions/${encodeURIComponent(tag)}`);
+
+export const createTaxonomyVersion = (body: { tag: string; description?: string }) =>
+  postJSON<{ tag: string; description?: string }, { version: TaxonomyVersion }>('/taxonomy/versions', body);
+
+export const releaseTaxonomyVersion = (tag: string) =>
+  postJSON<Record<string, never>, { version: TaxonomyVersion; counts: VersionCounts }>(
+    `/taxonomy/versions/${encodeURIComponent(tag)}/release`,
+    {},
+  );
+
+export const retireTaxonomyVersion = (tag: string) =>
+  postJSON<Record<string, never>, { version: TaxonomyVersion }>(
+    `/taxonomy/versions/${encodeURIComponent(tag)}/retire`,
+    {},
+  );
+
+export const deleteTaxonomyVersion = (tag: string) => deleteJSON(`/taxonomy/versions/${encodeURIComponent(tag)}`);
