@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 > Canonical per-repo goals. Hub mirror: `codemasterdd/GOALS.md`. Horizons: Short=weeks / Mid=1-2mo / Long=3-6mo.
 
-- **Short**: Fase 3 schema versioning Phase A (#154 TaxonomyVersion + snapshot tables); DB hygiene (#155 GIN indexes, slug constraints).
-- **Mid**: complete schema versioning (revertable taxonomy changes); curator audit-UI maturity (Fase 2 done).
+- **Short**: Phase C-Game consumer wiring -- close the versioning loop end-to-end. Game's `traitRepository` passes `?versionId` resolved from `EVO_TAXONOMY_VERSION` so a build pins one taxonomy version (the single unchecked RFC Section 5 acceptance item). Cross-repo (Game PR + Eduardo sign-off). DB-side versioning shipped (Phase A+B+C-DB #154/#158/#160/#161/#163 + version-mgmt UI #164).
+- **Mid**: versioned reads for Biome/Species/Ecosystem (extend `?versionId` past traits -- C-DB did traits only); bidirectional sync (DB as source-of-truth) RFC #4 scoping; curator audit-UI hardening.
 - **Long**: robust canonical content backend -- versioned, auditable taxonomy provider feeding Game via `evo:import`.
 
 ## Project overview
