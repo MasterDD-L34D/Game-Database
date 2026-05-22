@@ -23,7 +23,7 @@
     },
     "create": {
       "title": "Nuova versione",
-      "tag": "Tag (semver, es. v1.2.0)",
+      "tag": "Tag versione (es. v1.2.0)",
       "description": "Descrizione",
       "submit": "Crea bozza",
       "invalidTag": "Il tag deve essere semver-like (es. v1.2.0)"
