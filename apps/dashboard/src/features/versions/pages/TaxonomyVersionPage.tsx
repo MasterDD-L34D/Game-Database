@@ -106,7 +106,7 @@ export default function TaxonomyVersionPage() {
         onDetails={(v) => setDetailTag(v.tag)}
       />
 
-      <CreateVersionDialog open={createOpen} onClose={() => setCreateOpen(false)} onSubmit={async (body) => { await createMut.mutateAsync(body); }} submitting={createMut.isPending} />
+      <CreateVersionDialog open={createOpen} onClose={() => setCreateOpen(false)} onSubmit={async (body) => { createMut.mutate(body); }} submitting={createMut.isPending} />
       <VersionDetailDialog open={Boolean(detailTag)} tag={detailTag} onClose={() => setDetailTag(null)} />
 
       <Dialog open={Boolean(confirm)} onClose={() => !busy && setConfirm(null)} fullWidth maxWidth="xs">
