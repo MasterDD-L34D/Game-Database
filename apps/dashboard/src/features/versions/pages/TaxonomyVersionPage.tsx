@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import {
-  Box, Button, Dialog, DialogActions, DialogContent, DialogTitle,
+  Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
   FormControlLabel, Paper, Stack, Switch, Typography,
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -26,7 +26,7 @@ export default function TaxonomyVersionPage() {
   const [detailTag, setDetailTag] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<Confirm>(null);
 
-  const { data } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['taxonomy-versions', { includeRetired }],
     queryFn: () => listTaxonomyVersions(includeRetired),
   });
@@ -97,14 +97,20 @@ export default function TaxonomyVersionPage() {
         </Button>
       </Stack>
 
-      <VersionTable
-        versions={data?.versions ?? []}
-        busy={busy}
-        onRelease={(v) => setConfirm({ kind: 'release', version: v })}
-        onRetire={(v) => setConfirm({ kind: 'retire', version: v })}
-        onDelete={(v) => setConfirm({ kind: 'delete', version: v })}
-        onDetails={(v) => setDetailTag(v.tag)}
-      />
+      {isError ? (
+        <Alert severity="error">{t('versions.errors.loadFailed')}</Alert>
+      ) : isLoading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
+      ) : (
+        <VersionTable
+          versions={data?.versions ?? []}
+          busy={busy}
+          onRelease={(v) => setConfirm({ kind: 'release', version: v })}
+          onRetire={(v) => setConfirm({ kind: 'retire', version: v })}
+          onDelete={(v) => setConfirm({ kind: 'delete', version: v })}
+          onDetails={(v) => setDetailTag(v.tag)}
+        />
+      )}
 
       <CreateVersionDialog open={createOpen} onClose={() => setCreateOpen(false)} onSubmit={async (body) => { createMut.mutate(body); }} submitting={createMut.isPending} />
       <VersionDetailDialog open={Boolean(detailTag)} tag={detailTag} onClose={() => setDetailTag(null)} />

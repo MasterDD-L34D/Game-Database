@@ -59,7 +59,8 @@
       "INVALID_STATE": "Operazione non valida per lo stato attuale della versione",
       "VALIDATION_ERROR": "Dati non validi",
       "FORBIDDEN": "Permessi insufficienti: imposta VITE_API_ROLES=admin",
-      "generic": "Operazione non riuscita"
+      "generic": "Operazione non riuscita",
+      "loadFailed": "Impossibile caricare le versioni"
     },
     "picker": {
       "label": "Versione",

@@ -37,4 +37,12 @@ describe('TaxonomyVersionPage', () => {
     await user.click(await screen.findByRole('button', { name: /^conferma$/i }));
     await waitFor(() => expect(mocks.releaseTaxonomyVersion).toHaveBeenCalledWith('v2.0.0'));
   });
+
+  it('shows an explicit error state when the version list fails to load', async () => {
+    mocks.listTaxonomyVersions.mockRejectedValue(new Error('network down'));
+    renderWithProviders(<TaxonomyVersionPage />);
+    expect(await screen.findByText(/impossibile caricare le versioni/i)).toBeTruthy();
+    // not the "no versions" empty-state
+    expect(screen.queryByText(/nessuna versione presente/i)).toBeNull();
+  });
 });
