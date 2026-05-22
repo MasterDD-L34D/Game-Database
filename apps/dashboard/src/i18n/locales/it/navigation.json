@@ -5,6 +5,7 @@
   "biomes": "Biomi",
   "species": "Specie",
   "ecosystems": "Ecosistemi",
+  "taxonomyVersions": "Versioni",
   "speciesTraits": "Specie-Trait",
   "speciesBiomes": "Specie-Biomi",
   "ecosystemBiomes": "Ecosistemi-Biomi",

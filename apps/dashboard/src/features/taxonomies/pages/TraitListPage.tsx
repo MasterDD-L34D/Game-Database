@@ -1,8 +1,9 @@
 import { useCallback, useMemo } from 'react';
 import { ColumnDef, createColumnHelper } from '@tanstack/react-table';
-import { Link as MuiLink } from '@mui/material';
+import { Alert, Link as MuiLink, Stack } from '@mui/material';
 import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import VersionPicker from '../components/VersionPicker';
 import { z } from 'zod';
 import ListPage from '../../../pages/ListPage';
 import type { Trait } from '../../../lib/taxonomy';
@@ -22,10 +23,12 @@ function parseNumber(value: string | null, fallback: number) {
 export default function TraitListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useTranslation('taxonomy');
+  const { t: tv } = useTranslation('versions');
   const initialQuery = searchParams.get('q') ?? '';
   const initialPage = parseNumber(searchParams.get('page'), 0);
   const initialPageSize = parseNumber(searchParams.get('pageSize'), DEFAULT_PAGE_SIZE);
   const initialSort = searchParams.get('sort') ?? '';
+  const versionId = searchParams.get('versionId') ?? '';
 
   const columns = useMemo<ColumnDef<Trait, any>[]>(
     () => [
@@ -243,6 +246,7 @@ export default function TraitListPage() {
   const handleStateChange = useCallback(
     (state: { query: string; page: number; pageSize: number; sort: string }) => {
       const nextParams = new URLSearchParams();
+      if (versionId) nextParams.set('versionId', versionId);
       if (state.query) nextParams.set('q', state.query);
       if (state.page > 0) nextParams.set('page', String(state.page));
       if (state.pageSize !== DEFAULT_PAGE_SIZE) nextParams.set('pageSize', String(state.pageSize));
@@ -252,61 +256,90 @@ export default function TraitListPage() {
       if (current === next) return;
       setSearchParams(nextParams, { replace: true });
     },
+    [searchParams, setSearchParams, versionId],
+  );
+
+  const fetchTraits = useCallback(
+    (q: string, page = 0, pageSize = DEFAULT_PAGE_SIZE, sort = '') =>
+      versionId ? listTraits(q, page, pageSize, sort, versionId) : listTraits(q, page, pageSize, sort),
+    [versionId],
+  );
+
+  const handlePickVersion = useCallback(
+    (tag: string) => {
+      const next = new URLSearchParams(searchParams);
+      if (tag) next.set('versionId', tag);
+      else next.delete('versionId');
+      next.delete('page');
+      setSearchParams(next, { replace: true });
+    },
     [searchParams, setSearchParams],
   );
 
+  const readOnly = Boolean(versionId);
+
   return (
-    <ListPage<Trait, TraitFormValues>
-      title={t('traits.title')}
-      columns={columns}
-      fetcher={listTraits}
-      queryKeyBase={['traits']}
-      initialQuery={initialQuery}
-      initialPage={initialPage}
-      initialPageSize={initialPageSize}
-      initialSort={initialSort}
-      autoloadOnMount
-      onStateChange={handleStateChange}
-      createConfig={{
-        triggerLabel: t('traits.actions.create'),
-        dialogTitle: t('traits.dialogs.createTitle'),
-        submitLabel: t('common:actions.save'),
-        defaultValues,
-        schema: traitSchema,
-        fields: formFields,
-        onSubmit: async (values) => {
-          const payload = mapToPayload(values);
-          await createTrait(payload);
-        },
-        successMessage: t('traits.feedback.created'),
-        errorMessage: t('traits.feedback.createError'),
-      }}
-      editConfig={{
-        dialogTitle: t('traits.dialogs.editTitle'),
-        submitLabel: t('common:actions.saveChanges'),
-        fields: formFields,
-        schema: traitSchema,
-        getInitialValues: mapToValues,
-        onSubmit: async (item, values) => {
-          if (!item.id) throw new Error(t('common:feedback.missingId'));
-          const payload = mapToPayload(values);
-          await updateTrait(item.id, payload);
-        },
-        successMessage: t('traits.feedback.updated'),
-        errorMessage: t('traits.feedback.updateError'),
-      }}
-      deleteConfig={{
-        dialogTitle: t('traits.dialogs.deleteTitle'),
-        description: (item) => t('traits.dialogs.deleteDescription', { name: item.name ?? item.slug }),
-        mutation: async (item) => {
-          if (!item.id) throw new Error(t('common:feedback.missingId'));
-          await deleteTrait(item.id);
-        },
-        successMessage: t('traits.feedback.deleted'),
-        errorMessage: t('traits.feedback.deleteError'),
-      }}
-      bulkConfig={{ enableDelete: true, enableEdit: true }}
-      getItemLabel={(item) => item.name ?? item.slug ?? ''}
-    />
+    <>
+      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+        <VersionPicker value={versionId} onChange={handlePickVersion} />
+        {readOnly && (
+          <Alert severity="info" sx={{ flexGrow: 1 }}>
+            {tv('versions.picker.readOnlyBanner', { tag: versionId })}
+          </Alert>
+        )}
+      </Stack>
+      <ListPage<Trait, TraitFormValues>
+        title={t('traits.title')}
+        columns={columns}
+        fetcher={fetchTraits}
+        queryKeyBase={['traits', versionId || 'live']}
+        initialQuery={initialQuery}
+        initialPage={initialPage}
+        initialPageSize={initialPageSize}
+        initialSort={initialSort}
+        autoloadOnMount
+        onStateChange={handleStateChange}
+        createConfig={readOnly ? undefined : {
+          triggerLabel: t('traits.actions.create'),
+          dialogTitle: t('traits.dialogs.createTitle'),
+          submitLabel: t('common:actions.save'),
+          defaultValues,
+          schema: traitSchema,
+          fields: formFields,
+          onSubmit: async (values) => {
+            const payload = mapToPayload(values);
+            await createTrait(payload);
+          },
+          successMessage: t('traits.feedback.created'),
+          errorMessage: t('traits.feedback.createError'),
+        }}
+        editConfig={readOnly ? undefined : {
+          dialogTitle: t('traits.dialogs.editTitle'),
+          submitLabel: t('common:actions.saveChanges'),
+          fields: formFields,
+          schema: traitSchema,
+          getInitialValues: mapToValues,
+          onSubmit: async (item, values) => {
+            if (!item.id) throw new Error(t('common:feedback.missingId'));
+            const payload = mapToPayload(values);
+            await updateTrait(item.id, payload);
+          },
+          successMessage: t('traits.feedback.updated'),
+          errorMessage: t('traits.feedback.updateError'),
+        }}
+        deleteConfig={readOnly ? undefined : {
+          dialogTitle: t('traits.dialogs.deleteTitle'),
+          description: (item) => t('traits.dialogs.deleteDescription', { name: item.name ?? item.slug }),
+          mutation: async (item) => {
+            if (!item.id) throw new Error(t('common:feedback.missingId'));
+            await deleteTrait(item.id);
+          },
+          successMessage: t('traits.feedback.deleted'),
+          errorMessage: t('traits.feedback.deleteError'),
+        }}
+        bulkConfig={readOnly ? undefined : { enableDelete: true, enableEdit: true }}
+        getItemLabel={(item) => item.name ?? item.slug ?? ''}
+      />
+    </>
   );
 }
