@@ -7,6 +7,7 @@ const { liveFilter } = require('../utils/softDelete');
 const { AppError, sendError, handleError } = require('../utils/httpErrors');
 const { assertPagination, assertIdParam, assertString, assertEnum } = require('../utils/validation');
 const { normalizeSlug } = require('../utils/slug');
+const { resolveReleasedVersion, traitVersionToTrait } = require('../utils/versionRead');
 
 const router = express.Router();
 
@@ -98,6 +99,24 @@ function validateTraitPayload(body) {
 
 router.get('/', async (req, res) => {
   try {
+    const versionId = (req.query.versionId || '').trim();
+    if (versionId) {
+      const version = await resolveReleasedVersion(versionId);
+      const { page, pageSize } = assertPagination(req.query);
+      const q = (req.query.q || '').trim();
+      const where = {
+        versionId: version.id,
+        ...(q ? { OR: [
+          { name: { contains: q, mode: 'insensitive' } },
+          { slug: { contains: q, mode: 'insensitive' } },
+        ] } : {}),
+      };
+      const [total, rows] = await Promise.all([
+        prisma.traitVersion.count({ where }),
+        prisma.traitVersion.findMany({ where, skip: page * pageSize, take: pageSize, orderBy: { name: 'asc' } }),
+      ]);
+      return res.json({ items: rows.map(traitVersionToTrait), page, pageSize, total, _version: version.tag });
+    }
     const payload = await fetchPaginatedTraits(req);
     return res.json(payload);
   } catch (error) {
@@ -107,6 +126,21 @@ router.get('/', async (req, res) => {
 
 router.get('/glossary', async (req, res) => {
   try {
+    const versionId = (req.query.versionId || '').trim();
+    if (versionId) {
+      const version = await resolveReleasedVersion(versionId);
+      const rows = await prisma.traitVersion.findMany({
+        where: { versionId: version.id },
+        select: { slug: true, name: true, description: true },
+        orderBy: { name: 'asc' },
+      });
+      const traits = rows.map((t) => ({
+        _id: t.slug,
+        labels: { it: t.name, en: t.name },
+        descriptions: { it: t.description || null, en: t.description || null },
+      }));
+      return res.json({ traits });
+    }
     const allTraits = await prisma.trait.findMany({
       where: { deletedAt: null },
       select: { slug: true, name: true, description: true },
