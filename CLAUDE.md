@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 > Canonical per-repo goals. Hub mirror: `codemasterdd/GOALS.md`. Horizons: Short=weeks / Mid=1-2mo / Long=3-6mo.
 
-- **Short**: Phase C-Game consumer wiring -- close the versioning loop end-to-end. Game's `traitRepository` passes `?versionId` resolved from `EVO_TAXONOMY_VERSION` so a build pins one taxonomy version (the single unchecked RFC Section 5 acceptance item). Cross-repo (Game PR + Eduardo sign-off). DB-side versioning shipped (Phase A+B+C-DB #154/#158/#160/#161/#163 + version-mgmt UI #164).
-- **Mid**: versioned reads for Biome/Species/Ecosystem (extend `?versionId` past traits -- C-DB did traits only); bidirectional sync (DB as source-of-truth) RFC #4 scoping; curator audit-UI hardening.
+- **Short**: wiring consumer Phase C-Game -- chiudere il loop di versioning end-to-end. Il `traitRepository` di Game passa `?versionId` risolto da `EVO_TAXONOMY_VERSION` cosi una build fissa una versione di tassonomia (l'unico acceptance item RFC Sezione 5 non spuntato). Cross-repo (PR su Game + sign-off Eduardo). Versioning lato-DB completato (Phase A+B+C-DB #154/#158/#160/#161/#163 + UI version-mgmt #164).
+- **Mid**: letture versionate per Biome/Species/Ecosystem (estendere `?versionId` oltre i soli trait -- C-DB ha coperto solo i trait); sync bidirezionale (DB come source-of-truth) scoping RFC #4; hardening della audit-UI curator.
 - **Long**: robust canonical content backend -- versioned, auditable taxonomy provider feeding Game via `evo:import`.
 
 ## Project overview
