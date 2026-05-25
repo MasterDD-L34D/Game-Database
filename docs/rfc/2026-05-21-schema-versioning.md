@@ -151,24 +151,26 @@ POST   /api/taxonomy/versions/:tag/retire      — flip released → retired (ad
 
 ```
 GET    /api/traits?versionId=v1.2.0            — Phase C: filter by version
-                                                 (omitted = latest released)
+                                                 (omitted = live current glossary,
+                                                  NOT a snapshot — shipped C-DB)
 GET    /api/traits/glossary?versionId=v1.2.0   — Game-runtime consumer hook
 ```
 
 ### 5. Game-side impact (Phase C, cross-repo)
 
-Game's `apps/backend/services/traitRepository.js` (or equivalent) currently fetches `/api/traits/glossary` unconditionally. After Phase C:
+The real HTTP consumer is **`apps/backend/services/catalog.js`** (ADR-2026-04-14 Alternative B), NOT `traitRepository.js` (which is a local file store with its own `_versions/` snapshotting and never calls Game-Database). `catalog.js` `fetchRemoteGlossary()` fetches `${httpBase}/api/traits/glossary` when `GAME_DATABASE_ENABLED` is on. After Phase C-Game, an `EVO_TAXONOMY_VERSION` env threads `index.js → app.js → catalog.js` and the fetch appends `?versionId=`:
 
 ```js
-const TAXONOMY_VERSION = process.env.EVO_TAXONOMY_VERSION || '';
-const url = TAXONOMY_VERSION
-  ? `${API_BASE}/traits/glossary?versionId=${encodeURIComponent(TAXONOMY_VERSION)}`
-  : `${API_BASE}/traits/glossary`;
+const versionId = process.env.EVO_TAXONOMY_VERSION || ''; // index.js, into gameDatabase options
+const query = versionId ? `?versionId=${encodeURIComponent(versionId)}` : '';
+const url = `${httpBase}/api/traits/glossary${query}`;     // catalog.js fetchRemoteGlossary
 ```
 
-Backward-compat: env unset → no `versionId` param → Game-Database returns latest released → behavior unchanged.
+Backward-compat: env unset → no `versionId` → Game-Database returns the **live current glossary** (NOT a snapshot) → behavior unchanged (Game already consumes the live glossary today).
 
-**This cross-repo touch is RFC-gated**: coordinator session reviews + Eduardo signs off before the Game-side patch lands. Documented per spec § "Cross-repo coordination" Fase 3.
+**Fail-loud on pin**: when `versionId` is set and the fetch fails (4xx bad/unreleased pin, or 5xx/timeout DB down), `catalog.js` does NOT fall back to the local file — a pinned build serving stale local data hides a misconfiguration, so it fails visibly. Unpinned fetches keep today's local fallback.
+
+**This cross-repo touch is RFC-gated**: coordinator session reviews + Eduardo signs off before the Game-side patch lands. Design: `docs/superpowers/specs/2026-05-26-cgame-version-consumer-design.md`.
 
 ## Sequencing + dependency
 
