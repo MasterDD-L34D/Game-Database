@@ -158,6 +158,54 @@ Mirror the existing `tests/api/catalogHttpClient.test.js` pattern (inject a fake
 - Section 5: replace `apps/backend/services/traitRepository.js` with `apps/backend/services/catalog.js` (the real HTTP consumer) and note the env threads `index.js -> app.js -> catalog.js`; add the fail-loud-on-pin decision.
 - Section 4: correct "omitted = latest released" to "omitted = live current glossary" (matches shipped C-DB).
 
-## Cross-repo gating
+## Cross-repo governance (REQUIRED before any Game patch)
 
-The Game-side patch is RFC-gated (RFC #1 Section 5, ADR-2026-04-14): a coordinator session reviews and Eduardo signs off before it lands in the Game repo. This spec + the RFC correction live in Game-Database; the implementation plan is parked until Eduardo authorizes the cross-repo touch.
+Authority chain (verified 2026-05-26): the source of truth is the Game repo's
+`docs/adr/ADR-2026-04-14-game-database-topology.md` (the vault copy is
+`source_of_truth: false`, a mirror), with `docs/core/90-FINAL-DESIGN-FREEZE.md`
+Section 5 and `docs/planning/EVO_FINAL_DESIGN_SOURCE_AUTHORITY_MAP.md`. Conflict rule:
+the ADR wins on the architectural boundary; a consumer plan does not override it.
+
+**Non-negotiable constraint (Final Design Freeze v0.9 Section 5):** "qualunque proposta
+di introdurre dipendenze runtime `Game <- HTTP <- Game-Database` va trattata come
+ADR separato, non come patch di design."
+
+How this design relates to that constraint:
+
+1. The runtime HTTP glossary dependency (ADR Alternative B) is ALREADY shipped
+   flag-ON (cross-repo EXECUTION-BOARD `OD-030` / Game `PR #2261`). Appending
+   `?versionId=` to the existing `fetchRemoteGlossary` fetch does NOT introduce a
+   new `Game <- HTTP <- Game-Database` boundary -- it extends an accepted one. The
+   wiring (env threading + query param) is therefore patch-level.
+2. **However**, the `fail-loud on pin` rule CHANGES the accepted reliability
+   posture of that boundary. Alternative B was designed reliability-first: "on any
+   error, fall back to the local file" (ADR Alt-B status notes; `catalog.js`
+   `loadGlossarySource`). Refusing the local fallback for pinned reads is a
+   behavioral change to the runtime boundary's failure contract. Per Freeze v0.9
+   Section 5 and the ADR-wins rule, that change must be governed by an **amendment to
+   ADR-2026-04-14** (or a new ADR), not merged as a standalone design patch.
+
+**Required path before any Game-side code lands:**
+
+- Amend `ADR-2026-04-14-game-database-topology.md` (Game repo, the SoT copy) with
+  a "Phase C-Game version pin" decision that records: the `?versionId=` extension,
+  the `fail-loud on pin` reliability change (and its rationale), and the
+  unpinned-path-unchanged guarantee.
+- Route through cross-repo governance: an `OD` entry on the EXECUTION-BOARD;
+  stakeholders per the ADR are Eduardo (approval), Codex (Game-Database owner,
+  contract stability), and the Game backend team (implementer).
+- Only after the ADR amendment is accepted does the Game patch (3-file change
+  above) become a normal gated PR.
+
+**What this Game-Database session does NOT do:** it does not write the Game-side
+implementation plan, does not touch the Game repo, and does not invoke
+writing-plans. This spec + the RFC #1 correction are the deliverable here; the
+implementation is parked behind the ADR amendment + Eduardo's cross-repo sign-off.
+
+## SoT corrections to propagate (out of scope for this commit)
+
+- `Game/docs/adr/ADR-2026-04-14-...` and the hub `codemasterdd-ai-station/docs/
+  superpowers/specs/2026-05-22-four-repo-short-directions-design.md` both name
+  `traitRepository.js` as the Game-Database HTTP consumer. The real consumer is
+  `apps/backend/services/catalog.js`. The four-repo-short-directions correction is
+  a codemasterdd-repo doc change (separate session/PR).
