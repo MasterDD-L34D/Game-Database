@@ -10,6 +10,12 @@ const router = express.Router();
 const requireAdmin = requireRole('admin');
 const SEMVER_RE = /^v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/;
 
+/**
+ * Validates the tag string from the request body against a semver-like pattern.
+ *
+ * @param {Object} body - The request body containing the tag.
+ * @returns {string} The validated tag.
+ */
 function validateTag(body) {
   const tag = assertString(body.tag, 'tag', { required: true });
   if (!SEMVER_RE.test(tag)) {
@@ -18,6 +24,12 @@ function validateTag(body) {
   return tag;
 }
 
+/**
+ * Counts the number of snapshot entries for a given version.
+ *
+ * @param {string} versionId - The ID of the taxonomy version.
+ * @returns {Promise<Object>} A promise resolving to an object with snapshot counts.
+ */
 async function snapshotCounts(versionId) {
   const entries = await Promise.all(
     Object.entries(FIELD_MAP).map(async ([key, cfg]) => [key, await prisma[cfg.snapshot].count({ where: { versionId } })]),
@@ -25,6 +37,13 @@ async function snapshotCounts(versionId) {
   return Object.fromEntries(entries);
 }
 
+/**
+ * Retrieves a list of taxonomy versions.
+ *
+ * @param {Object} req - The Express request object.
+ * @param {Object} res - The Express response object.
+ * @returns {Promise<void>}
+ */
 router.get('/', async (req, res) => {
   try {
     const includeRetired = req.query.includeRetired === 'true';
@@ -39,6 +58,13 @@ router.get('/', async (req, res) => {
   }
 });
 
+/**
+ * Retrieves a specific taxonomy version by its tag.
+ *
+ * @param {Object} req - The Express request object.
+ * @param {Object} res - The Express response object.
+ * @returns {Promise<void>}
+ */
 router.get('/:tag', async (req, res) => {
   try {
     const version = await prisma.taxonomyVersion.findUnique({ where: { tag: req.params.tag } });
@@ -50,6 +76,13 @@ router.get('/:tag', async (req, res) => {
   }
 });
 
+/**
+ * Creates a new draft taxonomy version.
+ *
+ * @param {Object} req - The Express request object.
+ * @param {Object} res - The Express response object.
+ * @returns {Promise<void>}
+ */
 router.post('/', requireAdmin, async (req, res) => {
   try {
     const tag = validateTag(req.body);
@@ -82,6 +115,13 @@ router.post('/', requireAdmin, async (req, res) => {
   }
 });
 
+/**
+ * Releases a draft taxonomy version.
+ *
+ * @param {Object} req - The Express request object.
+ * @param {Object} res - The Express response object.
+ * @returns {Promise<void>}
+ */
 router.post('/:tag/release', requireAdmin, async (req, res) => {
   try {
     const version = await prisma.taxonomyVersion.findUnique({ where: { tag: req.params.tag } });
@@ -113,6 +153,13 @@ router.post('/:tag/release', requireAdmin, async (req, res) => {
   }
 });
 
+/**
+ * Retires a released taxonomy version.
+ *
+ * @param {Object} req - The Express request object.
+ * @param {Object} res - The Express response object.
+ * @returns {Promise<void>}
+ */
 router.post('/:tag/retire', requireAdmin, async (req, res) => {
   try {
     const version = await prisma.taxonomyVersion.findUnique({ where: { tag: req.params.tag } });
@@ -128,6 +175,13 @@ router.post('/:tag/retire', requireAdmin, async (req, res) => {
   }
 });
 
+/**
+ * Deletes a draft taxonomy version.
+ *
+ * @param {Object} req - The Express request object.
+ * @param {Object} res - The Express response object.
+ * @returns {Promise<void>}
+ */
 router.delete('/:tag', requireAdmin, async (req, res) => {
   try {
     const version = await prisma.taxonomyVersion.findUnique({ where: { tag: req.params.tag } });
