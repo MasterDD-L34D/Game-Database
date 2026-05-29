@@ -1,5 +1,11 @@
 const crypto = require('node:crypto');
 
+/**
+ * Safely compares two strings to prevent timing attacks.
+ * @param {string} a The first string.
+ * @param {string} b The second string.
+ * @returns {boolean} True if strings are equal, false otherwise.
+ */
 function timingSafeEqualString(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string') {
     return false;
@@ -11,6 +17,11 @@ function timingSafeEqualString(a, b) {
   return crypto.timingSafeEqual(aHash, bHash);
 }
 
+/**
+ * Parses a Basic Authentication header value.
+ * @param {string} headerValue The raw Authorization header string.
+ * @returns {{username: string, password: string}|null} The parsed credentials or null if invalid.
+ */
 function parseBasicAuthHeader(headerValue) {
   if (!headerValue || typeof headerValue !== 'string') return null;
   const [scheme, token] = headerValue.split(' ');
