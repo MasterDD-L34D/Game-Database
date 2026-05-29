@@ -1,9 +1,19 @@
+/**
+ * Normalizes a user value.
+ * @param {*} value The value to normalize.
+ * @returns {string|null} The normalized user or null.
+ */
 function normalizeUser(value) {
   if (value == null) return null;
   const normalized = String(value).trim();
   return normalized || null;
 }
 
+/**
+ * Parses the roles header into an array.
+ * @param {string|string[]} value The header value.
+ * @returns {string[]} The array of parsed roles.
+ */
 function parseRolesHeader(value) {
   if (!value) return [];
   const raw = Array.isArray(value) ? value.join(',') : String(value);
@@ -14,11 +24,21 @@ function parseRolesHeader(value) {
     .filter(Boolean);
 }
 
+/**
+ * Gets the roles from a request.
+ * @param {Object} req The request object.
+ * @returns {string[]} The user roles.
+ */
 function getRoles(req) {
   if (!req || !Array.isArray(req.userRoles)) return [];
   return req.userRoles;
 }
 
+/**
+ * Gets the user identifier from a request.
+ * @param {Object} req The request object.
+ * @returns {string|null} The user identifier or null.
+ */
 function getIdentifier(req) {
   if (!req) return null;
   const candidate = req.user;
