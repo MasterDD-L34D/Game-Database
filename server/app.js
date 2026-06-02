@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const user = require('./middleware/user');
 const basicAuth = require('./middleware/basicAuth');
+const { createMutationRateLimiter } = require('./middleware/rateLimit');
 
 const recordsRouter = require('./routes/records');
 const traitsRouter = require('./routes/traits');
@@ -49,6 +50,12 @@ function createApp() {
   app.get('/api/health', (req, res) => {
     res.json(healthPayload);
   });
+
+  // Mutation-scoped rate limiting (POST/PUT/PATCH/DELETE only). Read traffic --
+  // including the Game backend's read-only GET /api/traits/glossary import
+  // (ADR-2026-04-14) -- is skipped, so imports are never 429'd. Mounted before
+  // basicAuth so unauthenticated write attempts are limited too.
+  app.use(createMutationRateLimiter());
 
   app.use(basicAuth);
   app.use('/api', user);
