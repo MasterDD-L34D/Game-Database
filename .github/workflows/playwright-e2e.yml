@@ -32,6 +32,10 @@ jobs:
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/game?schema=public
       PORT: 3333
+      # E2E specs inject X-Roles via Playwright setExtraHTTPHeaders against an
+      # open-mode backend (npm run dev, no Basic Auth); the user middleware fails
+      # closed on client role headers without this opt-in. See server/middleware/user.js.
+      TRUST_CLIENT_ROLE_HEADERS: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
