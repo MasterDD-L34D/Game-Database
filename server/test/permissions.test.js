@@ -8,6 +8,11 @@ const {
   TAXONOMY_WRITE_ROLES,
 } = require('../middleware/permissions');
 
+// The `user` middleware fails closed in open mode (no basicAuth context): client
+// role headers are only honored when TRUST_CLIENT_ROLE_HEADERS is enabled. These
+// tests exercise the client-header parsing path directly, so opt in explicitly.
+process.env.TRUST_CLIENT_ROLE_HEADERS = process.env.TRUST_CLIENT_ROLE_HEADERS || '1';
+
 function createResponseCapture() {
   return {
     statusCode: null,

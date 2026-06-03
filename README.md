@@ -151,6 +151,16 @@ Note:
 - questa fase copre accesso in **LAN**, non pubblicazione su Internet
 - puoi personalizzare i ruoli dell'utente autenticato con `APP_AUTH_ROLES` (default: `taxonomy:write,admin`)
 
+Modello di autorizzazione (ruoli):
+- **Con Basic Auth attivo** (modalita LAN sopra): i ruoli arrivano SEMPRE dal server
+  (`APP_AUTH_ROLES`). Gli header client `X-Roles` / `X-User-Roles` sono IGNORATI, quindi
+  un chiamante non puo' auto-assegnarsi ruoli. La dashboard servita sullo stesso URL
+  funziona perche' il browser, dopo il prompt Basic Auth, invia le credenziali su tutte
+  le richieste `/api`.
+- **Senza Basic Auth** ("open mode", es. `npm run dev`): le scritture sono **fail-closed**
+  (nessun ruolo concesso). Per autorizzare via `X-Roles` in sviluppo locale imposta
+  `TRUST_CLIENT_ROLE_HEADERS=1` (vedi `server/.env.example`). NON usarlo su host esposto.
+
 ### 4) Import taxonomy (opzionale)
 Consulta [docs/evo-import.md](docs/evo-import.md) per la pipeline completa.
 

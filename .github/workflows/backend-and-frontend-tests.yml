@@ -51,6 +51,10 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/game?schema=public
+      # DB tests invoked directly (bypassing run-tests.js) simulate trusted
+      # callers via client role headers; the user middleware fails closed on
+      # those headers without this opt-in. See server/middleware/user.js.
+      TRUST_CLIENT_ROLE_HEADERS: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
