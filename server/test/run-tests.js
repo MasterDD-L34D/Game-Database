@@ -14,6 +14,7 @@ const testFiles = [
   'ecosystemBiomes.test.js',
   'ecosystemSpecies.test.js',
   'basicAuth.test.js',
+  'rateLimit.test.js',
   'testInfraRestore.test.js',
   'slug.test.js',
   'versionImmutability.test.js',
