@@ -10,6 +10,13 @@ const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const DEFAULT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const DEFAULT_MAX_MUTATIONS = 100; // per IP per window
 
+/**
+ * Parses a positive integer from the environment.
+ *
+ * @param {string} name - The name of the environment variable.
+ * @param {number} fallback - The default value to return if parsing fails.
+ * @returns {number} The parsed integer or the fallback value.
+ */
 function parsePositiveIntEnv(name, fallback) {
   const parsed = Number.parseInt(process.env[name], 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;

@@ -14,10 +14,18 @@ const { FIELD_MAP, snapshotAllMasters, baselineSnapshotCount } = require('../uti
 
 const BASELINE_TAG = 'v1.0.0';
 
+/**
+ * @param {string} msg
+ * @returns {void}
+ */
 function log(msg) {
   process.stdout.write(`${msg}\n`);
 }
 
+/**
+ * @param {Object} prisma
+ * @returns {Promise<Object>}
+ */
 async function backfillV1Snapshots(prisma) {
   const baseline = await prisma.taxonomyVersion.findUnique({ where: { tag: BASELINE_TAG } });
   if (!baseline) {
