@@ -59,6 +59,10 @@ services:
       PORT: 3333
       HOST: 0.0.0.0
       GAME_INVALIDATE_URL: http://game-backend:3334/api/catalog/invalidate
+      # Dev-only: open mode (no Basic Auth) honors client X-Roles for writes only
+      # with this opt-in (the user middleware fails closed otherwise). Never on an
+      # exposed host. See server/middleware/user.js.
+      TRUST_CLIENT_ROLE_HEADERS: "1"
     volumes:
       - ./server:/app
     ports: ["3333:3333"]

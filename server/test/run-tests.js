@@ -6,6 +6,7 @@ const testFiles = [
   'health.test.js',
   'dashboard.test.js',
   'permissions.test.js',
+  'userAuthority.test.js',
   'records.test.js',
   'taxonomyRouters.test.js',
   'speciesTraits.test.js',
@@ -24,6 +25,13 @@ const testFiles = [
   'audit.test.js',
   'importValidator.test.js',
 ];
+
+// Integration tests authorize writes by simulating a trusted caller via client
+// role headers (X-Roles). The `user` middleware fails closed on those headers
+// unless TRUST_CLIENT_ROLE_HEADERS is set, so enable it for the suite. The
+// fail-closed security behavior itself is covered by userAuthority.test.js,
+// which toggles the flag off in-process.
+process.env.TRUST_CLIENT_ROLE_HEADERS = process.env.TRUST_CLIENT_ROLE_HEADERS || '1';
 
 for (const testFile of testFiles) {
   console.log(`Running ${testFile}`);

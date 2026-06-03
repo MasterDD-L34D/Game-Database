@@ -65,12 +65,49 @@ function hasRole(req, ...roles) {
   return getRoles(req).some(role => allowed.has(role));
 }
 
+function isTruthyEnv(value) {
+  if (!value) return false;
+  const normalized = String(value).trim().toLowerCase();
+  return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
+}
+
+// Read at request time (not module load) so config toggles + tests take effect
+// without re-requiring the module (mirrors permissions.js convention).
+function trustClientRoleHeaders() {
+  return isTruthyEnv(process.env.TRUST_CLIENT_ROLE_HEADERS);
+}
+
 function user(req, res, next) {
-  const authContext = req.authContext || {};
-  const headerUser = req.get('x-user') || req.get('x-user-email') || authContext.user || null;
-  const headerRoles = req.get('x-roles') || req.get('x-user-roles') || authContext.roles || null;
+  // req.authContext is set ONLY by basicAuth on a successful authentication,
+  // so its presence means the request is authenticated by the server.
+  const authContext = req.authContext || null;
+  const authenticated = authContext != null;
+
+  // Identity (attribution, NOT authorization): a client-supplied X-User is
+  // accepted for audit granularity, falling back to the authenticated context.
+  // Identity spoofing is not the privilege vector -- roles are.
+  const headerUser =
+    req.get('x-user') ||
+    req.get('x-user-email') ||
+    (authContext && authContext.user) ||
+    null;
   req.user = normalizeUser(headerUser);
-  req.userRoles = parseRolesHeader(headerRoles);
+
+  // Roles (authorization, CWE-290 fix): the trusted source is the server-set
+  // authContext. When the request is authenticated, client-supplied X-Roles /
+  // X-User-Roles are IGNORED so a caller cannot escalate beyond the roles the
+  // server assigned. When NOT authenticated (basicAuth disabled / "open mode"),
+  // client role headers are honored only if TRUST_CLIENT_ROLE_HEADERS is
+  // explicitly enabled; otherwise no roles are granted (fail-closed), so a
+  // misconfigured deployment denies writes instead of trusting spoofable headers.
+  let roleSource = null;
+  if (authenticated) {
+    roleSource = authContext.roles;
+  } else if (trustClientRoleHeaders()) {
+    roleSource = req.get('x-roles') || req.get('x-user-roles') || null;
+  }
+  req.userRoles = parseRolesHeader(roleSource);
+
   next();
 }
 
@@ -78,5 +115,6 @@ user.getRoles = getRoles;
 user.getIdentifier = getIdentifier;
 user.hasRole = hasRole;
 user.normalizeRoleList = normalizeRoleList;
+user.trustClientRoleHeaders = trustClientRoleHeaders;
 
 module.exports = user;
