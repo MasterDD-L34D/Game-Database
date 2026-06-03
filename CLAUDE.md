@@ -143,3 +143,17 @@ Add fixes as additional commits on the same branch, re-run CI, then merge. If a 
 **Never merge again without checking `/pulls/N/comments` first.**
 
 Full protocol detail: `docs/superpowers/specs/2026-05-20-game-database-value-roadmap-design.md` § "Code review protocol".
+
+## Baseline / quality gates
+
+### Definition of Done
+
+Una change e DONE solo con: gate verdi con output mostrato (no "sembra fatto") -- per i comandi vedi `## Tests` (server `npm test` + dashboard Vitest; non c'e' uno step di lint dedicato) + zero TODO/stub/placeholder + doc/commit aggiornati + nessun self-merge che salta il review-gate di `## Code review protocol`. Preferisci test mirati > full-suite.
+
+### Dependencies
+
+Chiedi conferma prima di aggiungere una prod-dependency; niente version-bump/update senza approval esplicito; rispetta il lockfile (no edit manuale).
+
+### Secret handling
+
+MAI committare secret/key/token; tienili in env/secret-store (`.env` gitignored, template `server/.env.example`); fai uno scan pre-commit prima del push.
