@@ -4,8 +4,8 @@ Usa questo template per documentare un nuovo Trait in modo consistente tra catal
 
 ## Campi principali
 - **Slug**: identificatore univoco (minuscolo, trattini).
-- **Nome**: etichetta leggibile; preferire le voci approvate in [`docs/catalog/trait_reference.md`](catalog/trait_reference.md).
-- **Descrizione**: contesto e significato; riusa descrizioni approvate in [`docs/catalog/trait_reference.md`](catalog/trait_reference.md).
+- **Nome**: etichetta leggibile; preferire le voci approvate in [`docs/reference/trait_reference.md`](trait_reference.md).
+- **Descrizione**: contesto e significato; riusa descrizioni approvate in [`docs/reference/trait_reference.md`](trait_reference.md).
 - **Categoria**: gruppo logico (morfologia, comportamento, ecc.).
 - **Tipo dato**: `BOOLEAN`, `NUMERIC`, `CATEGORICAL`, `TEXT`.
 - **Unità** (opzionale): specifica solo se serve.

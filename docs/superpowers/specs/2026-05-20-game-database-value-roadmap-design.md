@@ -339,7 +339,7 @@ All 4 originally-open questions answered via 4 parallel research agents with rea
 
 **Verdict**: Coexist as complementary. PR-γ creates auto-gen `docs/schema-reference.md` (canonical schema source, CI-gated). Existing `docs/modal-game-database.md` slimmed: replace schema table (lines 15-28, ~33% content) with one-liner pointer; preserve all non-schema content (dominio/processi/sicurezza/runtime/TODO = 66%) which PR-γ does NOT emit.
 
-**Evidence**: Git `--follow` shows only 2 commits ever (creation 2025-11-10 + URL fix 2026-04-25) → fossilized, drift-prone. Zero external references in Game or codemasterdd-ai-station; only intra-Game-Database refs in `docs/Documento_Riferimento.md:47,69` (anchor updates needed when slimming).
+**Evidence**: Git `--follow` shows only 2 commits ever (creation 2025-11-10 + URL fix 2026-04-25) → fossilized, drift-prone. Zero external references in Game or codemasterdd-ai-station; only intra-Game-Database refs in `docs/reference/Documento_Riferimento.md:47,69` (anchor updates needed when slimming).
 
 **Cross-repo impact**: ZERO. Game's contract dependency is `glossary.schema.json` already canonicalized in `server/schemas/glossary.schema.json`, NOT this doc.
 

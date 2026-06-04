@@ -2,7 +2,7 @@
 
 Questo runbook descrive la procedura operativa per importare i cataloghi Evo dal repository `Game` nel database Game Database in modo ripetibile e verificabile.
 
-> Documentazione tecnica di dettaglio: [`docs/evo-import.md`](../evo-import.md).
+> Documentazione tecnica di dettaglio: [`docs/process/evo-import.md`](./evo-import.md).
 
 ## 1) Bootstrap DB
 
@@ -206,6 +206,6 @@ NOTE
 
 ## 8) Riferimenti rapidi
 
-- Guida import: [`docs/evo-import.md`](../evo-import.md)
+- Guida import: [`docs/process/evo-import.md`](./evo-import.md)
 - Config ingest: [`server/scripts/ingest/evo-import.config.json`](../../server/scripts/ingest/evo-import.config.json)
 - Script ingest: [`server/scripts/ingest/import-taxonomy.js`](../../server/scripts/ingest/import-taxonomy.js)

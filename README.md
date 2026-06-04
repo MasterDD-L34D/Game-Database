@@ -162,7 +162,7 @@ Modello di autorizzazione (ruoli):
   `TRUST_CLIENT_ROLE_HEADERS=1` (vedi `server/.env.example`). NON usarlo su host esposto.
 
 ### 4) Import taxonomy (opzionale)
-Consulta [docs/evo-import.md](docs/evo-import.md) per la pipeline completa.
+Consulta [docs/process/evo-import.md](docs/process/evo-import.md) per la pipeline completa.
 
 ```powershell
 Set-Location ..\server
@@ -174,7 +174,7 @@ Il seed Prisma resta volutamente minimo per bootstrap e test. Il popolamento rea
 
 ### Ripopolamento database
 
-Vedi [docs/database-bootstrap.md](docs/database-bootstrap.md) per una guida dettagliata su come ripristinare le tabelle sia in locale sia negli ambienti Docker/staging.
+Vedi [docs/process/database-bootstrap.md](docs/process/database-bootstrap.md) per una guida dettagliata su come ripristinare le tabelle sia in locale sia negli ambienti Docker/staging.
 
 #### Nuovi endpoint relazionali
 
@@ -224,4 +224,4 @@ git push -u origin main
 
 ---
 
-Per dettagli di design/architettura, consulta **docs/Documento_Riferimento.md**.
+Per dettagli di design/architettura, consulta **docs/reference/Documento_Riferimento.md**.
