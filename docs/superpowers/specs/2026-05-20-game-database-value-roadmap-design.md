@@ -337,9 +337,9 @@ All 4 originally-open questions answered via 4 parallel research agents with rea
 
 ### Q3 — Schema doc: coexist, slim manual file
 
-**Verdict**: Coexist as complementary. PR-γ creates auto-gen `docs/schema-reference.md` (canonical schema source, CI-gated). Existing `docs/modal-game-database.md` slimmed: replace schema table (lines 15-28, ~33% content) with one-liner pointer; preserve all non-schema content (dominio/processi/sicurezza/runtime/TODO = 66%) which PR-γ does NOT emit.
+**Verdict**: Coexist as complementary. PR-γ creates auto-gen `docs/schema-reference.md` (canonical schema source, CI-gated). Existing `docs/reference/modal-game-database.md` slimmed: replace schema table (lines 15-28, ~33% content) with one-liner pointer; preserve all non-schema content (dominio/processi/sicurezza/runtime/TODO = 66%) which PR-γ does NOT emit.
 
-**Evidence**: Git `--follow` shows only 2 commits ever (creation 2025-11-10 + URL fix 2026-04-25) → fossilized, drift-prone. Zero external references in Game or codemasterdd-ai-station; only intra-Game-Database refs in `docs/Documento_Riferimento.md:47,69` (anchor updates needed when slimming).
+**Evidence**: Git `--follow` shows only 2 commits ever (creation 2025-11-10 + URL fix 2026-04-25) → fossilized, drift-prone. Zero external references in Game or codemasterdd-ai-station; only intra-Game-Database refs in `docs/reference/Documento_Riferimento.md:47,69` (anchor updates needed when slimming).
 
 **Cross-repo impact**: ZERO. Game's contract dependency is `glossary.schema.json` already canonicalized in `server/schemas/glossary.schema.json`, NOT this doc.
 
@@ -387,5 +387,5 @@ Post user-review questa spec → invoke `superpowers:writing-plans` per generare
 - Continuity handoff: `codemasterdd-ai-station/docs/sessions/2026-05-19-continuity-handoff.md`
 - CLAUDE.md Release Standard (3-step QG): `~/.claude/CLAUDE.md`
 - ADR-0011 commit attribution: `codemasterdd-ai-station/docs/adr/0011-cross-agent-commit-governance.md`
-- Schema reference (will replace): `docs/modal-game-database.md`
+- Schema reference (will replace): `docs/reference/modal-game-database.md`
 - Pattern source (PR-β): #114 (3be942c) "test: PUT ecosystems coverage (4 tests, supersedes #113)"

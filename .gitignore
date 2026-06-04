@@ -31,3 +31,6 @@ server/.docker-prisma-bootstrapped
 .DS_Store
 Thumbs.db
 *.git_acl_backup_*.txt
+
+# Insomnia API client export (generated)
+docs/insomnia/

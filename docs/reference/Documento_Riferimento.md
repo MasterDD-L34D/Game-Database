@@ -39,23 +39,23 @@ I test e gli snapshot devono usare i testi tradotti, quindi evita di inserire st
 Blocchi compilati secondo la struttura condivisa dal PM e allineati ai file/referenze interni del progetto.
 
 - **Identità / Versioning**
-  - Repository e stack: panoramica già presente in apertura di file; versionamento dello schema affidato alle migrazioni Prisma eseguite da `npm run dev:setup`. 【F:docs/Documento_Riferimento.md†L2-L9】【F:server/package.json†L8-L27】
+  - Repository e stack: panoramica già presente in apertura di file; versionamento dello schema affidato alle migrazioni Prisma eseguite da `npm run dev:setup`. 【F:docs/reference/Documento_Riferimento.md†L2-L9】【F:server/package.json†L8-L27】
   - Stato di bootstrap e seed: comando `npm run dev:setup` (Prisma generate + migrate deploy + seed). 【F:README.md†L27-L37】【F:server/package.json†L17-L27】
 
 - **Classificazione / Ruolo**
   - Ruoli applicativi e permessi di scrittura tassonomia definiti da `TAXONOMY_WRITE_ROLES`; audit opzionale tramite header `X-User`. 【F:README.md†L39-L49】
-  - Entità e dominio: panoramica in `docs/modal-game-database.md`; schema completo (campi, tipi, modifiers, indici, relazioni) auto-generato in `docs/schema-reference.md`. 【F:docs/modal-game-database.md†L1-L14】【F:docs/schema-reference.md†L1-L40】
+  - Entità e dominio: panoramica in `docs/reference/modal-game-database.md`; schema completo (campi, tipi, modifiers, indici, relazioni) auto-generato in `docs/schema-reference.md`. 【F:docs/reference/modal-game-database.md†L1-L14】【F:docs/schema-reference.md†L1-L40】
 
 - **Relazioni / Sinergie**
   - Relazioni tra entità modellate in Prisma (Species↔Trait/biomi/ecosistemi, Ecosystem↔Biome/Species) con indici/unici per consistenza. 【F:server/prisma/schema.prisma†L136-L251】
   - Pipeline di import che preserva sinergie tra collezioni (upsert specie/trait/biomi/ecosistemi e legami ponte). 【F:server/scripts/ingest/import-taxonomy.js†L1-L150】
 
 - **Ambiente / Contesto**
-  - Prerequisiti runtime e setup locale/Docker descritti nella scheda (Node 18+, PostgreSQL 16/Docker, Vite dashboard). 【F:docs/Documento_Riferimento.md†L2-L9】【F:docs/onboarding.md†L1-L66】
+  - Prerequisiti runtime e setup locale/Docker descritti nella scheda (Node 18+, PostgreSQL 16/Docker, Vite dashboard). 【F:docs/reference/Documento_Riferimento.md†L2-L9】【F:docs/process/onboarding.md†L1-L66】
   - Variabili d'ambiente principali: `DATABASE_URL`, `PORT`, `VITE_API_BASE_URL`, `VITE_API_USER`. 【F:README.md†L27-L63】
 
 - **Bilanciamento / Costi**
-  - Import idempotente (`--dry-run`, slug univoci, upsert) per evitare duplicati e ridurre costi operativi di bonifica. 【F:docs/evo-import.md†L1-L40】【F:server/scripts/ingest/import-taxonomy.js†L1-L80】
+  - Import idempotente (`--dry-run`, slug univoci, upsert) per evitare duplicati e ridurre costi operativi di bonifica. 【F:docs/process/evo-import.md†L1-L40】【F:server/scripts/ingest/import-taxonomy.js†L1-L80】
   - Campi di range/allowed values nei Trait per controllare domini numerici e categoriali (limita errori e rework). 【F:server/prisma/schema.prisma†L119-L152】
 
 - **Localizzazione / Testi**
@@ -63,7 +63,7 @@ Blocchi compilati secondo la struttura condivisa dal PM e allineati ai file/refe
   - Stringhe italiane organizzate per modulo in `apps/dashboard/src/i18n/locales/it/*.json`; i componenti usano `useTranslation`. 【F:apps/dashboard/src/i18n/index.ts†L5-L35】
 
 ### Reference rapide
-- **Glossario / schede dettagliate**: `docs/trait-scheda.md` per i campi trait e relativi vincoli. 【F:docs/trait-scheda.md†L1-L104】
-- **Fonti editoriali / pipeline**: `docs/evo-import.md` e `server/scripts/ingest/import-taxonomy.js` per origini dati e normalizzazione. 【F:docs/evo-import.md†L1-L40】【F:server/scripts/ingest/import-taxonomy.js†L1-L80】
+- **Glossario / schede dettagliate**: `docs/reference/trait-scheda.md` per i campi trait e relativi vincoli. 【F:docs/reference/trait-scheda.md†L1-L104】
+- **Fonti editoriali / pipeline**: `docs/process/evo-import.md` e `server/scripts/ingest/import-taxonomy.js` per origini dati e normalizzazione. 【F:docs/process/evo-import.md†L1-L40】【F:server/scripts/ingest/import-taxonomy.js†L1-L80】
 - **Tassonomie**: schema Prisma per Trait/Biome/Species/Ecosystem e relazioni ponte. 【F:server/prisma/schema.prisma†L119-L251】
-- **Modelli estesi**: dominio in `docs/modal-game-database.md` (descrizione + entità + processi + sicurezza + runtime); schema completo (auto-generato da `schema.prisma`) in `docs/schema-reference.md`. 【F:docs/modal-game-database.md†L1-L40】【F:docs/schema-reference.md†L1-L40】
+- **Modelli estesi**: dominio in `docs/reference/modal-game-database.md` (descrizione + entità + processi + sicurezza + runtime); schema completo (auto-generato da `schema.prisma`) in `docs/schema-reference.md`. 【F:docs/reference/modal-game-database.md†L1-L40】【F:docs/schema-reference.md†L1-L40】

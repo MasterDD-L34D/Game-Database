@@ -4,10 +4,10 @@ Questo progetto importa i cataloghi del repository sorgente `Game` nel database 
 
 ## Riferimenti operativi
 
-- Runbook operativo: [`docs/operativo/RUNBOOK.md`](./operativo/RUNBOOK.md)
-- Importer principale: [`server/scripts/ingest/import-taxonomy.js`](../server/scripts/ingest/import-taxonomy.js)
-- Wrapper cross-platform: [`server/scripts/evo-import.js`](../server/scripts/evo-import.js)
-- Config sorgenti: [`server/scripts/ingest/evo-import.config.json`](../server/scripts/ingest/evo-import.config.json)
+- Runbook operativo: [`docs/process/RUNBOOK.md`](./RUNBOOK.md)
+- Importer principale: [`server/scripts/ingest/import-taxonomy.js`](../../server/scripts/ingest/import-taxonomy.js)
+- Wrapper cross-platform: [`server/scripts/evo-import.js`](../../server/scripts/evo-import.js)
+- Config sorgenti: [`server/scripts/ingest/evo-import.config.json`](../../server/scripts/ingest/evo-import.config.json)
 
 ## Sorgente ufficiale v1
 

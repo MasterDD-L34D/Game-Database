@@ -38,7 +38,7 @@ Completare **baseline docs + checklist qualita + piano settimana 1**.
 - **Next action (1 comando massimo):** `cd server && node --test test/permissions.test.js`
 - **Blocker:** manca evidenza aggiornata dei casi positivi/negativi sui ruoli critici e relativo salvataggio output CI.
 - **Last verified at (UTC):** 2026-04-12T21:48:29Z
-- **Artifacts/links:** `docs/operativo/ROADMAP.md`; pipeline CI con test permessi; suite backend autorizzazioni.
+- **Artifacts/links:** `docs/process/ROADMAP.md`; pipeline CI con test permessi; suite backend autorizzazioni.
 - **Done when:** test positivi/negativi sui ruoli critici eseguiti in CI con output salvato e referenziabile dal board.
 
 #### Card: UX error handling dashboard
@@ -63,31 +63,31 @@ Completare **baseline docs + checklist qualita + piano settimana 1**.
 - **Status:** Done
 - **Owner:** Solo Maintainer
 - **Stima:** 2h
-- **Next action (1 comando massimo):** `cat docs/operativo/ROADMAP.md`
+- **Next action (1 comando massimo):** `cat docs/process/ROADMAP.md`
 - **Blocker:** nessuno.
 - **Last verified at (UTC):** 2026-04-12T21:48:29Z
-- **Artifacts/links:** `docs/operativo/ROADMAP.md`
-- **Done when:** roadmap settimanale e milestone pubblicate in `docs/operativo/ROADMAP.md`.
+- **Artifacts/links:** `docs/process/ROADMAP.md`
+- **Done when:** roadmap settimanale e milestone pubblicate in `docs/process/ROADMAP.md`.
 
 #### Card: quality gates
 - **Status:** Done
 - **Owner:** Solo Maintainer
 - **Stima:** 1h
-- **Next action (1 comando massimo):** `cat docs/operativo/QUALITY_GATES.md`
+- **Next action (1 comando massimo):** `cat docs/process/QUALITY_GATES.md`
 - **Blocker:** nessuno.
 - **Last verified at (UTC):** 2026-04-12T21:48:29Z
-- **Artifacts/links:** `docs/operativo/QUALITY_GATES.md`
-- **Done when:** checklist e blocchi di merge pubblicati in `docs/operativo/QUALITY_GATES.md`.
+- **Artifacts/links:** `docs/process/QUALITY_GATES.md`
+- **Done when:** checklist e blocchi di merge pubblicati in `docs/process/QUALITY_GATES.md`.
 
 #### Card: runbook skeleton
 - **Status:** Done
 - **Owner:** Solo Maintainer
 - **Stima:** 2h
-- **Next action (1 comando massimo):** `cat docs/operativo/RUNBOOK.md`
+- **Next action (1 comando massimo):** `cat docs/process/RUNBOOK.md`
 - **Blocker:** nessuno.
 - **Last verified at (UTC):** 2026-04-12T21:48:29Z
-- **Artifacts/links:** `docs/operativo/RUNBOOK.md`
-- **Done when:** struttura operativa iniziale pubblicata in `docs/operativo/RUNBOOK.md`.
+- **Artifacts/links:** `docs/process/RUNBOOK.md`
+- **Done when:** struttura operativa iniziale pubblicata in `docs/process/RUNBOOK.md`.
 
 ## Registro decisioni (2026-04-10)
 - **2026-04-10 13:10 UTC** - Decisione: applicare gate di merge obbligatori su test, i18n, error handling e documentazione. **Responsabile:** Solo Maintainer.
