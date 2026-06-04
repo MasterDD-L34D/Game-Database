@@ -6,7 +6,7 @@ changes will be overwritten next time `npm run schema:doc` runs
 (also gated in CI via `npm run schema:doc:check`).
 
 For dominio/runtime/operational context (not schema), see
-[`modal-game-database.md`](./reference/modal-game-database.md).
+[`modal-game-database.md`](./modal-game-database.md).
 
 > Generator entry: `server/scripts/generate-schema-doc.js`
 > Source schema: `server/prisma/schema.prisma`

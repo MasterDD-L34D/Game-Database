@@ -1,7 +1,7 @@
 # Research — Schema doc auto-gen + drift gate
 
 **Date**: 2026-05-20
-**Component**: `server/scripts/generate-schema-doc.js`, `docs/schema-reference.md`, `.github/workflows/schema-doc-check.yml`, `docs/reference/modal-game-database.md` slim
+**Component**: `server/scripts/generate-schema-doc.js`, `docs/schema-reference.md`, `.github/workflows/schema-doc-check.yml`, `docs/modal-game-database.md` slim
 **Author**: parallel-#2 session (Ryzen)
 **Spec reference**: `docs/superpowers/specs/2026-05-20-game-database-value-roadmap-design.md` PR-γ + Q3 resolved (coexist, not replace)
 

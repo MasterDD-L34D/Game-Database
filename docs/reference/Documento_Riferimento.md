@@ -44,7 +44,7 @@ Blocchi compilati secondo la struttura condivisa dal PM e allineati ai file/refe
 
 - **Classificazione / Ruolo**
   - Ruoli applicativi e permessi di scrittura tassonomia definiti da `TAXONOMY_WRITE_ROLES`; audit opzionale tramite header `X-User`. 【F:README.md†L39-L49】
-  - Entità e dominio: panoramica in `docs/reference/modal-game-database.md`; schema completo (campi, tipi, modifiers, indici, relazioni) auto-generato in `docs/schema-reference.md`. 【F:docs/reference/modal-game-database.md†L1-L14】【F:docs/schema-reference.md†L1-L40】
+  - Entità e dominio: panoramica in `docs/modal-game-database.md`; schema completo (campi, tipi, modifiers, indici, relazioni) auto-generato in `docs/schema-reference.md`. 【F:docs/modal-game-database.md†L1-L14】【F:docs/schema-reference.md†L1-L40】
 
 - **Relazioni / Sinergie**
   - Relazioni tra entità modellate in Prisma (Species↔Trait/biomi/ecosistemi, Ecosystem↔Biome/Species) con indici/unici per consistenza. 【F:server/prisma/schema.prisma†L136-L251】
@@ -66,4 +66,4 @@ Blocchi compilati secondo la struttura condivisa dal PM e allineati ai file/refe
 - **Glossario / schede dettagliate**: `docs/reference/trait-scheda.md` per i campi trait e relativi vincoli. 【F:docs/reference/trait-scheda.md†L1-L104】
 - **Fonti editoriali / pipeline**: `docs/process/evo-import.md` e `server/scripts/ingest/import-taxonomy.js` per origini dati e normalizzazione. 【F:docs/process/evo-import.md†L1-L40】【F:server/scripts/ingest/import-taxonomy.js†L1-L80】
 - **Tassonomie**: schema Prisma per Trait/Biome/Species/Ecosystem e relazioni ponte. 【F:server/prisma/schema.prisma†L119-L251】
-- **Modelli estesi**: dominio in `docs/reference/modal-game-database.md` (descrizione + entità + processi + sicurezza + runtime); schema completo (auto-generato da `schema.prisma`) in `docs/schema-reference.md`. 【F:docs/reference/modal-game-database.md†L1-L40】【F:docs/schema-reference.md†L1-L40】
+- **Modelli estesi**: dominio in `docs/modal-game-database.md` (descrizione + entità + processi + sicurezza + runtime); schema completo (auto-generato da `schema.prisma`) in `docs/schema-reference.md`. 【F:docs/modal-game-database.md†L1-L40】【F:docs/schema-reference.md†L1-L40】

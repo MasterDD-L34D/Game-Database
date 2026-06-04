@@ -14,7 +14,7 @@
 
 ## Schema
 
-Lo schema completo (modelli, campi, tipi, modifiers, relazioni, indici, enum) è **auto-generato** in [`schema-reference.md`](../schema-reference.md) dal sorgente Prisma `server/prisma/schema.prisma`. Quel file è la fonte canonica — questo documento mantiene solo dominio/runtime context.
+Lo schema completo (modelli, campi, tipi, modifiers, relazioni, indici, enum) è **auto-generato** in [`schema-reference.md`](./schema-reference.md) dal sorgente Prisma `server/prisma/schema.prisma`. Quel file è la fonte canonica — questo documento mantiene solo dominio/runtime context.
 
 Per rigenerarlo:
 
