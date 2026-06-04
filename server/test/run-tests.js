@@ -25,6 +25,7 @@ const testFiles = [
   'search.test.js',
   'audit.test.js',
   'importValidator.test.js',
+  'httpErrors.test.js',
 ];
 
 // Integration tests authorize writes by simulating a trusted caller via client
