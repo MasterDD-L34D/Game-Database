@@ -4,8 +4,8 @@ Questa scheda raccoglie le informazioni essenziali per configurare correttamente
 
 ## Dati anagrafici
 - **Slug (`slug`, obbligatorio)**: identificatore univoco in minuscolo con trattini.
-- **Nome (`name`, obbligatorio)**: etichetta leggibile; consulta le proposte approvate in [`docs/reference/trait_reference.md`](catalog/trait_reference.md) prima di crearne di nuove.
-- **Descrizione (`description`, opzionale)**: testo di contesto; preferire descrizioni già validate in [`docs/reference/trait_reference.md`](catalog/trait_reference.md).
+- **Nome (`name`, obbligatorio)**: etichetta leggibile; consulta le proposte approvate in [`docs/reference/trait_reference.md`](trait_reference.md) prima di crearne di nuove.
+- **Descrizione (`description`, opzionale)**: testo di contesto; preferire descrizioni già validate in [`docs/reference/trait_reference.md`](trait_reference.md).
 - **Categoria (`category`, opzionale)**: raggruppamento logico (es. morfologia, comportamento, genetica).
 - **Unità (`unit`, opzionale)**: specifica metri, %, kg ecc. solo quando necessario.
 - **Tipo dato (`dataType`, obbligatorio)**: uno tra `BOOLEAN`, `NUMERIC`, `CATEGORICAL`, `TEXT`.
@@ -29,7 +29,7 @@ Questa scheda raccoglie le informazioni essenziali per configurare correttamente
 - Mantieni la `category` di default `baseline` quando non servono varianti.
 
 ## Passi operativi
-1. Scegli un **nome** e una **descrizione** partendo dalle proposte approvate in [`docs/reference/trait_reference.md`](catalog/trait_reference.md); aggiorna il catalogo se aggiungi un nuovo valore condiviso.
+1. Scegli un **nome** e una **descrizione** partendo dalle proposte approvate in [`docs/reference/trait_reference.md`](trait_reference.md); aggiorna il catalogo se aggiungi un nuovo valore condiviso.
 2. Imposta **slug** e **tipo dato** coerenti con l’uso previsto.
 3. Compila i campi aggiuntivi richiesti dal tipo (`allowedValues`, `rangeMin`/`rangeMax`, `unit`).
 4. Definisci eventuali **varianti** tramite `category` in `SpeciesTrait` solo se realmente necessarie.
