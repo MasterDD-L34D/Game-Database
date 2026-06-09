@@ -1,2 +1,8 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# schema-reference.md is generated with LF by server/scripts/generate-schema-doc.js.
+# Force LF on checkout so `schema:doc:check` (byte-compares the file vs generator
+# output) passes on Windows too -- core.autocrlf=true would otherwise yield CRLF in
+# the working tree and fail the local --check (CI Linux already checks out LF).
+docs/schema-reference.md text eol=lf
