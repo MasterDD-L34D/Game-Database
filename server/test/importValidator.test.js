@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { computeExitCode, parseFlagFromArgs, normalizeTrait } = require('../scripts/ingest/import-taxonomy');
+const { computeExitCode, parseFlagFromArgs, normalizeTrait, mergeTraitRecords } = require('../scripts/ingest/import-taxonomy');
 
 // PR-ε: computeExitCode is the pure exit-code policy function.
 // Per spec Q4 resolved: STRICT default (errori + schema_validation = exit 1).
@@ -169,4 +169,62 @@ test('normalizeTrait sets sourceKey to the exact identifier when provided', () =
   const resultNameOnly = normalizeTrait({ name: 'Just Name' });
   assert.equal(resultNameOnly.slug, 'just-name');
   assert.equal(resultNameOnly.sourceKey, null); // Display name is not an identifier source
+});
+
+// ---- Precedence merge ----------------------------------------------------
+
+test('mergeTraitRecords merges according to PRECEDENCE rules (EDITORIAL > MECHANICS > OTHERS) and tracks sourceFiles', () => {
+  const records = [
+    {
+      sourceClass: 'pack_glossary',
+      record: {
+        slug: 'test-slug',
+        name: 'Pack Glossary Name',
+        description: 'Pack Glossary Description',
+        tier: 'T1',
+        sourceKey: 'pg_key',
+        dataType: 'TEXT'
+      }
+    },
+    {
+      sourceClass: 'pack_reference',
+      record: {
+        slug: 'test-slug',
+        name: 'Reference Name',
+        description: 'Uso Funzione as Description',
+        tier: 'T2',
+        energyMaintenance: 'high',
+        functionalUse: 'test functional use',
+        sourceKey: 'pr_key',
+        dataType: 'NUMERIC'
+      }
+    },
+    {
+      sourceClass: 'core_glossary',
+      record: {
+        slug: 'test-slug',
+        name: 'Core Name',
+        description: null, // Should not overwrite lower rank's description
+        sourceKey: 'core_key'
+      }
+    }
+  ];
+
+  const merged = mergeTraitRecords(records);
+
+  // Editorial: Core Glossary > Pack Glossary > Pack Reference
+  assert.equal(merged.name, 'Core Name'); // From core_glossary (highest rank)
+  assert.equal(merged.description, 'Pack Glossary Description'); // core is null, so falls back to pack_glossary
+  assert.equal(merged.sourceKey, 'core_key');
+
+  // Mechanics: Pack Reference > Pack Glossary > Core Glossary
+  assert.equal(merged.tier, 'T2'); // From pack_reference (highest rank for mechanics)
+  assert.equal(merged.energyMaintenance, 'high'); // From pack_reference
+  assert.equal(merged.functionalUse, 'test functional use'); // From pack_reference
+
+  // Others: First non-null wins (order of array iteration is pack_glossary -> pack_reference -> core_glossary)
+  assert.equal(merged.dataType, 'TEXT'); // First non-null
+
+  // sourceFiles
+  assert.deepEqual(merged.sourceFiles, ['core_glossary', 'pack_glossary', 'pack_reference']);
 });

@@ -9,13 +9,14 @@ const CHUNK = 1000;
 // a snapshot must capture the columns as they existed at release time.
 // RFC #4 OQ2 (2026-06-11) adds nameEn/descriptionEn; old snapshots stay null by design.
 // RFC #4 S1c (2026-06-11) adds sourceKey; old snapshots stay null by design.
+// RFC #4 S1d: sourceFiles membership.
 const FIELD_MAP = {
   trait: {
     delegate: 'trait',
     snapshot: 'traitVersion',
     fk: 'traitId',
     fields: [
-      'slug', 'sourceKey', 'name', 'description', 'nameEn', 'descriptionEn', 'category', 'unit', 'dataType',
+      'slug', 'sourceKey', 'sourceFiles', 'name', 'description', 'nameEn', 'descriptionEn', 'category', 'unit', 'dataType',
       'allowedValues', 'rangeMin', 'rangeMax', 'tier', 'familyType',
       'energyMaintenance', 'slotProfile', 'usageTags', 'synergies',
       'conflicts', 'environmentalRequirements', 'inducedMutation',

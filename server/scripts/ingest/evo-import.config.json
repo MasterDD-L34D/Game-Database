@@ -1,5 +1,6 @@
 {
   "traits": [
+    "data/core/traits/glossary.json",
     "packs/evo_tactics_pack/docs/catalog/trait_glossary.json",
     "packs/evo_tactics_pack/docs/catalog/trait_reference.json",
     "packs/evo_tactics_pack/docs/catalog/env_traits.json"

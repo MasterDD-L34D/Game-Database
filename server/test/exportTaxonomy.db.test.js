@@ -220,6 +220,52 @@ test('exportTaxonomy', async (t) => {
     await prisma.taxonomyVersion.delete({ where: { id: taxonomyVersion.id }});
   });
 
+  await t.test('membership filter trait only in pack_reference is absent from both glossary targets', async () => {
+    const mockTag = 'v-membership-test';
+    const taxonomyVersion = await prisma.taxonomyVersion.create({
+      data: { tag: mockTag, status: 'released' }
+    });
+
+    const mockTraitRef = await prisma.trait.create({
+      data: { slug: 'mock-trait-ref', sourceFiles: ['pack_reference'], name: 'Ref Only', dataType: 'TEXT' }
+    });
+    const mockTraitAll = await prisma.trait.create({
+      data: { slug: 'mock-trait-all', sourceFiles: null, name: 'All Only', dataType: 'TEXT' }
+    });
+
+    await prisma.traitVersion.createMany({
+      data: [
+        { versionId: taxonomyVersion.id, traitId: mockTraitRef.id, slug: mockTraitRef.slug, sourceFiles: mockTraitRef.sourceFiles, name: mockTraitRef.name, dataType: mockTraitRef.dataType },
+        { versionId: taxonomyVersion.id, traitId: mockTraitAll.id, slug: mockTraitAll.slug, sourceFiles: mockTraitAll.sourceFiles, name: mockTraitAll.name, dataType: mockTraitAll.dataType }
+      ]
+    });
+
+    execSync(`node ../scripts/export/export-taxonomy.js --version ${mockTag} --out ${tmpOutDir}`, { cwd: __dirname });
+
+    const gl1Path = path.join(tmpOutDir, PATHS.TRAIT_GLOSSARY);
+    const gl2Path = path.join(tmpOutDir, PATHS.CORE_GLOSSARY);
+    const refPath = path.join(tmpOutDir, PATHS.TRAIT_REFERENCE);
+
+    const gl1 = JSON.parse(fs.readFileSync(gl1Path, 'utf8'));
+    const gl2 = JSON.parse(fs.readFileSync(gl2Path, 'utf8'));
+    const ref = JSON.parse(fs.readFileSync(refPath, 'utf8'));
+
+    // ref has both
+    assert.ok('mock-trait-ref' in ref.traits);
+    assert.ok('mock-trait-all' in ref.traits);
+
+    // glossaries only have all
+    assert.equal('mock-trait-ref' in gl1.traits, false);
+    assert.ok('mock-trait-all' in gl1.traits);
+    assert.equal('mock-trait-ref' in gl2.traits, false);
+    assert.ok('mock-trait-all' in gl2.traits);
+
+    await prisma.traitVersion.deleteMany({ where: { versionId: taxonomyVersion.id }});
+    await prisma.trait.delete({ where: { id: mockTraitRef.id }});
+    await prisma.trait.delete({ where: { id: mockTraitAll.id }});
+    await prisma.taxonomyVersion.delete({ where: { id: taxonomyVersion.id }});
+  });
+
   await t.test('deepEqual is key-order independent (Codex P2)', () => {
     // Same object, different key insertion order -> matching, not divergent.
     assert.equal(deepEqual({ core: 'sensoriale', complementare: 'analitico' },
@@ -231,6 +277,72 @@ test('exportTaxonomy', async (t) => {
     assert.equal(deepEqual({ a: 1 }, { a: 2 }), false);
     // Array order stays significant by design.
     assert.equal(deepEqual([1, 2], [2, 1]), false);
+  });
+
+  await t.test('differ treats [] as absent', async () => {
+    const mockTag = 'v-absent-test';
+    const taxonomyVersion = await prisma.taxonomyVersion.create({
+      data: { tag: mockTag, status: 'released' }
+    });
+
+    const mockTrait = await prisma.trait.create({
+      data: { slug: 'mock-trait', name: 'Mock Trait', dataType: 'TEXT', usageTags: [] } // Empty array in DB
+    });
+
+    await prisma.traitVersion.create({
+      data: { versionId: taxonomyVersion.id, traitId: mockTrait.id, slug: mockTrait.slug, name: mockTrait.name, dataType: mockTrait.dataType, usageTags: [] }
+    });
+
+    // Negative control (triage P2 on #194): NON-empty array vs absent must
+    // still count as exported_only -- only empty arrays equal absence.
+    const filledTrait = await prisma.trait.create({
+      data: { slug: 'mock-trait-filled', name: 'Mock Trait Filled', dataType: 'TEXT', usageTags: ['scout'] }
+    });
+    await prisma.traitVersion.create({
+      data: { versionId: taxonomyVersion.id, traitId: filledTrait.id, slug: filledTrait.slug, name: filledTrait.name, dataType: filledTrait.dataType, usageTags: ['scout'] }
+    });
+
+    // We only care about TRAIT_REFERENCE
+    execSync(`node ../scripts/export/export-taxonomy.js --version ${mockTag} --out ${tmpOutDir}`, { cwd: __dirname });
+
+    const refPath = path.join(tmpOutDir, PATHS.TRAIT_REFERENCE);
+    
+    fs.mkdirSync(path.dirname(path.join(tmpDiffDir, PATHS.TRAIT_REFERENCE)), { recursive: true });
+    
+    // Game target has no usage_tags for this trait (undefined/absent)
+    const mockRef = {
+      schema_version: '2.0',
+      traits: {
+        'mock-trait': {
+          label: 'Mock Trait'
+          // no usage_tags
+        },
+        'mock-trait-filled': {
+          label: 'Mock Trait Filled'
+          // no usage_tags either -- but DB has a NON-empty array here
+        }
+      }
+    };
+
+    fs.writeFileSync(path.join(tmpDiffDir, PATHS.TRAIT_REFERENCE), JSON.stringify(mockRef));
+
+    const reportFile = path.join(tmpDiffDir, 'report.json');
+    execSync(`node ../scripts/export/export-taxonomy.js --version ${mockTag} --diff ${tmpDiffDir} --report ${reportFile}`, { cwd: __dirname });
+
+    const report = JSON.parse(fs.readFileSync(reportFile, 'utf8'));
+    const refReport = report.targets[PATHS.TRAIT_REFERENCE];
+    
+    // Empty array [] in DB vs absent in Game must NOT be counted at all for
+    // mock-trait; the NON-empty array on mock-trait-filled MUST be counted as
+    // exported_only (negative control: only emptiness equals absence).
+    assert.ok(refReport.perField['usage_tags'] !== undefined, 'usage_tags must be counted for the filled trait');
+    assert.equal(refReport.perField['usage_tags'].exported_only, 1);
+    assert.equal(refReport.perField['usage_tags'].divergent, 0);
+
+    await prisma.traitVersion.deleteMany({ where: { versionId: taxonomyVersion.id }});
+    await prisma.trait.delete({ where: { id: mockTrait.id }});
+    await prisma.trait.delete({ where: { id: filledTrait.id }});
+    await prisma.taxonomyVersion.delete({ where: { id: taxonomyVersion.id }});
   });
 });
 

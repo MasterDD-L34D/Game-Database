@@ -10,6 +10,7 @@ test('traitVersionToTrait maps snapshot row to master trait shape', () => {
     capturedAt: new Date('2026-01-01T00:00:00Z'),
     slug: 'speed',
     sourceKey: 'speed_original',
+    sourceFiles: ['core_glossary'],
     name: 'Speed',
     description: 'how fast',
     nameEn: 'Speed EN',
@@ -39,6 +40,7 @@ test('traitVersionToTrait maps snapshot row to master trait shape', () => {
   // frozen fields are copied through
   assert.equal(out.slug, 'speed');
   assert.equal(out.sourceKey, 'speed_original');
+  assert.deepEqual(out.sourceFiles, ['core_glossary']);
   assert.equal(out.name, 'Speed');
   assert.equal(out.nameEn, 'Speed EN');
   assert.equal(out.descriptionEn, 'how fast EN');
