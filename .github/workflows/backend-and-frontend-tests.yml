@@ -90,3 +90,6 @@ jobs:
       - name: Run taxonomy-version DB read tests
         working-directory: server
         run: node -e "require('./test/taxonomyVersionRead.db.test.js')"
+      - name: Run export-taxonomy DB tests
+        working-directory: server
+        run: node -e "require('./test/exportTaxonomy.db.test.js')"
