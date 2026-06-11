@@ -26,9 +26,23 @@ function arg(name, def) {
   return parseFlagFromArgs(args, name, def);
 }
 
+// Sort object keys recursively so semantically-equal JSON values compare
+// equal regardless of key insertion order (Codex P2 on PR #187: slot_profile
+// from Game files vs DB rows would otherwise false-flag as divergent).
+// Array order stays significant by design (lists are order-sensitive data).
+function canonicalize(value) {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const key of Object.keys(value).sort()) out[key] = canonicalize(value[key]);
+    return out;
+  }
+  return value;
+}
+
 function deepEqual(a, b) {
   try {
-    return JSON.stringify(a) === JSON.stringify(b);
+    return JSON.stringify(canonicalize(a)) === JSON.stringify(canonicalize(b));
   } catch {
     return false;
   }
@@ -164,6 +178,19 @@ async function exportTaxonomy() {
             }
           }
         }
+      } else {
+        // Codex P2 on PR #187: a missing/unparsable target must not leave the
+        // report silently empty -- flag it and count every exported field as
+        // exported_only so the gap is visible in the fidelity numbers.
+        targetReport.targetMissing = true;
+        const expTraits = expContent.traits || {};
+        for (const fields of Object.values(expTraits)) {
+          for (const field of Object.keys(fields)) {
+            targetReport.counts.exported_only++;
+            if (!targetReport.perField[field]) targetReport.perField[field] = { matching: 0, divergent: 0, exported_only: 0, game_only_model_gap: 0, game_only_unexpected: 0 };
+            targetReport.perField[field].exported_only++;
+          }
+        }
       }
       report.targets[relPath] = targetReport;
     }
@@ -192,4 +219,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { exportTaxonomy };
+module.exports = { exportTaxonomy, deepEqual };
