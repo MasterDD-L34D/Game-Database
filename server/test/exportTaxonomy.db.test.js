@@ -151,6 +151,75 @@ test('exportTaxonomy', async (t) => {
     }
   });
 
+  await t.test('map keys equal sourceKey when present and fall back to slug when null', async () => {
+    // We already have a database with v1.0.0 traits. Let's find one and ensure it's exported
+    // correctly. The exact logic for verifying the map keys depends on what the exporter did
+    // to the database, but we can verify that if we modify a trait's sourceKey, it changes
+    // the exported map key.
+    
+    // Create a temporary mock version 
+    const mockTag = 'v-sourcekey-test';
+    const taxonomyVersion = await prisma.taxonomyVersion.create({
+      data: {
+        tag: mockTag,
+        status: 'released',
+      }
+    });
+
+    const mockTrait1 = await prisma.trait.create({
+      data: {
+        slug: 'mock-trait-one',
+        sourceKey: 'mock_trait_1',
+        name: 'Mock Trait One',
+        dataType: 'TEXT',
+      }
+    });
+    const mockTrait2 = await prisma.trait.create({
+      data: {
+        slug: 'mock-trait-two',
+        sourceKey: null,
+        name: 'Mock Trait Two',
+        dataType: 'TEXT',
+      }
+    });
+
+    await prisma.traitVersion.createMany({
+      data: [
+        {
+          versionId: taxonomyVersion.id,
+          traitId: mockTrait1.id,
+          slug: mockTrait1.slug,
+          sourceKey: mockTrait1.sourceKey,
+          name: mockTrait1.name,
+          dataType: mockTrait1.dataType,
+        },
+        {
+          versionId: taxonomyVersion.id,
+          traitId: mockTrait2.id,
+          slug: mockTrait2.slug,
+          sourceKey: mockTrait2.sourceKey,
+          name: mockTrait2.name,
+          dataType: mockTrait2.dataType,
+        }
+      ]
+    });
+
+    execSync(`node ../scripts/export/export-taxonomy.js --version ${mockTag} --out ${tmpOutDir}`, { cwd: __dirname });
+
+    const refPath = path.join(tmpOutDir, PATHS.TRAIT_REFERENCE);
+    const ref = JSON.parse(fs.readFileSync(refPath, 'utf8'));
+
+    assert.ok('mock_trait_1' in ref.traits);
+    assert.equal('mock-trait-one' in ref.traits, false);
+
+    assert.ok('mock-trait-two' in ref.traits);
+
+    await prisma.traitVersion.deleteMany({ where: { versionId: taxonomyVersion.id }});
+    await prisma.trait.delete({ where: { id: mockTrait1.id }});
+    await prisma.trait.delete({ where: { id: mockTrait2.id }});
+    await prisma.taxonomyVersion.delete({ where: { id: taxonomyVersion.id }});
+  });
+
   await t.test('deepEqual is key-order independent (Codex P2)', () => {
     // Same object, different key insertion order -> matching, not divergent.
     assert.equal(deepEqual({ core: 'sensoriale', complementare: 'analitico' },

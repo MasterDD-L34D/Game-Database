@@ -133,6 +133,7 @@ model AuditLog {
 model Trait {
   id            String        @id @default(cuid())
   slug          String        @unique @db.VarChar(80)
+  sourceKey     String?
   name          String
   description   String?
   nameEn        String?
@@ -351,6 +352,7 @@ model TraitVersion {
   version   TaxonomyVersion @relation(fields: [versionId], references: [id])
 
   slug                      String        @db.VarChar(80)
+  sourceKey                 String?
   name                      String
   description               String?
   nameEn                    String?

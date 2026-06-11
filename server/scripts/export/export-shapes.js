@@ -13,10 +13,10 @@ const MODEL_GAP = [
 
 function renderGlossary(traits, updatedAt, schemaVersion) {
   const traitsMap = {};
-  const sortedTraits = [...traits].sort((a, b) => a.slug.localeCompare(b.slug));
+  const sortedTraits = [...traits].sort((a, b) => (a.sourceKey || a.slug).localeCompare(b.sourceKey || b.slug));
 
   for (const trait of sortedTraits) {
-    traitsMap[trait.slug] = {
+    traitsMap[trait.sourceKey || trait.slug] = {
       label_it: trait.name,
       label_en: trait.nameEn || trait.name,
       description_it: trait.description,
@@ -34,7 +34,7 @@ function renderGlossary(traits, updatedAt, schemaVersion) {
 
 function renderReference(traits) {
   const traitsMap = {};
-  const sortedTraits = [...traits].sort((a, b) => a.slug.localeCompare(b.slug));
+  const sortedTraits = [...traits].sort((a, b) => (a.sourceKey || a.slug).localeCompare(b.sourceKey || b.slug));
 
   for (const trait of sortedTraits) {
     const obj = {};
@@ -52,7 +52,7 @@ function renderReference(traits) {
     if (trait.selectiveDrive != null) obj.spinta_selettiva = trait.selectiveDrive;
     if (trait.weakness != null) obj.debolezza = trait.weakness;
 
-    traitsMap[trait.slug] = obj;
+    traitsMap[trait.sourceKey || trait.slug] = obj;
   }
 
   return {
