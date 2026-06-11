@@ -7,13 +7,14 @@ const CHUNK = 1000;
 
 // Frozen v1.0.0 scalar field set. Do NOT sync this to future schema changes:
 // a snapshot must capture the columns as they existed at release time.
+// RFC #4 OQ2 (2026-06-11) adds nameEn/descriptionEn; old snapshots stay null by design.
 const FIELD_MAP = {
   trait: {
     delegate: 'trait',
     snapshot: 'traitVersion',
     fk: 'traitId',
     fields: [
-      'slug', 'name', 'description', 'category', 'unit', 'dataType',
+      'slug', 'name', 'description', 'nameEn', 'descriptionEn', 'category', 'unit', 'dataType',
       'allowedValues', 'rangeMin', 'rangeMax', 'tier', 'familyType',
       'energyMaintenance', 'slotProfile', 'usageTags', 'synergies',
       'conflicts', 'environmentalRequirements', 'inducedMutation',

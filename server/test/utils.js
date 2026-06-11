@@ -186,6 +186,8 @@ function createTaxonomyTestContext() {
       slug,
       name,
       description: data.description ?? null,
+      nameEn: data.nameEn ?? null,
+      descriptionEn: data.descriptionEn ?? null,
       category: data.category ?? null,
       unit: data.unit ?? null,
       dataType: data.dataType ?? 'TEXT',

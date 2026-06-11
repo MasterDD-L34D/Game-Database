@@ -11,6 +11,8 @@ test('traitVersionToTrait maps snapshot row to master trait shape', () => {
     slug: 'speed',
     name: 'Speed',
     description: 'how fast',
+    nameEn: 'Speed EN',
+    descriptionEn: 'how fast EN',
     category: 'movement',
     unit: 'm/s',
     dataType: 'NUMERIC',
@@ -36,6 +38,8 @@ test('traitVersionToTrait maps snapshot row to master trait shape', () => {
   // frozen fields are copied through
   assert.equal(out.slug, 'speed');
   assert.equal(out.name, 'Speed');
+  assert.equal(out.nameEn, 'Speed EN');
+  assert.equal(out.descriptionEn, 'how fast EN');
   assert.equal(out.dataType, 'NUMERIC');
   assert.deepEqual(out.slotProfile, { a: 1 });
   // snapshot-only columns are dropped

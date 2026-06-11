@@ -304,6 +304,8 @@ function normalizeTrait(record) {
     slug,
     name,
     description: pickText(record.description, record.description_it, record.description_en, record.descrizione, record.uso_funzione, record.spinta_selettiva, record.debolezza),
+    nameEn: pickText(record.label_en, record.name_en),
+    descriptionEn: pickText(record.description_en),
     category: pickText(record.category, record.categoria, record.famiglia_tipologia, record.slot_profile?.core, record.tier),
     unit: pickText(record.unit, record.unita, record.usage?.unit),
     dataType,
@@ -603,6 +605,8 @@ function buildTraitUpsertArgs(normalized) {
       slug: normalized.slug,
       name: normalized.name,
       description: normalized.description ?? null,
+      nameEn: normalized.nameEn ?? null,
+      descriptionEn: normalized.descriptionEn ?? null,
       category: normalized.category ?? null,
       unit: normalized.unit ?? null,
       dataType: normalized.dataType,
@@ -614,6 +618,8 @@ function buildTraitUpsertArgs(normalized) {
     update: {
       name: isFallbackNameOnly ? undefined : normalized.name,
       description: normalized.description ?? undefined,
+      nameEn: normalized.nameEn ?? undefined,
+      descriptionEn: normalized.descriptionEn ?? undefined,
       category: normalized.category ?? undefined,
       unit: normalized.unit ?? undefined,
       dataType: normalized.dataType,
@@ -1107,4 +1113,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { computeExitCode, parseFlagFromArgs };
+module.exports = { computeExitCode, parseFlagFromArgs, normalizeTrait };

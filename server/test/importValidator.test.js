@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { computeExitCode, parseFlagFromArgs } = require('../scripts/ingest/import-taxonomy');
+const { computeExitCode, parseFlagFromArgs, normalizeTrait } = require('../scripts/ingest/import-taxonomy');
 
 // PR-ε: computeExitCode is the pure exit-code policy function.
 // Per spec Q4 resolved: STRICT default (errori + schema_validation = exit 1).
@@ -143,4 +143,16 @@ test('parseFlagFromArgs: inline form takes precedence when both present', () => 
 test('parseFlagFromArgs: empty inline value returns empty string (not default)', () => {
   // --fail-on= explicitly passes empty; let caller decide
   assert.equal(parseFlagFromArgs(['--fail-on='], 'fail-on', 'default'), '');
+});
+
+// ---- normalizeTrait i18n -------------------------------------------------
+
+test('normalizeTrait populates nameEn/descriptionEn from label_en / description_en and leaves them null when absent', () => {
+  const resultAbsent = normalizeTrait({ slug: 'test', name: 'Test' });
+  assert.equal(resultAbsent.nameEn, null);
+  assert.equal(resultAbsent.descriptionEn, null);
+
+  const resultPresent = normalizeTrait({ slug: 'test', name: 'Test', label_en: 'Test EN', description_en: 'Test Desc EN' });
+  assert.equal(resultPresent.nameEn, 'Test EN');
+  assert.equal(resultPresent.descriptionEn, 'Test Desc EN');
 });

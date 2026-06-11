@@ -99,6 +99,8 @@ For dominio/runtime/operational context (not schema), see
 | `slug` | `String` | @unique @db.VarChar(80) |
 | `name` | `String` | — |
 | `description` | `String?` | — |
+| `nameEn` | `String?` | — |
+| `descriptionEn` | `String?` | — |
 | `category` | `String?` | — |
 | `unit` | `String?` | — |
 | `dataType` | `TraitDataType` | — |
@@ -362,6 +364,8 @@ For dominio/runtime/operational context (not schema), see
 | `slug` | `String` | @db.VarChar(80) |
 | `name` | `String` | — |
 | `description` | `String?` | — |
+| `nameEn` | `String?` | — |
+| `descriptionEn` | `String?` | — |
 | `category` | `String?` | — |
 | `unit` | `String?` | — |
 | `dataType` | `TraitDataType` | — |
