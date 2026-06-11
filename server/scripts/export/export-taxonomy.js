@@ -73,9 +73,9 @@ async function exportTaxonomy() {
   const traits = traitVersions.map(row => snapshotToMaster('trait', row));
   const updatedAt = version.releasedAt ? new Date(version.releasedAt).toISOString() : null;
 
-  const glossary1 = renderGlossary(traits, updatedAt, '1.0');
-  const reference = renderReference(traits);
-  const glossaryCore = renderGlossary(traits, updatedAt, '2.0');
+  const glossary1 = renderGlossary(traits.filter(t => !t.sourceFiles || t.sourceFiles.length === 0 || t.sourceFiles.includes('pack_glossary')), updatedAt, '1.0');
+  const reference = renderReference(traits.filter(t => !t.sourceFiles || t.sourceFiles.length === 0 || t.sourceFiles.includes('pack_reference')));
+  const glossaryCore = renderGlossary(traits.filter(t => !t.sourceFiles || t.sourceFiles.length === 0 || t.sourceFiles.includes('core_glossary')), updatedAt, '2.0');
 
   const exportedFiles = {
     [PATHS.TRAIT_GLOSSARY]: glossary1,
@@ -148,7 +148,17 @@ async function exportTaxonomy() {
             const expVal = expFields[field];
             const gameVal = gameFields[field];
 
-            if (expVal !== undefined && gameVal !== undefined) {
+            const isAbsent = (val) => val === undefined || val === null || (Array.isArray(val) && val.length === 0);
+            
+            const expAbsent = isAbsent(expVal);
+            const gameAbsent = isAbsent(gameVal);
+
+            if (expAbsent && gameAbsent) {
+              // Both sides absent -> no count
+              continue;
+            }
+
+            if (!expAbsent && !gameAbsent) {
               if (deepEqual(expVal, gameVal)) {
                 classification = 'matching';
               } else {
@@ -157,9 +167,9 @@ async function exportTaxonomy() {
                   targetReport.sampleDivergent.push({ slug, field, db: expVal, game: gameVal });
                 }
               }
-            } else if (expVal !== undefined && gameVal === undefined) {
+            } else if (!expAbsent && gameAbsent) {
               classification = 'exported_only';
-            } else if (expVal === undefined && gameVal !== undefined) {
+            } else if (expAbsent && !gameAbsent) {
               if (MODEL_GAP.includes(field)) {
                 classification = 'game_only_model_gap';
               } else {

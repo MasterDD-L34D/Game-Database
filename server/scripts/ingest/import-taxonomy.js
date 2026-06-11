@@ -91,6 +91,7 @@ const defaultConfig = {
     'packs/evo_tactics_pack/docs/catalog/catalog_data.json',
   ],
   traits: [
+    'data/core/traits/glossary.json',
     'packs/evo_tactics_pack/docs/catalog/trait_glossary.json',
     'packs/evo_tactics_pack/docs/catalog/trait_reference.json',
     'packs/evo_tactics_pack/docs/catalog/env_traits.json',
@@ -278,6 +279,97 @@ function expandDomainRecords(domain, filePath, data) {
   }
   for (const key of ['items', 'entries', 'data']) if (Array.isArray(data[key])) return data[key];
   return [data];
+}
+
+function classifySource(filePath) {
+  if (filePath.endsWith('data/core/traits/glossary.json')) return 'core_glossary';
+  if (filePath.endsWith('trait_glossary.json')) return 'pack_glossary';
+  if (filePath.endsWith('trait_reference.json')) return 'pack_reference';
+  return 'env_or_other';
+}
+
+function mergeTraitRecords(records) {
+  if (!records || records.length === 0) return null;
+
+  const getRank = (cls, ranks) => {
+    const idx = ranks.indexOf(cls);
+    return idx === -1 ? 0 : ranks.length - idx;
+  };
+
+  const EDITORIAL_RANKS = ['core_glossary', 'pack_glossary', 'pack_reference', 'env_or_other'];
+  const MECHANICS_RANKS = ['pack_reference', 'pack_glossary', 'core_glossary', 'env_or_other'];
+  
+  const merged = { ...records[0].record };
+  merged.sourceFiles = [];
+  
+  const sourceSet = new Set();
+  
+  let bestEditorial = null;
+  let bestEditorialRank = -1;
+  let bestMechanicsRank = -1;
+  
+  // Track fields individually since a higher rank source might have a null value,
+  // but we shouldn't overwrite a non-null value with null, though wait! The spec says:
+  // "Higher rank wins even when lower rank is non-null; null/undefined never overwrites a value."
+  // So if rank is higher AND value is not null, it wins.
+
+  const currentValues = {
+    editorial: { name: null, nameEn: null, description: null, descriptionEn: null },
+    mechanics: { tier: null, familyType: null, energyMaintenance: null, slotProfile: null, usageTags: null, synergies: null, conflicts: null, environmentalRequirements: null, inducedMutation: null, functionalUse: null, selectiveDrive: null, weakness: null },
+    other: { slug: null, dataType: null, allowedValues: null, rangeMin: null, rangeMax: null, category: null, unit: null }
+  };
+  
+  const currentRanks = {
+    editorial: { name: -1, nameEn: -1, description: -1, descriptionEn: -1 },
+    mechanics: { tier: -1, familyType: -1, energyMaintenance: -1, slotProfile: -1, usageTags: -1, synergies: -1, conflicts: -1, environmentalRequirements: -1, inducedMutation: -1, functionalUse: -1, selectiveDrive: -1, weakness: -1 }
+  };
+
+  let bestSourceKey = null;
+  let bestSourceKeyRank = -1;
+
+  for (const { record, sourceClass } of records) {
+    sourceSet.add(sourceClass);
+    const edRank = getRank(sourceClass, EDITORIAL_RANKS);
+    const mechRank = getRank(sourceClass, MECHANICS_RANKS);
+    
+    // Editorial fields
+    for (const field of ['name', 'nameEn', 'description', 'descriptionEn']) {
+      if (record[field] != null && edRank > currentRanks.editorial[field]) {
+        currentValues.editorial[field] = record[field];
+        currentRanks.editorial[field] = edRank;
+      }
+    }
+    
+    // SourceKey from highest editorial source that has one
+    if (record.sourceKey != null && edRank > bestSourceKeyRank) {
+      bestSourceKey = record.sourceKey;
+      bestSourceKeyRank = edRank;
+    }
+
+    // Mechanics fields
+    for (const field of ['tier', 'familyType', 'energyMaintenance', 'slotProfile', 'usageTags', 'synergies', 'conflicts', 'environmentalRequirements', 'inducedMutation', 'functionalUse', 'selectiveDrive', 'weakness']) {
+      if (record[field] != null && mechRank > currentRanks.mechanics[field]) {
+        currentValues.mechanics[field] = record[field];
+        currentRanks.mechanics[field] = mechRank;
+      }
+    }
+    
+    // Other fields (first non-null)
+    for (const field of ['slug', 'dataType', 'allowedValues', 'rangeMin', 'rangeMax', 'category', 'unit']) {
+      if (currentValues.other[field] == null && record[field] != null) {
+        currentValues.other[field] = record[field];
+      }
+    }
+  }
+  
+  merged.sourceFiles = Array.from(sourceSet).sort();
+  merged.sourceKey = bestSourceKey;
+  
+  Object.assign(merged, currentValues.editorial);
+  Object.assign(merged, currentValues.mechanics);
+  Object.assign(merged, currentValues.other);
+  
+  return merged;
 }
 
 function normalizeTrait(record) {
@@ -605,6 +697,7 @@ function buildTraitUpsertArgs(normalized) {
     create: {
       slug: normalized.slug,
       sourceKey: normalized.sourceKey ?? null,
+      sourceFiles: normalized.sourceFiles ?? null,
       name: normalized.name,
       description: normalized.description ?? null,
       nameEn: normalized.nameEn ?? null,
@@ -619,6 +712,7 @@ function buildTraitUpsertArgs(normalized) {
     },
     update: {
       sourceKey: normalized.sourceKey ?? undefined,
+      sourceFiles: normalized.sourceFiles ?? undefined,
       name: isFallbackNameOnly ? undefined : normalized.name,
       description: normalized.description ?? undefined,
       nameEn: normalized.nameEn ?? undefined,
@@ -692,8 +786,10 @@ function buildSpeciesUpsertArgs(normalized) {
 async function processTraits(items) {
   const t0 = performance.now();
   const report = createDomainReport('traits', items.length);
-  const pending = [];
+  
+  const pendingBySlug = new Map();
   for (const item of items) {
+    const sourceClass = classifySource(item.file);
     for (const record of expandDomainRecords('traits', item.file, item.data)) {
       report.read += 1;
       const normalized = normalizeTrait(record);
@@ -707,10 +803,21 @@ async function processTraits(items) {
       }
       report.normalized += 1;
       noteCompleteness(report, 'traits', normalized);
-      if (verbose) console.log(`Trait: ${normalized.slug}`);
-      pending.push(normalized);
+      
+      if (!pendingBySlug.has(normalized.slug)) {
+        pendingBySlug.set(normalized.slug, []);
+      }
+      pendingBySlug.get(normalized.slug).push({ record: normalized, sourceClass });
     }
   }
+  
+  const pending = [];
+  for (const [slug, records] of pendingBySlug.entries()) {
+    const merged = mergeTraitRecords(records);
+    if (verbose) console.log(`Trait: ${merged.slug} (sources: ${merged.sourceFiles.join(', ')})`);
+    pending.push(merged);
+  }
+
   if (!dryRun) {
     for (let i = 0; i < pending.length; i += BATCH_SIZE) {
       const batch = pending.slice(i, i + BATCH_SIZE);
@@ -1116,4 +1223,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { computeExitCode, parseFlagFromArgs, normalizeTrait };
+module.exports = { computeExitCode, parseFlagFromArgs, normalizeTrait, classifySource, mergeTraitRecords };
