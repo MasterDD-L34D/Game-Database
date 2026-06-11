@@ -7,6 +7,7 @@ const { liveFilter } = require('../utils/softDelete');
 const { AppError, sendError, handleError } = require('../utils/httpErrors');
 const { assertPagination, assertIdParam, assertString } = require('../utils/validation');
 const { normalizeSlug } = require('../utils/slug');
+const { resolveReleasedVersion, snapshotToMaster } = require('../utils/versionRead');
 
 const router = express.Router();
 
@@ -62,6 +63,27 @@ function validateSpeciesPayload(body) {
 
 router.get('/', async (req, res) => {
   try {
+    const versionId = (req.query.versionId || '').trim();
+    if (versionId) {
+      const version = await resolveReleasedVersion(versionId);
+      const { page, pageSize } = assertPagination(req.query);
+      const q = (req.query.q || '').trim();
+      const where = {
+        versionId: version.id,
+        ...(q ? {
+          OR: [
+            { scientificName: { contains: q, mode: 'insensitive' } },
+            { commonName: { contains: q, mode: 'insensitive' } },
+            { slug: { contains: q, mode: 'insensitive' } },
+          ],
+        } : {}),
+      };
+      const [total, rows] = await Promise.all([
+        prisma.speciesVersion.count({ where }),
+        prisma.speciesVersion.findMany({ where, skip: page * pageSize, take: pageSize, orderBy: { scientificName: 'asc' } }),
+      ]);
+      return res.json({ items: rows.map(row => snapshotToMaster('species', row)), page, pageSize, total, _version: version.tag });
+    }
     const payload = await fetchPaginatedSpecies(req);
     return res.json(payload);
   } catch (error) {
