@@ -48,8 +48,13 @@ jobs:
       - name: Install dependencies
         run: cd server && npm ci
 
-      - name: Bootstrap database
-        run: cd server && npm run dev:setup
+      - name: Bootstrap database (schema only, NO seed)
+        # Codex P2 on PR #188: dev:setup runs the Prisma seed, and the importer
+        # only upserts -- seeded slugs absent from the Game checkout would
+        # survive into the snapshot and pollute the report as exported_only.
+        # The fidelity run must start from an EMPTY taxonomy DB so the diff
+        # measures pure import/export representation loss.
+        run: cd server && npx prisma generate && npx prisma migrate deploy
 
       - name: Import taxonomy from Game checkout
         run: cd server && npm run evo:import -- --repo ${{ github.workspace }}/_game
