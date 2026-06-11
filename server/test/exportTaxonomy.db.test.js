@@ -293,6 +293,15 @@ test('exportTaxonomy', async (t) => {
       data: { versionId: taxonomyVersion.id, traitId: mockTrait.id, slug: mockTrait.slug, name: mockTrait.name, dataType: mockTrait.dataType, usageTags: [] }
     });
 
+    // Negative control (triage P2 on #194): NON-empty array vs absent must
+    // still count as exported_only -- only empty arrays equal absence.
+    const filledTrait = await prisma.trait.create({
+      data: { slug: 'mock-trait-filled', name: 'Mock Trait Filled', dataType: 'TEXT', usageTags: ['scout'] }
+    });
+    await prisma.traitVersion.create({
+      data: { versionId: taxonomyVersion.id, traitId: filledTrait.id, slug: filledTrait.slug, name: filledTrait.name, dataType: filledTrait.dataType, usageTags: ['scout'] }
+    });
+
     // We only care about TRAIT_REFERENCE
     execSync(`node ../scripts/export/export-taxonomy.js --version ${mockTag} --out ${tmpOutDir}`, { cwd: __dirname });
 
@@ -307,6 +316,10 @@ test('exportTaxonomy', async (t) => {
         'mock-trait': {
           label: 'Mock Trait'
           // no usage_tags
+        },
+        'mock-trait-filled': {
+          label: 'Mock Trait Filled'
+          // no usage_tags either -- but DB has a NON-empty array here
         }
       }
     };
@@ -319,12 +332,16 @@ test('exportTaxonomy', async (t) => {
     const report = JSON.parse(fs.readFileSync(reportFile, 'utf8'));
     const refReport = report.targets[PATHS.TRAIT_REFERENCE];
     
-    // The usageTags [] from DB and undefined from Game should NOT count as exported_only
-    // wait, we can verify that there's no game_only_unexpected, exported_only, or divergent for usage_tags
-    assert.ok(refReport.perField['usage_tags'] === undefined);
+    // Empty array [] in DB vs absent in Game must NOT be counted at all for
+    // mock-trait; the NON-empty array on mock-trait-filled MUST be counted as
+    // exported_only (negative control: only emptiness equals absence).
+    assert.ok(refReport.perField['usage_tags'] !== undefined, 'usage_tags must be counted for the filled trait');
+    assert.equal(refReport.perField['usage_tags'].exported_only, 1);
+    assert.equal(refReport.perField['usage_tags'].divergent, 0);
 
     await prisma.traitVersion.deleteMany({ where: { versionId: taxonomyVersion.id }});
     await prisma.trait.delete({ where: { id: mockTrait.id }});
+    await prisma.trait.delete({ where: { id: filledTrait.id }});
     await prisma.taxonomyVersion.delete({ where: { id: taxonomyVersion.id }});
   });
 });
