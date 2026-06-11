@@ -97,6 +97,7 @@ For dominio/runtime/operational context (not schema), see
 | --- | --- | --- |
 | `id` | `String` | @id @default(cuid()) |
 | `slug` | `String` | @unique @db.VarChar(80) |
+| `sourceKey` | `String?` | — |
 | `name` | `String` | — |
 | `description` | `String?` | — |
 | `nameEn` | `String?` | — |
@@ -362,6 +363,7 @@ For dominio/runtime/operational context (not schema), see
 | `traitId` | `String` | — |
 | `versionId` | `String` | — |
 | `slug` | `String` | @db.VarChar(80) |
+| `sourceKey` | `String?` | — |
 | `name` | `String` | — |
 | `description` | `String?` | — |
 | `nameEn` | `String?` | — |

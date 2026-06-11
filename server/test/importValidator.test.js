@@ -156,3 +156,17 @@ test('normalizeTrait populates nameEn/descriptionEn from label_en / description_
   assert.equal(resultPresent.nameEn, 'Test EN');
   assert.equal(resultPresent.descriptionEn, 'Test Desc EN');
 });
+
+test('normalizeTrait sets sourceKey to the exact identifier when provided', () => {
+  const resultUnderscore = normalizeTrait({ slug: 'antenne_plasmatiche', name: 'Antenne Plasmatiche' });
+  assert.equal(resultUnderscore.slug, 'antenne-plasmatiche');
+  assert.equal(resultUnderscore.sourceKey, 'antenne_plasmatiche');
+
+  const resultId = normalizeTrait({ id: 'some_id', name: 'Some Name' });
+  assert.equal(resultId.slug, 'some-id');
+  assert.equal(resultId.sourceKey, 'some_id');
+
+  const resultNameOnly = normalizeTrait({ name: 'Just Name' });
+  assert.equal(resultNameOnly.slug, 'just-name');
+  assert.equal(resultNameOnly.sourceKey, null); // Display name is not an identifier source
+});

@@ -302,6 +302,7 @@ function normalizeTrait(record) {
   const conflicts = asArray(record.conflitti || record.conflicts).filter(Boolean);
   return {
     slug,
+    sourceKey: pickText(record.slug, record._id, record.id, record.key) || null,
     name,
     description: pickText(record.description, record.description_it, record.description_en, record.descrizione, record.uso_funzione, record.spinta_selettiva, record.debolezza),
     nameEn: pickText(record.label_en, record.name_en),
@@ -603,6 +604,7 @@ function buildTraitUpsertArgs(normalized) {
     where: { slug: normalized.slug },
     create: {
       slug: normalized.slug,
+      sourceKey: normalized.sourceKey ?? null,
       name: normalized.name,
       description: normalized.description ?? null,
       nameEn: normalized.nameEn ?? null,
@@ -616,6 +618,7 @@ function buildTraitUpsertArgs(normalized) {
       ...richCreate,
     },
     update: {
+      sourceKey: normalized.sourceKey ?? undefined,
       name: isFallbackNameOnly ? undefined : normalized.name,
       description: normalized.description ?? undefined,
       nameEn: normalized.nameEn ?? undefined,

@@ -9,6 +9,7 @@ test('traitVersionToTrait maps snapshot row to master trait shape', () => {
     versionId: 'ver-id',
     capturedAt: new Date('2026-01-01T00:00:00Z'),
     slug: 'speed',
+    sourceKey: 'speed_original',
     name: 'Speed',
     description: 'how fast',
     nameEn: 'Speed EN',
@@ -37,6 +38,7 @@ test('traitVersionToTrait maps snapshot row to master trait shape', () => {
   assert.equal(out.id, 'master-trait-id');
   // frozen fields are copied through
   assert.equal(out.slug, 'speed');
+  assert.equal(out.sourceKey, 'speed_original');
   assert.equal(out.name, 'Speed');
   assert.equal(out.nameEn, 'Speed EN');
   assert.equal(out.descriptionEn, 'how fast EN');
