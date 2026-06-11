@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 > Canonical per-repo goals. Hub mirror: `codemasterdd/GOALS.md`. Horizons: Short=weeks / Mid=1-2mo / Long=3-6mo.
 
-- **Short**: da ratificare (Eduardo) -- candidati dal Mid: scoping RFC #4 sync bidirezionale / hardening audit-UI. Precedente Short DONE 2026-06-11: letture versionate Biome/Species/Ecosystem (#180, contratto #179; estende C-DB #163 oltre i trait via mapper generico `snapshotToMaster` + db-test reali in CI). Anche il wiring consumer C-Game e' live (`EVO_TAXONOMY_VERSION` in Game apps/backend) -- loop versioning end-to-end CHIUSO.
-- **Mid**: sync bidirezionale (DB come source-of-truth) scoping RFC #4; hardening della audit-UI curator.
+- **Short**: scoping RFC #4 sync bidirezionale (ratificato Eduardo 2026-06-11) -- DB come source-of-truth taxonomy, export verso Game pack catalog. Deliverable = ratifica RFC `docs/rfc/2026-06-11-bidirectional-sync.md` (8 open question) + S1 shadow-exporter (fidelity report, zero write su Game). Eduardo-sovereign gate. Precedente Short DONE 2026-06-11: letture versionate Biome/Species/Ecosystem (#180; loop versioning end-to-end CHIUSO, `EVO_TAXONOMY_VERSION` live in Game).
+- **Mid**: hardening della audit-UI curator; RFC #4 fasi S2+ (export-on-release) post-ratifica.
 - **Long**: robust canonical content backend -- versioned, auditable taxonomy provider feeding Game via `evo:import`.
 
 ## Project overview
