@@ -32,6 +32,7 @@
     "prisma:studio": "prisma studio",
     "start:lan": "node scripts/start-lan.js",
     "test": "node ./test/run-tests.js",
-    "evo:import": "node scripts/evo-import.js"
+    "evo:import": "node scripts/evo-import.js",
+    "evo:export": "node ./scripts/export/export-taxonomy.js"
   }
 }
