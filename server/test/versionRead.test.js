@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { traitVersionToTrait } = require('../utils/versionRead');
+const { traitVersionToTrait, snapshotToMaster } = require('../utils/versionRead');
 
 test('traitVersionToTrait maps snapshot row to master trait shape', () => {
   const row = {
@@ -42,4 +42,94 @@ test('traitVersionToTrait maps snapshot row to master trait shape', () => {
   assert.equal('versionId' in out, false);
   assert.equal('capturedAt' in out, false);
   assert.equal('traitId' in out, false);
+});
+
+test('snapshotToMaster maps biome snapshot row to master biome shape', () => {
+  const row = {
+    id: 'snap-row-id',
+    biomeId: 'master-biome-id',
+    versionId: 'ver-id',
+    capturedAt: new Date(),
+    slug: 'forest',
+    name: 'Forest',
+    description: 'A forest biome',
+    climate: 'temperate',
+    parentId: null,
+    summary: 'Trees everywhere',
+    climateTags: ['mild'],
+    hazard: 'low',
+    ecology: 'rich',
+    roleTemplates: {},
+    sizeMin: 10,
+    sizeMax: 100,
+  };
+  const out = snapshotToMaster('biome', row);
+  assert.equal(out.id, 'master-biome-id');
+  assert.equal(out.slug, 'forest');
+  assert.equal(out.name, 'Forest');
+  assert.equal(out.sizeMax, 100);
+  assert.equal('versionId' in out, false);
+  assert.equal('capturedAt' in out, false);
+  assert.equal('biomeId' in out, false);
+});
+
+test('snapshotToMaster maps species snapshot row to master species shape', () => {
+  const row = {
+    id: 'snap-row-id',
+    speciesId: 'master-species-id',
+    versionId: 'ver-id',
+    capturedAt: new Date(),
+    slug: 'wolf',
+    scientificName: 'Canis lupus',
+    commonName: 'Wolf',
+    kingdom: 'Animalia',
+    phylum: 'Chordata',
+    class: 'Mammalia',
+    order: 'Carnivora',
+    family: 'Canidae',
+    genus: 'Canis',
+    epithet: 'lupus',
+    status: 'extant',
+    description: 'A wolf',
+    displayName: 'Wolf',
+    trophicRole: 'carnivore',
+    functionalTags: [],
+    flags: [],
+    balance: {},
+    playableUnit: true,
+    morphotype: 'quadruped',
+    vcCoefficients: {},
+    spawnRules: {},
+    environmentAffinity: {},
+    jobsBias: {},
+    telemetry: {},
+  };
+  const out = snapshotToMaster('species', row);
+  assert.equal(out.id, 'master-species-id');
+  assert.equal(out.slug, 'wolf');
+  assert.equal(out.scientificName, 'Canis lupus');
+  assert.equal('versionId' in out, false);
+  assert.equal('capturedAt' in out, false);
+  assert.equal('speciesId' in out, false);
+});
+
+test('snapshotToMaster maps ecosystem snapshot row to master ecosystem shape', () => {
+  const row = {
+    id: 'snap-row-id',
+    ecosystemId: 'master-ecosystem-id',
+    versionId: 'ver-id',
+    capturedAt: new Date(),
+    slug: 'boreal-forest',
+    name: 'Boreal Forest',
+    description: 'A boreal forest ecosystem',
+    region: 'north',
+    climate: 'cold',
+  };
+  const out = snapshotToMaster('ecosystem', row);
+  assert.equal(out.id, 'master-ecosystem-id');
+  assert.equal(out.slug, 'boreal-forest');
+  assert.equal(out.name, 'Boreal Forest');
+  assert.equal('versionId' in out, false);
+  assert.equal('capturedAt' in out, false);
+  assert.equal('ecosystemId' in out, false);
 });

@@ -29,4 +29,13 @@ function traitVersionToTrait(row) {
   return out;
 }
 
-module.exports = { resolveReleasedVersion, traitVersionToTrait };
+// Map any snapshot row into its master entity shape using FIELD_MAP.
+// id is the stable master entity id; snapshot-only columns are dropped.
+function snapshotToMaster(entityKey, row) {
+  const cfg = FIELD_MAP[entityKey];
+  const out = { id: row[cfg.fk] };
+  for (const f of cfg.fields) out[f] = row[f];
+  return out;
+}
+
+module.exports = { resolveReleasedVersion, traitVersionToTrait, snapshotToMaster };
