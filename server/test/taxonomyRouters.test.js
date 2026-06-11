@@ -86,6 +86,7 @@ test('GET /api/traits/glossary returns all traits in glossary format', async () 
   taxonomy.reset();
   taxonomy.createTrait({ name: 'Ali Ioniche', slug: 'ali-ioniche', dataType: 'TEXT', description: 'Volo ionico' });
   taxonomy.createTrait({ name: 'Coda Frusta', slug: 'coda-frusta', dataType: 'NUMERIC', description: 'Attacco coda' });
+  taxonomy.createTrait({ name: 'English Name', slug: 'eng-slug', dataType: 'TEXT', description: 'Italian desc', nameEn: 'English Name En', descriptionEn: 'English desc' });
 
   const { server, baseUrl } = await startServer();
   try {
@@ -93,7 +94,7 @@ test('GET /api/traits/glossary returns all traits in glossary format', async () 
     assert.equal(response.status, 200);
     const body = await response.json();
     assert.ok(Array.isArray(body.traits));
-    assert.equal(body.traits.length, 2);
+    assert.equal(body.traits.length, 3);
     const first = body.traits[0];
     assert.ok(first._id, 'glossary entry must have _id');
     assert.ok(first.labels && first.labels.it, 'glossary entry must have labels.it');
@@ -101,6 +102,11 @@ test('GET /api/traits/glossary returns all traits in glossary format', async () 
     const ali = body.traits.find(t => t._id === 'ali-ioniche');
     assert.equal(ali.labels.it, 'Ali Ioniche');
     assert.equal(ali.descriptions.it, 'Volo ionico');
+    assert.equal(ali.labels.en, 'Ali Ioniche');
+    assert.equal(ali.descriptions.en, 'Volo ionico');
+    const eng = body.traits.find(t => t._id === 'eng-slug');
+    assert.equal(eng.labels.en, 'English Name En');
+    assert.equal(eng.descriptions.en, 'English desc');
   } finally {
     await closeServer(server);
   }

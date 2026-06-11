@@ -131,25 +131,25 @@ router.get('/glossary', async (req, res) => {
       const version = await resolveReleasedVersion(versionId);
       const rows = await prisma.traitVersion.findMany({
         where: { versionId: version.id },
-        select: { slug: true, name: true, description: true },
+        select: { slug: true, name: true, description: true, nameEn: true, descriptionEn: true },
         orderBy: { name: 'asc' },
       });
       const traits = rows.map((t) => ({
         _id: t.slug,
-        labels: { it: t.name, en: t.name },
-        descriptions: { it: t.description || null, en: t.description || null },
+        labels: { it: t.name, en: t.nameEn || t.name },
+        descriptions: { it: t.description || null, en: t.descriptionEn || t.description || null },
       }));
       return res.json({ traits });
     }
     const allTraits = await prisma.trait.findMany({
       where: { deletedAt: null },
-      select: { slug: true, name: true, description: true },
+      select: { slug: true, name: true, description: true, nameEn: true, descriptionEn: true },
       orderBy: { name: 'asc' },
     });
     const traits = allTraits.map((t) => ({
       _id: t.slug,
-      labels: { it: t.name, en: t.name },
-      descriptions: { it: t.description || null, en: t.description || null },
+      labels: { it: t.name, en: t.nameEn || t.name },
+      descriptions: { it: t.description || null, en: t.descriptionEn || t.description || null },
     }));
     return res.json({ traits });
   } catch (error) {
