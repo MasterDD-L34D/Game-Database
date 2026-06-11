@@ -2,7 +2,7 @@
 
 **Date**: 2026-06-11
 **Author**: coordinator session (Lenovo, claude-fable-5)
-**Status**: SCOPING DRAFT -- for Eduardo + coordinator ratification. No implementation in this RFC.
+**Status**: RATIFIED 2026-06-11 -- Eduardo resolved all 8 open questions (see "Ratified resolutions"); merged as scoping draft in #182 same day. Option B + ladder S0->S3 binding; S1 split into S1a (i18n model extension) + S1b (shadow exporter) per OQ2 override. No implementation in this RFC.
 **Scope**: Game-Database export path + Game pack-catalog consumption + cross-repo governance. **Eduardo-sovereign gate mandatory** (value-roadmap spec, Fase 3 deliverable 4).
 **Spec reference**: `docs/superpowers/specs/2026-05-20-game-database-value-roadmap-design.md` deliverable 4: "Bidirectional sync (RFC + implementation): Game <-> DB canonical flow review. Migration plan: Fase 1 import-only -> Fase 2 dual-write -> Fase 3 export-only."
 
@@ -189,6 +189,30 @@ that measures it.
    (A0..A5) and canon gates. Does DB-origin content need an authority-map entry
    on the Game side before S2? (Cross-repo doc touch, Eduardo-gated.)
 
+## Ratified resolutions (Eduardo, 2026-06-11 -- AskUserQuestion recommended-first, 2 rounds)
+
+6 of 8 follow the RFC recommendation; OQ2 and OQ6 are explicit overrides, both in
+the direction "full end-to-end fidelity" (export must carry complete data -- en
+included -- all the way into Game's runtime files).
+
+| # | Question | Ratified | Note |
+|---|---|---|---|
+| 1 | Export entity scope v1 | **Traits-only** (glossary + reference) | Species/ecosystems promoted only after a green fidelity report |
+| 2 | i18n model gap | **OVERRIDE: add explicit i18n fields NOW** (`nameEn`/`descriptionEn` on Trait; labels-Json variant rejected) | en source data still lives in Game's trait_glossary.json -> backfill via re-import. Snapshot tables gain nullable columns + FIELD_MAP extension (old snapshots stay null -- frozen-set comment in versionSnapshot.js amended in the same PR) |
+| 3 | Ecosystem model gap | **Import-only for now** | Extend-vs-sourceExtras decided AFTER S1 fidelity report quantifies the gap |
+| 4 | Export trigger | **Manual CLI in S1/S2** | Release-hook automation = S3 question |
+| 5 | Cross-repo PR actor | **Local operator CLI** | No standing credential; automation re-discussed at S3 |
+| 6 | `data/core/*` runtime files | **OVERRIDE: export INCLUDES `data/core/*`** (non-goal rejected) | Export surface = pack catalog + derived runtime files (e.g. `data/core/traits/glossary.json`). Interaction with Game-internal mechanisms (`data/traits/index.json`, `_versions/` snapshots) is S2 design work and MUST be co-designed with a Game-side session; S1b fidelity report covers data/core targets too |
+| 7 | 6h sync job in S2 | **Narrow + drift-check** | Scheduled import restricted to non-exported entities; exported entities get a read-only drift-check failing loud |
+| 8 | Game canon authority | **Yes, prerequisite for S2** | One-line entry in Game's EVO_FINAL_DESIGN_SOURCE_AUTHORITY_MAP declaring Game-Database SoT for released taxonomy content; cross-repo doc PR, Eduardo merge |
+
+**Ladder impact (OQ2)**: S1 splits -- **S1a** = i18n model extension (migration:
+nullable `nameEn`/`descriptionEn` on Trait + TraitVersion, FIELD_MAP + import
+pipeline extension to populate en, backfill via re-import from Game files) ships
+BEFORE **S1b** = shadow exporter + fidelity report (else en would false-flag as
+model-gap). **Surface impact (OQ6)**: S1b report and S2 exporter target both the
+pack catalog AND the derived `data/core` files.
+
 ## Risk matrix
 
 | Risk | Severity | Mitigation |
@@ -200,19 +224,36 @@ that measures it.
 | Canon authority conflict on Game side | Med | Q8 resolved before S2; export lands via PR under existing Game gates (evo-import-gate) |
 | Exporter drifts from importer expectations over time | Low | Round-trip test in CI: export fixture -> import --validate-only must stay green |
 
-## Acceptance criteria (S1 -- first implementation PR chain, after ratification)
+## Acceptance criteria (S1a + S1b -- first implementation PR chains, post-ratification)
+
+### S1a -- i18n model extension (ships first, per OQ2)
+
+- [ ] Migration: nullable `nameEn` + `descriptionEn` on Trait AND TraitVersion
+      (authored via `prisma migrate diff`, applied via `migrate deploy` --
+      Migration discipline #159).
+- [ ] FIELD_MAP.trait extended with the 2 fields (frozen-set comment in
+      versionSnapshot.js amended); old snapshots stay null by design.
+- [ ] Import pipeline populates en: `label_en`/`description_en` no longer
+      collapsed away (import-taxonomy.js pickText split it/en).
+- [ ] Backfill: one re-import run from Game files restores en for existing rows;
+      row-count + sample diff documented in the PR.
+- [ ] Glossary route serves stored en when present (fallback it unchanged);
+      existing tests stay green.
+
+### S1b -- shadow exporter + fidelity report
 
 - [ ] `server/scripts/export/export-taxonomy.js --version <tag> --out <dir>`
-      renders trait_glossary.json + trait_reference.json from a released
-      snapshot (read-only w.r.t. Game; writes only to `--out`).
+      renders trait_glossary.json + trait_reference.json AND the derived
+      `data/core` trait files (OQ6) from a released snapshot (read-only w.r.t.
+      Game; writes only to `--out`).
 - [ ] `--diff <game-checkout>` mode: machine-readable fidelity report
-      (per-entity: exported / matching / divergent / model-gap fields).
+      (per-entity, per-target: exported / matching / divergent / model-gap
+      fields), covering pack catalog + data/core targets.
 - [ ] Round-trip check wired as a test: `import --validate-only` over the
       export fixture = 0 errors; documented in the PR.
 - [ ] Field inventory appendix: trait_reference.json fields vs Trait model
       (closes the residual-gap unknown in "Current state" #3).
-- [ ] No writes to the Game repo, no schema changes, no new prod dependencies
-      without approval.
+- [ ] No writes to the Game repo, no new prod dependencies without approval.
 
 ## References
 
