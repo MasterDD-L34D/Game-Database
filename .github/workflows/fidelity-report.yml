@@ -83,7 +83,10 @@ jobs:
 
       - name: Export and diff against Game checkout
         working-directory: server
-        run: npm run evo:export -- --version v0.0.0-fidelity-${{ github.run_id }} --diff ${{ github.workspace }}/_game --report ${{ github.workspace }}/fidelity-report.json
+        # --out makes every run also produce the export bundle (S2 GO,
+        # ratified 2026-06-12): the operator downloads the taxonomy-export
+        # artifact and opens the Game PR locally (OQ5: no cross-repo PAT).
+        run: npm run evo:export -- --version v0.0.0-fidelity-${{ github.run_id }} --out ${{ github.workspace }}/_export --diff ${{ github.workspace }}/_game --report ${{ github.workspace }}/fidelity-report.json
 
       - name: Print summary
         run: |
@@ -94,4 +97,11 @@ jobs:
         with:
           name: fidelity-report
           path: fidelity-report.json
+          retention-days: 30
+
+      - name: Upload export bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: taxonomy-export
+          path: _export/
           retention-days: 30
