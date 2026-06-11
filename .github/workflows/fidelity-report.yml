@@ -1,0 +1,97 @@
+name: "Fidelity Report (RFC #4 S1b)"
+
+# On-demand shadow fidelity report: rebuild the DB from the Game checkout
+# (evo:import, i18n-aware after #185), release a snapshot, export it back
+# (evo:export, #187) and diff against the same checkout. The resulting
+# report measures pure representation loss (model-gap) and is the S2 gate
+# input (docs/rfc/2026-06-11-bidirectional-sync.md). Read-only vs Game;
+# ephemeral CI Postgres; no repo writes -- the report is a run artifact.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fidelity:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: game
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d game"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/game?schema=public
+
+    steps:
+      - name: Checkout Game-Database
+        uses: actions/checkout@v4
+
+      - name: Checkout Game repo
+        uses: actions/checkout@v4
+        with:
+          repository: MasterDD-L34D/Game
+          path: _game
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: cd server && npm ci
+
+      - name: Bootstrap database (schema only, NO seed)
+        # Codex P2 on PR #188: dev:setup runs the Prisma seed, and the importer
+        # only upserts -- seeded slugs absent from the Game checkout would
+        # survive into the snapshot and pollute the report as exported_only.
+        # The fidelity run must start from an EMPTY taxonomy DB so the diff
+        # measures pure import/export representation loss.
+        run: cd server && npx prisma generate && npx prisma migrate deploy
+
+      - name: Import taxonomy from Game checkout
+        run: cd server && npm run evo:import -- --repo ${{ github.workspace }}/_game
+
+      - name: Release fidelity snapshot
+        working-directory: server
+        # Mirrors the POST /:tag/release semantics with the SAME shared
+        # snapshot writer (snapshotAllMasters); audit row intentionally
+        # skipped (ephemeral CI DB, no request context).
+        run: |
+          node -e "
+          const prisma = require('./db/prisma');
+          const { snapshotAllMasters } = require('./utils/versionSnapshot');
+          (async () => {
+            const tag = 'v0.0.0-fidelity-${{ github.run_id }}';
+            const v = await prisma.taxonomyVersion.create({ data: { tag, status: 'draft' } });
+            await prisma.\$transaction(async (tx) => {
+              await tx.taxonomyVersion.update({ where: { id: v.id }, data: { status: 'released', releasedAt: new Date(), releasedBy: 'fidelity-ci' } });
+              const counts = await snapshotAllMasters(tx, v.id, (m) => console.log(m));
+              console.log('snapshot counts:', JSON.stringify(counts));
+            });
+            console.log('released', tag);
+            await prisma.\$disconnect();
+          })().catch((e) => { console.error(e); process.exit(1); });
+          "
+
+      - name: Export and diff against Game checkout
+        working-directory: server
+        run: npm run evo:export -- --version v0.0.0-fidelity-${{ github.run_id }} --diff ${{ github.workspace }}/_game --report ${{ github.workspace }}/fidelity-report.json
+
+      - name: Print summary
+        run: |
+          jq '{version, generatedAt, fieldInventory, targets: (.targets | map_values({counts, targetMissing: (.targetMissing // false)}))}' fidelity-report.json
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fidelity-report
+          path: fidelity-report.json
+          retention-days: 30
