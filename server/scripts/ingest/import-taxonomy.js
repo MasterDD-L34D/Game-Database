@@ -316,7 +316,8 @@ function mergeTraitRecords(records) {
   const currentValues = {
     editorial: { name: null, nameEn: null, description: null, descriptionEn: null },
     mechanics: { tier: null, familyType: null, energyMaintenance: null, slotProfile: null, usageTags: null, synergies: null, conflicts: null, environmentalRequirements: null, inducedMutation: null, functionalUse: null, selectiveDrive: null, weakness: null },
-    other: { slug: null, dataType: null, allowedValues: null, rangeMin: null, rangeMax: null, category: null, unit: null }
+    other: { slug: null, dataType: null, allowedValues: null, rangeMin: null, rangeMax: null, category: null, unit: null },
+    extrasRanks: {},
   };
   
   const currentRanks = {
@@ -326,6 +327,7 @@ function mergeTraitRecords(records) {
 
   let bestSourceKey = null;
   let bestSourceKeyRank = -1;
+  const mergedExtras = {};
 
   for (const { record, sourceClass } of records) {
     sourceSet.add(sourceClass);
@@ -360,6 +362,19 @@ function mergeTraitRecords(records) {
         currentValues.other[field] = record[field];
       }
     }
+
+    // sourceExtras per-field mechanics precedence
+    if (record.sourceExtras && typeof record.sourceExtras === 'object') {
+      for (const [key, val] of Object.entries(record.sourceExtras)) {
+        if (val != null) {
+          const currentRank = currentValues.extrasRanks[key] ?? -1;
+          if (mechRank > currentRank) {
+            mergedExtras[key] = val;
+            currentValues.extrasRanks[key] = mechRank;
+          }
+        }
+      }
+    }
   }
   
   merged.sourceFiles = Array.from(sourceSet).sort();
@@ -368,9 +383,22 @@ function mergeTraitRecords(records) {
   Object.assign(merged, currentValues.editorial);
   Object.assign(merged, currentValues.mechanics);
   Object.assign(merged, currentValues.other);
+  merged.sourceExtras = Object.keys(mergedExtras).length > 0 ? mergedExtras : null;
   
   return merged;
 }
+
+const CONSUMED = new Set([
+  'slug','_id','id','key','trait','name','label','label_it','label_en','name_en','nome','title',
+  'description','description_it','description_en','descrizione','uso_funzione',
+  'spinta_selettiva','debolezza','category','categoria','famiglia_tipologia','tier',
+  'unit','unita','usage','min','max','rangeMin','rangeMax','range','balance','dataType','type',
+  'kind','allowedValues','valori','default','usage_tags','tags','sinergie','synergies',
+  'conflitti','conflicts','requisiti_ambientali',
+  'fattore_mantenimento_energetico','energyMaintenance','slot_profile',
+  'mutazione_indotta','inducedMutation','functionalUse','selectiveDrive','weakness',
+  'sourceRuleIndex','value','origin','source','confidence','weight'
+]);
 
 function normalizeTrait(record) {
   if (!record || typeof record !== 'object') return null;
@@ -392,6 +420,16 @@ function normalizeTrait(record) {
   const usageTags = asArray(record.usage_tags || record.tags).filter(Boolean);
   const synergies = asArray(record.sinergie || record.synergies).filter(Boolean);
   const conflicts = asArray(record.conflitti || record.conflicts).filter(Boolean);
+  
+  const sourceExtras = {};
+  let hasExtras = false;
+  for (const key of Object.keys(record)) {
+    if (!CONSUMED.has(key)) {
+      sourceExtras[key] = record[key];
+      hasExtras = true;
+    }
+  }
+
   return {
     slug,
     sourceKey: pickText(record.slug, record._id, record.id, record.key) || null,
@@ -417,6 +455,7 @@ function normalizeTrait(record) {
     functionalUse: pickText(record.uso_funzione, record.functionalUse),
     selectiveDrive: pickText(record.spinta_selettiva, record.selectiveDrive),
     weakness: pickText(record.debolezza, record.weakness),
+    sourceExtras: hasExtras ? sourceExtras : null,
   };
 }
 
@@ -698,6 +737,7 @@ function buildTraitUpsertArgs(normalized) {
       slug: normalized.slug,
       sourceKey: normalized.sourceKey ?? null,
       sourceFiles: normalized.sourceFiles ?? null,
+      sourceExtras: normalized.sourceExtras ?? null,
       name: normalized.name,
       description: normalized.description ?? null,
       nameEn: normalized.nameEn ?? null,
@@ -713,6 +753,7 @@ function buildTraitUpsertArgs(normalized) {
     update: {
       sourceKey: normalized.sourceKey ?? undefined,
       sourceFiles: normalized.sourceFiles ?? undefined,
+      sourceExtras: normalized.sourceExtras ?? undefined,
       name: isFallbackNameOnly ? undefined : normalized.name,
       description: normalized.description ?? undefined,
       nameEn: normalized.nameEn ?? undefined,
@@ -988,7 +1029,7 @@ async function processSpecies(items) {
           const trait = await prisma.trait.upsert({
             where: { slug: traitValue.traitSlug },
             create: { slug: traitValue.traitSlug, name: traitValue.traitName, dataType: traitValue.kind || 'TEXT', category: traitValue.category || null, sourceFiles: ['species_link'] },
-            update: { name: traitValue.traitName, category: traitValue.category || undefined },
+            update: { category: traitValue.category || undefined },
           });
           const payload = {
             speciesId,

@@ -20,7 +20,7 @@ const FIELD_MAP = {
       'allowedValues', 'rangeMin', 'rangeMax', 'tier', 'familyType',
       'energyMaintenance', 'slotProfile', 'usageTags', 'synergies',
       'conflicts', 'environmentalRequirements', 'inducedMutation',
-      'functionalUse', 'selectiveDrive', 'weakness',
+      'functionalUse', 'selectiveDrive', 'weakness', 'sourceExtras', // RFC #4 reference cycle
     ],
   },
   biome: {
