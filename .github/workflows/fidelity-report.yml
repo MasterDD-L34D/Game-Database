@@ -57,7 +57,12 @@ jobs:
         run: cd server && npx prisma generate && npx prisma migrate deploy
 
       - name: Import taxonomy from Game checkout
-        run: cd server && npm run evo:import -- --repo ${{ github.workspace }}/_game
+        # --no-setup is LOAD-BEARING: the evo-import.js wrapper otherwise runs
+        # dev:setup (generate + deploy + PRISMA SEED + v1 backfill) before the
+        # import -- the seed re-entered through this door even after #188 made
+        # the Bootstrap step schema-only (root cause of seed traits like
+        # body-length leaking into every export target with null membership).
+        run: cd server && npm run evo:import -- --no-setup --repo ${{ github.workspace }}/_game
 
       - name: Release fidelity snapshot
         working-directory: server
