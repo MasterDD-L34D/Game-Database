@@ -979,9 +979,15 @@ async function processSpecies(items) {
       const speciesId = normalized._resolvedId;
       try {
         for (const traitValue of normalized.traits) {
+          // Junction-created trait STUBS get the non-exportable membership
+          // 'species_link' (Codex P2 on Game#2745: species attributes like
+          // body-length leaked into every export target because stubs had
+          // null sourceFiles = the curator everywhere-rule). A real source
+          // later re-importing the slug overwrites membership via the
+          // per-slug merge; the update path never touches sourceFiles.
           const trait = await prisma.trait.upsert({
             where: { slug: traitValue.traitSlug },
-            create: { slug: traitValue.traitSlug, name: traitValue.traitName, dataType: traitValue.kind || 'TEXT', category: traitValue.category || null },
+            create: { slug: traitValue.traitSlug, name: traitValue.traitName, dataType: traitValue.kind || 'TEXT', category: traitValue.category || null, sourceFiles: ['species_link'] },
             update: { name: traitValue.traitName, category: traitValue.category || undefined },
           });
           const payload = {

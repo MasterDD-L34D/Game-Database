@@ -232,11 +232,17 @@ test('exportTaxonomy', async (t) => {
     const mockTraitAll = await prisma.trait.create({
       data: { slug: 'mock-trait-all', sourceFiles: null, name: 'All Only', dataType: 'TEXT' }
     });
+    // Junction-created stub (fix for Codex P2 on Game#2745): species_link
+    // membership must be excluded from EVERY export target.
+    const mockTraitStub = await prisma.trait.create({
+      data: { slug: 'mock-trait-stub', sourceFiles: ['species_link'], name: 'Stub Only', dataType: 'TEXT' }
+    });
 
     await prisma.traitVersion.createMany({
       data: [
         { versionId: taxonomyVersion.id, traitId: mockTraitRef.id, slug: mockTraitRef.slug, sourceFiles: mockTraitRef.sourceFiles, name: mockTraitRef.name, dataType: mockTraitRef.dataType },
-        { versionId: taxonomyVersion.id, traitId: mockTraitAll.id, slug: mockTraitAll.slug, sourceFiles: mockTraitAll.sourceFiles, name: mockTraitAll.name, dataType: mockTraitAll.dataType }
+        { versionId: taxonomyVersion.id, traitId: mockTraitAll.id, slug: mockTraitAll.slug, sourceFiles: mockTraitAll.sourceFiles, name: mockTraitAll.name, dataType: mockTraitAll.dataType },
+        { versionId: taxonomyVersion.id, traitId: mockTraitStub.id, slug: mockTraitStub.slug, sourceFiles: mockTraitStub.sourceFiles, name: mockTraitStub.name, dataType: mockTraitStub.dataType }
       ]
     });
 
@@ -260,9 +266,15 @@ test('exportTaxonomy', async (t) => {
     assert.equal('mock-trait-ref' in gl2.traits, false);
     assert.ok('mock-trait-all' in gl2.traits);
 
+    // species_link stub excluded from EVERY target
+    assert.equal('mock-trait-stub' in gl1.traits, false);
+    assert.equal('mock-trait-stub' in gl2.traits, false);
+    assert.equal('mock-trait-stub' in ref.traits, false);
+
     await prisma.traitVersion.deleteMany({ where: { versionId: taxonomyVersion.id }});
     await prisma.trait.delete({ where: { id: mockTraitRef.id }});
     await prisma.trait.delete({ where: { id: mockTraitAll.id }});
+    await prisma.trait.delete({ where: { id: mockTraitStub.id }});
     await prisma.taxonomyVersion.delete({ where: { id: taxonomyVersion.id }});
   });
 
