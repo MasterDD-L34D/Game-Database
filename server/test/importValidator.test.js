@@ -285,3 +285,18 @@ test('mergeTraitRecords correctly merges sourceExtras per-field with precedence 
     other_key: true
   });
 });
+
+test('buildTraitUpsertArgs update path erases extras removed upstream (Codex P1 on #199)', () => {
+  const { buildTraitUpsertArgs } = require('../scripts/ingest/import-taxonomy');
+  // A re-import where the source no longer carries unmapped fields yields
+  // sourceExtras = null from the merge; the UPDATE must pass null THROUGH so
+  // Prisma erases the stale JSON instead of skipping the column.
+  const normalized = { slug: 'mock-upd', name: 'Mock Upd', dataType: 'TEXT', sourceExtras: null, sourceFiles: null };
+  const args = buildTraitUpsertArgs(normalized);
+  assert.equal(args.update.sourceExtras, null);
+  assert.equal(args.update.sourceFiles, null);
+  // Positive control: real values still flow on update.
+  const withExtras = buildTraitUpsertArgs({ slug: 'mock-upd2', name: 'Mock Upd 2', dataType: 'TEXT', sourceExtras: { slot: ['x'] }, sourceFiles: ['pack_reference'] });
+  assert.deepEqual(withExtras.update.sourceExtras, { slot: ['x'] });
+  assert.deepEqual(withExtras.update.sourceFiles, ['pack_reference']);
+});

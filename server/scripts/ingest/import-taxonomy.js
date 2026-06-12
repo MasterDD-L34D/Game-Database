@@ -731,7 +731,8 @@ function buildTraitUpsertArgs(normalized) {
     selectiveDrive: normalized.selectiveDrive ?? undefined,
     weakness: normalized.weakness ?? undefined,
   };
-  return prisma.trait.upsert({
+  // Pure args builder (unit-testable); callers wrap it in prisma.trait.upsert.
+  return {
     where: { slug: normalized.slug },
     create: {
       slug: normalized.slug,
@@ -752,8 +753,12 @@ function buildTraitUpsertArgs(normalized) {
     },
     update: {
       sourceKey: normalized.sourceKey ?? undefined,
-      sourceFiles: normalized.sourceFiles ?? undefined,
-      sourceExtras: normalized.sourceExtras ?? undefined,
+      // sourceFiles/sourceExtras: pass null THROUGH on update (no ?? undefined)
+      // -- Codex P1 on #199: extras removed upstream must be erased, not left
+      // stale (null ?? undefined would make Prisma skip the column). The merge
+      // always yields null|value here, never undefined.
+      sourceFiles: normalized.sourceFiles !== undefined ? normalized.sourceFiles : undefined,
+      sourceExtras: normalized.sourceExtras !== undefined ? normalized.sourceExtras : undefined,
       name: isFallbackNameOnly ? undefined : normalized.name,
       description: normalized.description ?? undefined,
       nameEn: normalized.nameEn ?? undefined,
@@ -766,7 +771,7 @@ function buildTraitUpsertArgs(normalized) {
       rangeMax: normalized.rangeMax ?? undefined,
       ...richUpdate,
     },
-  });
+  };
 }
 
 function buildBiomeUpsertArgs(normalized) {
@@ -863,12 +868,12 @@ async function processTraits(items) {
     for (let i = 0; i < pending.length; i += BATCH_SIZE) {
       const batch = pending.slice(i, i + BATCH_SIZE);
       try {
-        await prisma.$transaction(batch.map(buildTraitUpsertArgs));
+        await prisma.$transaction(batch.map((n) => prisma.trait.upsert(buildTraitUpsertArgs(n))));
         report.upserted += batch.length;
       } catch (error) {
         for (const normalized of batch) {
           try {
-            await buildTraitUpsertArgs(normalized);
+            await prisma.trait.upsert(buildTraitUpsertArgs(normalized));
             report.upserted += 1;
           } catch (innerError) {
             noteError(report, `${normalized.slug}: ${innerError.message}`);
@@ -1270,4 +1275,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { computeExitCode, parseFlagFromArgs, normalizeTrait, classifySource, mergeTraitRecords };
+module.exports = { computeExitCode, parseFlagFromArgs, normalizeTrait, classifySource, mergeTraitRecords, buildTraitUpsertArgs };
