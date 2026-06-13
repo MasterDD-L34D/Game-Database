@@ -290,8 +290,12 @@ function classifySource(filePath) {
 
 function isPlaceholderLabel(value, slug) {
   if (typeof value !== 'string') return false;
-  // identifier-shaped = no uppercase letters and no whitespace
-  if (/[A-Z]/.test(value) || /\s/.test(value)) return false;
+  // A real human label carries an uppercase letter (Title Case). A placeholder
+  // is the bare slug rendered as text: the raw identifier ('cuticole_cerose')
+  // OR the humanized fallback ('cuticole cerose', lowercase + spaces). The
+  // earlier whitespace guard false-classified the humanized fallback as real
+  // (Codex P2 on #205); only the uppercase test distinguishes them.
+  if (/[A-Z]/.test(value)) return false;
   return slugify(value) === slug;
 }
 

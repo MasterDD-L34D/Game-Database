@@ -299,6 +299,17 @@ test('mergeTraitRecords selects non-placeholder labels over placeholders regardl
   ];
   const merged3 = mergeTraitRecords(records3);
   assert.equal(merged3.name, 'Higher Rank Name');
+
+  // 4. Humanized-fallback placeholder (Codex P2 on #205): a higher-rank source
+  // that only supplied a slug yields normalizeTrait's 'cuticole cerose'
+  // (lowercase + spaces) fallback. It is still a placeholder and must NOT beat
+  // the lower-rank reference's real 'Cuticole Cerose'.
+  const records4 = [
+    { sourceClass: 'core_glossary', record: { slug: 'cuticole-cerose', name: 'cuticole cerose' } }, // rank 4, humanized fallback
+    { sourceClass: 'pack_reference', record: { slug: 'cuticole-cerose', name: 'Cuticole Cerose' } }, // rank 2, real
+  ];
+  const merged4 = mergeTraitRecords(records4);
+  assert.equal(merged4.name, 'Cuticole Cerose');
 });
 
 test('mergeTraitRecords merges according to PRECEDENCE rules (EDITORIAL > MECHANICS > OTHERS) and tracks sourceFiles', () => {
