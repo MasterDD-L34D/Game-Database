@@ -196,6 +196,71 @@ test('normalizeTrait sets sourceKey to the exact identifier when provided', () =
 
 // ---- Precedence merge ----------------------------------------------------
 
+test('mergeTraitRecords selects non-placeholder labels over placeholders regardless of rank (GATE-5)', () => {
+  // 1. Non-placeholder beats placeholder
+  const records1 = [
+    {
+      sourceClass: 'core_glossary', // higher rank (rank 4)
+      record: {
+        slug: 'artigli-sette-vie',
+        name: 'artigli_sette_vie', // raw slug -> placeholder
+        nameEn: 'artigli_sette_vie',
+      }
+    },
+    {
+      sourceClass: 'pack_reference', // lower rank (rank 2)
+      record: {
+        slug: 'artigli-sette-vie',
+        name: 'Artigli a Sette Vie', // real label -> non-placeholder
+        nameEn: 'Seven Ways Claws',
+      }
+    }
+  ];
+  const merged1 = mergeTraitRecords(records1);
+  assert.equal(merged1.name, 'Artigli a Sette Vie');
+  assert.equal(merged1.nameEn, 'Seven Ways Claws');
+
+  // 2. All-placeholder sources -> keep the highest-rank placeholder
+  const records2 = [
+    {
+      sourceClass: 'pack_reference', // rank 2
+      record: {
+        slug: 'some-slug',
+        name: 'some_slug',
+      }
+    },
+    {
+      sourceClass: 'pack_glossary', // rank 3
+      record: {
+        slug: 'some-slug',
+        name: 'some-slug',
+      }
+    }
+  ];
+  const merged2 = mergeTraitRecords(records2);
+  assert.equal(merged2.name, 'some-slug'); // rank 3 beats rank 2
+
+  // 3. Two non-placeholder names -> highest rank wins
+  const records3 = [
+    {
+      sourceClass: 'pack_reference', // rank 2
+      record: {
+        slug: 'other-slug',
+        name: 'Lower Rank Name',
+      }
+    },
+    {
+      sourceClass: 'core_glossary', // rank 4
+      record: {
+        slug: 'other-slug',
+        name: 'Higher Rank Name',
+      }
+    }
+  ];
+  const merged3 = mergeTraitRecords(records3);
+  assert.equal(merged3.name, 'Higher Rank Name');
+});
+
 test('mergeTraitRecords merges according to PRECEDENCE rules (EDITORIAL > MECHANICS > OTHERS) and tracks sourceFiles', () => {
   const records = [
     {
