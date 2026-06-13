@@ -325,6 +325,8 @@ function mergeTraitRecords(records) {
     mechanics: { tier: -1, familyType: -1, energyMaintenance: -1, slotProfile: -1, usageTags: -1, synergies: -1, conflicts: -1, environmentalRequirements: -1, inducedMutation: -1, functionalUse: -1, selectiveDrive: -1, weakness: -1 }
   };
 
+  const currentPlaceholder = { name: true, nameEn: true };
+
   let bestSourceKey = null;
   let bestSourceKeyRank = -1;
   const mergedExtras = {};
@@ -336,9 +338,25 @@ function mergeTraitRecords(records) {
     
     // Editorial fields
     for (const field of ['name', 'nameEn', 'description', 'descriptionEn']) {
-      if (record[field] != null && edRank > currentRanks.editorial[field]) {
-        currentValues.editorial[field] = record[field];
-        currentRanks.editorial[field] = edRank;
+      if (record[field] != null) {
+        if (field === 'name' || field === 'nameEn') {
+          const isPlaceholder = slugify(record[field]) === record.slug;
+          const currPlaceholder = currentPlaceholder[field];
+          
+          if (
+            (currPlaceholder && !isPlaceholder) ||
+            (isPlaceholder === currPlaceholder && edRank > currentRanks.editorial[field])
+          ) {
+            currentValues.editorial[field] = record[field];
+            currentRanks.editorial[field] = edRank;
+            currentPlaceholder[field] = isPlaceholder;
+          }
+        } else {
+          if (edRank > currentRanks.editorial[field]) {
+            currentValues.editorial[field] = record[field];
+            currentRanks.editorial[field] = edRank;
+          }
+        }
       }
     }
     
