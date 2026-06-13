@@ -33,6 +33,7 @@ test('traitVersionToTrait maps snapshot row to master trait shape', () => {
     functionalUse: null,
     selectiveDrive: null,
     weakness: null,
+    sourceExtras: { slot: ['x'] },
   };
   const out = traitVersionToTrait(row);
   // id is the stable master id, not the snapshot row id
@@ -46,6 +47,7 @@ test('traitVersionToTrait maps snapshot row to master trait shape', () => {
   assert.equal(out.descriptionEn, 'how fast EN');
   assert.equal(out.dataType, 'NUMERIC');
   assert.deepEqual(out.slotProfile, { a: 1 });
+  assert.deepEqual(out.sourceExtras, { slot: ['x'] });
   // snapshot-only columns are dropped
   assert.equal('versionId' in out, false);
   assert.equal('capturedAt' in out, false);

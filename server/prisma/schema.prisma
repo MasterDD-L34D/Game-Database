@@ -135,6 +135,7 @@ model Trait {
   slug          String        @unique @db.VarChar(80)
   sourceKey     String?
   sourceFiles   Json?
+  sourceExtras  Json?
   name          String
   description   String?
   nameEn        String?
@@ -355,6 +356,7 @@ model TraitVersion {
   slug                      String        @db.VarChar(80)
   sourceKey                 String?
   sourceFiles               Json?
+  sourceExtras              Json?
   name                      String
   description               String?
   nameEn                    String?

@@ -157,6 +157,29 @@ test('normalizeTrait populates nameEn/descriptionEn from label_en / description_
   assert.equal(resultPresent.descriptionEn, 'Test Desc EN');
 });
 
+test('normalizeTrait captures unconsumed keys into sourceExtras', () => {
+  const record = {
+    slug: 'extras_test',
+    name: 'Extras Test',
+    label: 'Not captured',
+    description: 'Not captured',
+    sinergie_pi: { some_rule: 1 },
+    slot: ['x']
+  };
+  const normalized = normalizeTrait(record);
+  assert.deepEqual(normalized.sourceExtras, {
+    sinergie_pi: { some_rule: 1 },
+    slot: ['x']
+  });
+
+  const recordNoExtras = {
+    slug: 'no_extras',
+    name: 'No Extras'
+  };
+  const normalizedNoExtras = normalizeTrait(recordNoExtras);
+  assert.equal(normalizedNoExtras.sourceExtras, null);
+});
+
 test('normalizeTrait sets sourceKey to the exact identifier when provided', () => {
   const resultUnderscore = normalizeTrait({ slug: 'antenne_plasmatiche', name: 'Antenne Plasmatiche' });
   assert.equal(resultUnderscore.slug, 'antenne-plasmatiche');
@@ -227,4 +250,38 @@ test('mergeTraitRecords merges according to PRECEDENCE rules (EDITORIAL > MECHAN
 
   // sourceFiles
   assert.deepEqual(merged.sourceFiles, ['core_glossary', 'pack_glossary', 'pack_reference']);
+});
+
+test('mergeTraitRecords correctly merges sourceExtras per-field with precedence (pack_reference > core_glossary)', () => {
+  const records = [
+    {
+      sourceClass: 'core_glossary',
+      record: {
+        slug: 'extras-slug',
+        name: 'Extras Test',
+        sourceExtras: {
+          slot: ['core_slot'],
+          sinergie_pi: { val: 1 }
+        }
+      }
+    },
+    {
+      sourceClass: 'pack_reference',
+      record: {
+        slug: 'extras-slug',
+        name: 'Extras Test Ref',
+        sourceExtras: {
+          slot: ['ref_slot'], // pack_reference beats core_glossary
+          other_key: true
+        }
+      }
+    }
+  ];
+
+  const merged = mergeTraitRecords(records);
+  assert.deepEqual(merged.sourceExtras, {
+    slot: ['ref_slot'],
+    sinergie_pi: { val: 1 },
+    other_key: true
+  });
 });

@@ -7,8 +7,7 @@ const PATHS = {
 };
 
 const MODEL_GAP = [
-  'slot',
-  'sinergie_pi',
+  // Future gaps
 ];
 
 function renderGlossary(traits, updatedAt, schemaVersion) {
@@ -52,7 +51,12 @@ function renderReference(traits) {
     if (trait.selectiveDrive != null) obj.spinta_selettiva = trait.selectiveDrive;
     if (trait.weakness != null) obj.debolezza = trait.weakness;
 
-    traitsMap[trait.sourceKey || trait.slug] = obj;
+    let finalObj = obj;
+    if (trait.sourceExtras && Object.keys(trait.sourceExtras).length > 0) {
+      finalObj = { ...obj, ...trait.sourceExtras };
+    }
+
+    traitsMap[trait.sourceKey || trait.slug] = finalObj;
   }
 
   return {
