@@ -220,6 +220,46 @@ test('mergeTraitRecords selects non-placeholder labels over placeholders regardl
   assert.equal(merged1.name, 'Artigli a Sette Vie');
   assert.equal(merged1.nameEn, 'Seven Ways Claws');
 
+  // 1b. Non-placeholder beats placeholder (false-positive title-case check)
+  const records1b = [
+    {
+      sourceClass: 'core_glossary', // higher rank
+      record: {
+        slug: 'cuticole-cerose',
+        name: 'cuticole_cerose', // raw slug -> placeholder
+      }
+    },
+    {
+      sourceClass: 'pack_reference', // lower rank
+      record: {
+        slug: 'cuticole-cerose',
+        name: 'Cuticole Cerose', // real label -> non-placeholder (slugify equals slug but not identifier-shaped)
+      }
+    }
+  ];
+  const merged1b = mergeTraitRecords(records1b);
+  assert.equal(merged1b.name, 'Cuticole Cerose');
+
+  // 1c. Single-word Title-Case label beats lowercase placeholder
+  const records1c = [
+    {
+      sourceClass: 'core_glossary', // higher rank
+      record: {
+        slug: 'criostasi',
+        name: 'criostasi', // lowercase -> placeholder
+      }
+    },
+    {
+      sourceClass: 'pack_reference', // lower rank
+      record: {
+        slug: 'criostasi',
+        name: 'Criostasi', // uppercase letter -> non-placeholder
+      }
+    }
+  ];
+  const merged1c = mergeTraitRecords(records1c);
+  assert.equal(merged1c.name, 'Criostasi');
+
   // 2. All-placeholder sources -> keep the highest-rank placeholder
   const records2 = [
     {
@@ -259,6 +299,17 @@ test('mergeTraitRecords selects non-placeholder labels over placeholders regardl
   ];
   const merged3 = mergeTraitRecords(records3);
   assert.equal(merged3.name, 'Higher Rank Name');
+
+  // 4. Humanized-fallback placeholder (Codex P2 on #205): a higher-rank source
+  // that only supplied a slug yields normalizeTrait's 'cuticole cerose'
+  // (lowercase + spaces) fallback. It is still a placeholder and must NOT beat
+  // the lower-rank reference's real 'Cuticole Cerose'.
+  const records4 = [
+    { sourceClass: 'core_glossary', record: { slug: 'cuticole-cerose', name: 'cuticole cerose' } }, // rank 4, humanized fallback
+    { sourceClass: 'pack_reference', record: { slug: 'cuticole-cerose', name: 'Cuticole Cerose' } }, // rank 2, real
+  ];
+  const merged4 = mergeTraitRecords(records4);
+  assert.equal(merged4.name, 'Cuticole Cerose');
 });
 
 test('mergeTraitRecords merges according to PRECEDENCE rules (EDITORIAL > MECHANICS > OTHERS) and tracks sourceFiles', () => {
