@@ -288,6 +288,13 @@ function classifySource(filePath) {
   return 'env_or_other';
 }
 
+function isPlaceholderLabel(value, slug) {
+  if (typeof value !== 'string') return false;
+  // identifier-shaped = no uppercase letters and no whitespace
+  if (/[A-Z]/.test(value) || /\s/.test(value)) return false;
+  return slugify(value) === slug;
+}
+
 function mergeTraitRecords(records) {
   if (!records || records.length === 0) return null;
 
@@ -340,7 +347,7 @@ function mergeTraitRecords(records) {
     for (const field of ['name', 'nameEn', 'description', 'descriptionEn']) {
       if (record[field] != null) {
         if (field === 'name' || field === 'nameEn') {
-          const isPlaceholder = slugify(record[field]) === record.slug;
+          const isPlaceholder = isPlaceholderLabel(record[field], record.slug);
           const currPlaceholder = currentPlaceholder[field];
 
           if (
