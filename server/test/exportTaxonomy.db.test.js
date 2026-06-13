@@ -108,7 +108,7 @@ test('exportTaxonomy', async (t) => {
         [s1]: {
           ...ref.traits[s1], // matching (should match on non-overridden fields)
           label: ref.traits[s1].label ? ref.traits[s1].label + '_divergent' : 'divergent', // divergent guaranteed
-          slot: 'mock_slot', // game_only_model_gap
+          slot: 'mock_slot', // game_only_unexpected (MODEL_GAP is empty since the sourceExtras cycle)
           unexpected_field: 'mock', // game_only_unexpected
         },
         [s2]: {
@@ -134,8 +134,12 @@ test('exportTaxonomy', async (t) => {
     assert.ok(refReport.counts.header_drift >= 1);
     assert.ok(refReport.counts.matching >= 1);
     assert.ok(refReport.counts.divergent >= 1);
-    assert.ok(refReport.counts.game_only_model_gap >= 1);
-    assert.ok(refReport.counts.game_only_unexpected >= 1);
+    // MODEL_GAP is empty since the sourceExtras cycle (slot/sinergie_pi now
+    // round-trip): the class stays wired for future gaps but counts 0, and
+    // the slot fixture above lands in game_only_unexpected instead (>= 2
+    // with unexpected_field).
+    assert.equal(refReport.counts.game_only_model_gap, 0);
+    assert.ok(refReport.counts.game_only_unexpected >= 2);
     assert.ok(refReport.counts.exported_only >= 1);
 
     // Codex P2 fix: targets absent from the diff root must be flagged, not
@@ -227,7 +231,7 @@ test('exportTaxonomy', async (t) => {
     });
 
     const mockTraitRef = await prisma.trait.create({
-      data: { slug: 'mock-trait-ref', sourceFiles: ['pack_reference'], name: 'Ref Only', dataType: 'TEXT' }
+      data: { slug: 'mock-trait-ref', sourceFiles: ['pack_reference'], name: 'Ref Only', dataType: 'TEXT', sourceExtras: { sinergie_pi: { some_rule: 1 }, slot: ['x'] } }
     });
     const mockTraitAll = await prisma.trait.create({
       data: { slug: 'mock-trait-all', sourceFiles: null, name: 'All Only', dataType: 'TEXT' }
@@ -240,7 +244,7 @@ test('exportTaxonomy', async (t) => {
 
     await prisma.traitVersion.createMany({
       data: [
-        { versionId: taxonomyVersion.id, traitId: mockTraitRef.id, slug: mockTraitRef.slug, sourceFiles: mockTraitRef.sourceFiles, name: mockTraitRef.name, dataType: mockTraitRef.dataType },
+        { versionId: taxonomyVersion.id, traitId: mockTraitRef.id, slug: mockTraitRef.slug, sourceFiles: mockTraitRef.sourceFiles, name: mockTraitRef.name, dataType: mockTraitRef.dataType, sourceExtras: mockTraitRef.sourceExtras },
         { versionId: taxonomyVersion.id, traitId: mockTraitAll.id, slug: mockTraitAll.slug, sourceFiles: mockTraitAll.sourceFiles, name: mockTraitAll.name, dataType: mockTraitAll.dataType },
         { versionId: taxonomyVersion.id, traitId: mockTraitStub.id, slug: mockTraitStub.slug, sourceFiles: mockTraitStub.sourceFiles, name: mockTraitStub.name, dataType: mockTraitStub.dataType }
       ]
@@ -256,8 +260,10 @@ test('exportTaxonomy', async (t) => {
     const gl2 = JSON.parse(fs.readFileSync(gl2Path, 'utf8'));
     const ref = JSON.parse(fs.readFileSync(refPath, 'utf8'));
 
-    // ref has both
+    // ref has both, and exports sourceExtras verbatim for the ref trait
     assert.ok('mock-trait-ref' in ref.traits);
+    assert.deepEqual(ref.traits['mock-trait-ref'].sinergie_pi, { some_rule: 1 });
+    assert.deepEqual(ref.traits['mock-trait-ref'].slot, ['x']);
     assert.ok('mock-trait-all' in ref.traits);
 
     // glossaries only have all

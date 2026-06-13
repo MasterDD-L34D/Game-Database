@@ -157,6 +157,29 @@ test('normalizeTrait populates nameEn/descriptionEn from label_en / description_
   assert.equal(resultPresent.descriptionEn, 'Test Desc EN');
 });
 
+test('normalizeTrait captures unconsumed keys into sourceExtras', () => {
+  const record = {
+    slug: 'extras_test',
+    name: 'Extras Test',
+    label: 'Not captured',
+    description: 'Not captured',
+    sinergie_pi: { some_rule: 1 },
+    slot: ['x']
+  };
+  const normalized = normalizeTrait(record);
+  assert.deepEqual(normalized.sourceExtras, {
+    sinergie_pi: { some_rule: 1 },
+    slot: ['x']
+  });
+
+  const recordNoExtras = {
+    slug: 'no_extras',
+    name: 'No Extras'
+  };
+  const normalizedNoExtras = normalizeTrait(recordNoExtras);
+  assert.equal(normalizedNoExtras.sourceExtras, null);
+});
+
 test('normalizeTrait sets sourceKey to the exact identifier when provided', () => {
   const resultUnderscore = normalizeTrait({ slug: 'antenne_plasmatiche', name: 'Antenne Plasmatiche' });
   assert.equal(resultUnderscore.slug, 'antenne-plasmatiche');
@@ -227,4 +250,53 @@ test('mergeTraitRecords merges according to PRECEDENCE rules (EDITORIAL > MECHAN
 
   // sourceFiles
   assert.deepEqual(merged.sourceFiles, ['core_glossary', 'pack_glossary', 'pack_reference']);
+});
+
+test('mergeTraitRecords correctly merges sourceExtras per-field with precedence (pack_reference > core_glossary)', () => {
+  const records = [
+    {
+      sourceClass: 'core_glossary',
+      record: {
+        slug: 'extras-slug',
+        name: 'Extras Test',
+        sourceExtras: {
+          slot: ['core_slot'],
+          sinergie_pi: { val: 1 }
+        }
+      }
+    },
+    {
+      sourceClass: 'pack_reference',
+      record: {
+        slug: 'extras-slug',
+        name: 'Extras Test Ref',
+        sourceExtras: {
+          slot: ['ref_slot'], // pack_reference beats core_glossary
+          other_key: true
+        }
+      }
+    }
+  ];
+
+  const merged = mergeTraitRecords(records);
+  assert.deepEqual(merged.sourceExtras, {
+    slot: ['ref_slot'],
+    sinergie_pi: { val: 1 },
+    other_key: true
+  });
+});
+
+test('buildTraitUpsertArgs update path erases extras removed upstream (Codex P1 on #199)', () => {
+  const { buildTraitUpsertArgs } = require('../scripts/ingest/import-taxonomy');
+  // A re-import where the source no longer carries unmapped fields yields
+  // sourceExtras = null from the merge; the UPDATE must pass null THROUGH so
+  // Prisma erases the stale JSON instead of skipping the column.
+  const normalized = { slug: 'mock-upd', name: 'Mock Upd', dataType: 'TEXT', sourceExtras: null, sourceFiles: null };
+  const args = buildTraitUpsertArgs(normalized);
+  assert.equal(args.update.sourceExtras, null);
+  assert.equal(args.update.sourceFiles, null);
+  // Positive control: real values still flow on update.
+  const withExtras = buildTraitUpsertArgs({ slug: 'mock-upd2', name: 'Mock Upd 2', dataType: 'TEXT', sourceExtras: { slot: ['x'] }, sourceFiles: ['pack_reference'] });
+  assert.deepEqual(withExtras.update.sourceExtras, { slot: ['x'] });
+  assert.deepEqual(withExtras.update.sourceFiles, ['pack_reference']);
 });
