@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 > Canonical per-repo goals. Hub mirror: `codemasterdd/GOALS.md`. Horizons: Short=weeks / Mid=1-2mo / Long=3-6mo.
 
-- **Short**: RFC #4 fase S1 (RFC RATIFICATO 8/8 da Eduardo 2026-06-11, `docs/rfc/2026-06-11-bidirectional-sync.md` -- option B export-on-release; traits-only v1; surface = pack catalog + data/core per OQ6). Deliverable: **S1a** i18n extension (nameEn/descriptionEn su Trait+TraitVersion + import en + backfill) poi **S1b** shadow-exporter + fidelity report (zero write su Game). Eduardo-sovereign gate. Precedente Short DONE 2026-06-11: letture versionate B/S/E #180.
-- **Mid**: hardening della audit-UI curator; RFC #4 fasi S2+ (export-on-release) post-ratifica.
+- **Short**: nessuno -- **Game-DB IN PAUSA (ratificato Eduardo 2026-06-14)**. RFC #4 traits CHIUSO end-to-end (loop DB->Game live: glossary Game#2750 + canon-fix #2752 + reference #2755 + mirror-resync #2758; catena GATE G1->G6 tutta verde, 10 cicli, fidelity-gated). Valore user-visible shipped. Riapertura = decisione Eduardo.
+- **Mid**: (PARKED) export species/biome/eco -- estendere il loop oltre i traits. **Approccio ratificato per riapertura (2026-06-14)**: species-FIRST (JSON, riusa pipeline GATE-hardened) -> biome/eco DOPO (YAML, serve js-yaml dump + order-preserve YAML + eco model-gap via extend-model o sourceExtras); SEMPRE scope-doc nell'RFC + ratifica PRIMA del dispatch (no partenza al buio su fase multi-ciclo). Records = non-goal. Altro Mid: hardening audit-UI curator (AuditHistoryPanel + revert).
 - **Long**: robust canonical content backend -- versioned, auditable taxonomy provider feeding Game via `evo:import`.
 
 ## Project overview
