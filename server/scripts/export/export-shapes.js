@@ -14,12 +14,12 @@ function orderObjKeys(dbObj, templateObj) {
   if (!templateObj) return dbObj;
   const ordered = {};
   for (const key of Object.keys(templateObj)) {
-    if (key in dbObj) {
+    if (Object.hasOwn(dbObj, key)) {
       ordered[key] = dbObj[key];
     }
   }
   for (const key of Object.keys(dbObj)) {
-    if (!(key in ordered)) {
+    if (!Object.hasOwn(ordered, key)) {
       ordered[key] = dbObj[key];
     }
   }
@@ -44,7 +44,7 @@ function renderGlossary(traits, updatedAt, schemaVersion, template = null) {
 
   if (template && template.traits) {
     for (const key of Object.keys(template.traits)) {
-      if (key in dbTraitsByKey) {
+      if (Object.hasOwn(dbTraitsByKey, key)) {
         const dbObj = buildObj(dbTraitsByKey[key]);
         traitsMap[key] = orderObjKeys(dbObj, template.traits[key]);
         processedKeys.add(key);
@@ -101,7 +101,7 @@ function renderReference(traits, template = null) {
 
   if (template && template.traits) {
     for (const key of Object.keys(template.traits)) {
-      if (key in dbTraitsByKey) {
+      if (Object.hasOwn(dbTraitsByKey, key)) {
         const dbObj = buildObj(dbTraitsByKey[key]);
         traitsMap[key] = orderObjKeys(dbObj, template.traits[key]);
         processedKeys.add(key);

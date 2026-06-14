@@ -62,7 +62,12 @@ test('exportTaxonomy', async (t) => {
         'b_trait': {
           label_it: 'Template Trait B',
           description_it: 'Template Desc B'
-        }
+        },
+        // Stale template key absent from the DB snapshot, including a
+        // prototype-name collision (Codex P2 on #207): must be DROPPED via
+        // Object.hasOwn, never built from Object.prototype.
+        'stale_gone': { label_it: 'Stale' },
+        'constructor': { label_it: 'Proto' }
       }
     };
 
@@ -88,6 +93,10 @@ test('exportTaxonomy', async (t) => {
     
     // Values should be from DB
     assert.equal(gl1.traits['c_trait'].label_it, 'Trait C');
+
+    // Stale/proto template keys not in the DB must be dropped (Codex P2 #207)
+    assert.equal('stale_gone' in gl1.traits, false);
+    assert.equal(Object.hasOwn(gl1.traits, 'constructor'), false);
 
     await prisma.traitVersion.deleteMany({ where: { versionId: taxonomyVersion.id }});
     await prisma.trait.delete({ where: { id: mockTraitA.id }});
