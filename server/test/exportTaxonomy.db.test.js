@@ -27,6 +27,84 @@ test('exportTaxonomy', async (t) => {
     }
   });
 
+  await t.test('key-order-preserving export with --diff template', async () => {
+    const mockTag = 'v-key-order-test';
+    const taxonomyVersion = await prisma.taxonomyVersion.create({
+      data: { tag: mockTag, status: 'released' }
+    });
+
+    const mockTraitA = await prisma.trait.create({
+      data: { slug: 'mock-trait-a', sourceKey: 'a_trait', name: 'Trait A', dataType: 'TEXT', description: 'Desc A' }
+    });
+    const mockTraitB = await prisma.trait.create({
+      data: { slug: 'mock-trait-b', sourceKey: 'b_trait', name: 'Trait B', dataType: 'TEXT', description: 'Desc B' }
+    });
+    const mockTraitC = await prisma.trait.create({
+      data: { slug: 'mock-trait-c', sourceKey: 'c_trait', name: 'Trait C', dataType: 'TEXT', description: 'Desc C' }
+    });
+
+    await prisma.traitVersion.createMany({
+      data: [
+        { versionId: taxonomyVersion.id, traitId: mockTraitA.id, slug: mockTraitA.slug, sourceKey: mockTraitA.sourceKey, name: mockTraitA.name, dataType: mockTraitA.dataType, description: mockTraitA.description },
+        { versionId: taxonomyVersion.id, traitId: mockTraitB.id, slug: mockTraitB.slug, sourceKey: mockTraitB.sourceKey, name: mockTraitB.name, dataType: mockTraitB.dataType, description: mockTraitB.description },
+        { versionId: taxonomyVersion.id, traitId: mockTraitC.id, slug: mockTraitC.slug, sourceKey: mockTraitC.sourceKey, name: mockTraitC.name, dataType: mockTraitC.dataType, description: mockTraitC.description }
+      ]
+    });
+
+    // Create a template where "C" comes before "B", "A" is absent, and the fields in "C" are reordered: description_it before label_it
+    const mockGlossary = {
+      schema_version: '1.0',
+      traits: {
+        'c_trait': {
+          description_it: 'Template Desc C',
+          label_it: 'Template Trait C'
+        },
+        'b_trait': {
+          label_it: 'Template Trait B',
+          description_it: 'Template Desc B'
+        },
+        // Stale template key absent from the DB snapshot, including a
+        // prototype-name collision (Codex P2 on #207): must be DROPPED via
+        // Object.hasOwn, never built from Object.prototype.
+        'stale_gone': { label_it: 'Stale' },
+        'constructor': { label_it: 'Proto' }
+      }
+    };
+
+    fs.mkdirSync(path.dirname(path.join(tmpDiffDir, PATHS.TRAIT_GLOSSARY)), { recursive: true });
+    fs.writeFileSync(path.join(tmpDiffDir, PATHS.TRAIT_GLOSSARY), JSON.stringify(mockGlossary));
+
+    execSync(`node ../scripts/export/export-taxonomy.js --version ${mockTag} --out ${tmpOutDir} --diff ${tmpDiffDir}`, { cwd: __dirname });
+
+    const gl1Path = path.join(tmpOutDir, PATHS.TRAIT_GLOSSARY);
+    const gl1 = JSON.parse(fs.readFileSync(gl1Path, 'utf8'));
+
+    const keys = Object.keys(gl1.traits);
+    
+    // Check that keys are ordered "C", "B", "A"
+    assert.deepEqual(keys.filter(k => ['a_trait', 'b_trait', 'c_trait'].includes(k)), ['c_trait', 'b_trait', 'a_trait']);
+
+    // Check that inside "C", description_it comes before label_it
+    const cKeys = Object.keys(gl1.traits['c_trait']);
+    const descIdx = cKeys.indexOf('description_it');
+    const labelIdx = cKeys.indexOf('label_it');
+    assert.ok(descIdx !== -1 && labelIdx !== -1);
+    assert.ok(descIdx < labelIdx, `Expected description_it (${descIdx}) to be before label_it (${labelIdx}) in c_trait`);
+    
+    // Values should be from DB
+    assert.equal(gl1.traits['c_trait'].label_it, 'Trait C');
+
+    // Stale/proto template keys not in the DB must be dropped (Codex P2 #207)
+    assert.equal('stale_gone' in gl1.traits, false);
+    assert.equal(Object.hasOwn(gl1.traits, 'constructor'), false);
+
+    await prisma.traitVersion.deleteMany({ where: { versionId: taxonomyVersion.id }});
+    await prisma.trait.delete({ where: { id: mockTraitA.id }});
+    await prisma.trait.delete({ where: { id: mockTraitB.id }});
+    await prisma.trait.delete({ where: { id: mockTraitC.id }});
+    await prisma.taxonomyVersion.delete({ where: { id: taxonomyVersion.id }});
+  });
+
   await t.test('run exporter and verify output files', async () => {
     execSync(`node ../scripts/export/export-taxonomy.js --version ${TAG} --out ${tmpOutDir}`, { cwd: __dirname });
 
