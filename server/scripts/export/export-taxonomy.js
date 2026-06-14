@@ -73,9 +73,42 @@ async function exportTaxonomy() {
   const traits = traitVersions.map(row => snapshotToMaster('trait', row));
   const updatedAt = version.releasedAt ? new Date(version.releasedAt).toISOString() : null;
 
-  const glossary1 = renderGlossary(traits.filter(t => !t.sourceFiles || t.sourceFiles.length === 0 || t.sourceFiles.includes('pack_glossary')), updatedAt, '1.0');
-  const reference = renderReference(traits.filter(t => !t.sourceFiles || t.sourceFiles.length === 0 || t.sourceFiles.includes('pack_reference')));
-  const glossaryCore = renderGlossary(traits.filter(t => !t.sourceFiles || t.sourceFiles.length === 0 || t.sourceFiles.includes('core_glossary')), updatedAt, '2.0');
+  let templateGl1 = null;
+  let templateRef = null;
+  let templateGlCore = null;
+
+  if (outDir && diffRoot) {
+    try {
+      const gl1FullPath = path.resolve(diffRoot, PATHS.TRAIT_GLOSSARY);
+      if (fs.existsSync(gl1FullPath)) {
+        templateGl1 = JSON.parse(fs.readFileSync(gl1FullPath, 'utf8'));
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    try {
+      const refFullPath = path.resolve(diffRoot, PATHS.TRAIT_REFERENCE);
+      if (fs.existsSync(refFullPath)) {
+        templateRef = JSON.parse(fs.readFileSync(refFullPath, 'utf8'));
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    try {
+      const glCoreFullPath = path.resolve(diffRoot, PATHS.CORE_GLOSSARY);
+      if (fs.existsSync(glCoreFullPath)) {
+        templateGlCore = JSON.parse(fs.readFileSync(glCoreFullPath, 'utf8'));
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  const glossary1 = renderGlossary(traits.filter(t => !t.sourceFiles || t.sourceFiles.length === 0 || t.sourceFiles.includes('pack_glossary')), updatedAt, '1.0', templateGl1);
+  const reference = renderReference(traits.filter(t => !t.sourceFiles || t.sourceFiles.length === 0 || t.sourceFiles.includes('pack_reference')), templateRef);
+  const glossaryCore = renderGlossary(traits.filter(t => !t.sourceFiles || t.sourceFiles.length === 0 || t.sourceFiles.includes('core_glossary')), updatedAt, '2.0', templateGlCore);
 
   const exportedFiles = {
     [PATHS.TRAIT_GLOSSARY]: glossary1,
