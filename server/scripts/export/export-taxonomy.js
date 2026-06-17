@@ -221,10 +221,15 @@ async function exportTaxonomy() {
           const allFields = new Set([...Object.keys(expFields), ...Object.keys(gameFields)]);
 
           for (const field of allFields) {
-            // RFC #4 S2-Q1: the provenance marker is volatile metadata (release
-            // tag + timestamp), not a fidelity-subject field -- never classify
-            // it, or a stale marker in the Game file would false-flag divergent.
-            if (isSpeciesTarget && SPECIES_PROVENANCE_KEYS.includes(field)) continue;
+            // RFC #4 S2-Q1: the provenance marker VALUE is volatile (release tag
+            // + timestamp). When both sides carry it, never classify -- a stale
+            // Game marker must not count as divergent. But a marker key MISSING
+            // from the Game file falls through to exported_only so a removed or
+            // never-landed marker stays visible to the S2 gate (Codex P2 on #221).
+            if (isSpeciesTarget && SPECIES_PROVENANCE_KEYS.includes(field)
+                && expFields[field] != null && gameFields[field] != null) {
+              continue;
+            }
             let classification;
             const expVal = expFields[field];
             const gameVal = gameFields[field];
@@ -288,7 +293,6 @@ async function exportTaxonomy() {
         }
         for (const fields of Object.values(expTraits)) {
           for (const field of Object.keys(fields)) {
-            if (isSpeciesTarget && SPECIES_PROVENANCE_KEYS.includes(field)) continue;
             targetReport.counts.exported_only++;
             if (!targetReport.perField[field]) targetReport.perField[field] = { matching: 0, divergent: 0, exported_only: 0, game_only_model_gap: 0, game_only_unexpected: 0 };
             targetReport.perField[field].exported_only++;

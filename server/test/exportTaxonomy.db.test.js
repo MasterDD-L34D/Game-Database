@@ -453,10 +453,12 @@ test('exportTaxonomy', async (t) => {
     // Provide a game target that misses 'description' (expected model gap)
     // and has 'biomes' in a different order (should match, set semantics).
     const gameSpeciesData = {
-      // Stale provenance marker from a prior export (RFC #4 S2-Q1): the diff
-      // MUST ignore it -- a different tag/timestamp must never count as drift.
+      // Exercises both marker paths (RFC #4 S2-Q1, Codex P2 on #221): a stale
+      // `_generated_from` present on BOTH sides must be ignored (volatile value,
+      // no divergent), while a marker key ABSENT from the Game file must surface
+      // as exported_only so a removed/never-landed marker is not hidden.
       _generated_from: 'Game-Database v0.0.0-stale',
-      generated_at: '2020-01-01T00:00:00.000Z',
+      // generated_at intentionally omitted -> exported_only
       description: 'Some game-authored text',
       display_name: 'Mock Species',
       role_trofico: 'predator',
@@ -479,11 +481,12 @@ test('exportTaxonomy', async (t) => {
     assert.equal(fileReport.perField['biomes'].matching, 1); // Order insensitive
     assert.equal(fileReport.counts.divergent, 0);
     assert.equal(fileReport.counts.game_only_unexpected, 0);
-    // RFC #4 S2-Q1: the provenance marker is excluded from the diff entirely --
-    // DB and Game carry different tags/timestamps yet it is never classified
-    // (no divergent, not tracked in perField). This is the green-gate guard.
+    // RFC #4 S2-Q1 (Codex P2 on #221): volatile marker value ignored, absence reported.
+    // _generated_from present on both sides (stale value) -> never classified, so the
+    // divergent=0 asserted above holds despite DB and Game carrying different tags.
     assert.equal(fileReport.perField['_generated_from'], undefined);
-    assert.equal(fileReport.perField['generated_at'], undefined);
+    // generated_at absent from the Game file -> surfaced as exported_only.
+    assert.equal(fileReport.perField['generated_at']?.exported_only, 1);
 
     // 3. Test round-trip with importer. The testOutDir export now carries the
     // RFC #4 S2-Q1 provenance marker; normalizeSpecies reads only known fields,
