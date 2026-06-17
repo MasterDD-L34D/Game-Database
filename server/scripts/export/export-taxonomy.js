@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { PrismaClient } = require('@prisma/client');
 const { resolveReleasedVersion, snapshotToMaster } = require('../../utils/versionRead');
+const { normalizeSlug } = require('../../utils/slug');
 const { PATHS, MODEL_GAP, SPECIES_PROVENANCE_KEYS, TRAIT_REF_MAPPED_FIELDS, renderGlossary, renderReference, renderSpecies } = require('./export-shapes');
 
 const prisma = new PrismaClient();
@@ -248,8 +249,10 @@ async function exportTaxonomy() {
               let sortedExp = expVal;
               let sortedGame = gameVal;
               if (field === 'biomes' && Array.isArray(expVal) && Array.isArray(gameVal)) {
-                sortedExp = [...expVal].map(b => String(b).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')).sort();
-                sortedGame = [...gameVal].map(b => String(b).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')).sort();
+                // Same canonical slug normalizer the importer + exporter use, so
+                // accented biome names compare equal (Codex P2 on #223).
+                sortedExp = [...expVal].map((b) => normalizeSlug(b)).sort();
+                sortedGame = [...gameVal].map((b) => normalizeSlug(b)).sort();
               }
               if (deepEqual(sortedExp, sortedGame)) {
                 classification = 'matching';

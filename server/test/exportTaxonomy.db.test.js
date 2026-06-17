@@ -418,7 +418,7 @@ test('exportTaxonomy', async (t) => {
         trophicRole: mockSpecies.trophicRole,
         description: mockSpecies.description,
         flags: mockSpecies.flags,
-        biomeSlugs: ['foresta-temperata', 'desert'],
+        biomeSlugs: ['foresta-temperata', 'desert', 'pianura-erbosa'],
         vcCoefficients: { aggro: 0.2, risk: 0.7, tilt: 0.6 },
         sourceExtras: { path: 'a/b/c', receipt: 'r1' }
       }
@@ -438,7 +438,7 @@ test('exportTaxonomy', async (t) => {
     assert.equal(sData.display_name, 'Mock Species'); // Mapped
     assert.equal(sData.role_trofico, 'predator'); // Mapped
     assert.deepEqual(sData.flags, ['fast']); // Passthrough
-    assert.deepEqual(sData.biomes, ['desert', 'foresta-temperata']); // no template -> canonical sorted DB slugs
+    assert.deepEqual(sData.biomes, ['desert', 'foresta-temperata', 'pianura-erbosa']); // no template -> canonical sorted DB slugs
     assert.equal(sData.path, 'a/b/c'); // Spread sourceExtras
     // RFC #4 S2-Q1: top-level provenance marker, first key, carrying the release tag.
     assert.equal(Object.keys(sData)[0], '_generated_from');
@@ -464,7 +464,11 @@ test('exportTaxonomy', async (t) => {
       display_name: 'Mock Species',
       role_trofico: 'predator',
       flags: ['fast'],
-      biomes: ['foresta_temperata', 'desert'], // Game underscore convention; export must preserve it, not re-slug to hyphen
+      // Game underscore convention + an accented name. The a-grave is built via
+      // fromCharCode so the source stays ASCII (ADR-0021); it slugs to DB
+      // 'pianura-erbosa' only via the canonical NFD normalizer, so the export
+      // must preserve it verbatim rather than re-slug to hyphen (Codex P2 on #223).
+      biomes: ['foresta_temperata', 'desert', 'Pianura Erbos' + String.fromCharCode(0xE0)],
       vc: { risk: 0.7, tilt: 0.6, aggro: 0.2 }, // different nested key order than the DB row
       path: 'a/b/c',
       receipt: 'r1'
@@ -498,7 +502,9 @@ test('exportTaxonomy', async (t) => {
     const faithfulOutDir = path.join(__dirname, '.tmp_out_faithful');
     execSync(`node ../scripts/export/export-taxonomy.js --version ${mockTag} --out ${faithfulOutDir} --diff ${testDiffDir}`, { cwd: __dirname });
     const fData = JSON.parse(fs.readFileSync(path.join(faithfulOutDir, 'packs/evo_tactics_pack/docs/catalog/species/mock-species.json'), 'utf8'));
-    assert.deepEqual(fData.biomes, ['foresta_temperata', 'desert']); // template underscore form preserved, NOT re-slugged to hyphen
+    // template forms preserved verbatim: underscore separator AND the accented
+    // name (NOT re-slugged to hyphen / 'pianura-erbosa').
+    assert.deepEqual(fData.biomes, ['foresta_temperata', 'desert', 'Pianura Erbos' + String.fromCharCode(0xE0)]);
     assert.deepEqual(Object.keys(fData.vc), ['risk', 'tilt', 'aggro']); // nested key order follows the template
     fs.rmSync(faithfulOutDir, { recursive: true, force: true });
 

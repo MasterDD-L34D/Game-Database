@@ -1,5 +1,7 @@
 'use strict';
 
+const { normalizeSlug } = require('../../utils/slug');
+
 const PATHS = {
   TRAIT_GLOSSARY: 'packs/evo_tactics_pack/docs/catalog/trait_glossary.json',
   TRAIT_REFERENCE: 'packs/evo_tactics_pack/docs/catalog/trait_reference.json',
@@ -155,27 +157,23 @@ const TRAIT_REF_MAPPED_FIELDS = [
 ];
 
 
-// Normalize a biome label/slug the way the fidelity differ does, so the exporter
-// can recognize a template biome that is the same slug in a different separator
-// or casing (e.g. Game's `foresta_temperata` vs the DB's hyphenated slug).
-function normBiome(b) {
-  return String(b).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-}
-
 // Emit biomes faithfully to the Game template: when the snapshot's biome set
-// matches the template's (separator/order aside), keep the template's exact
-// strings and order (preserves `foresta_temperata`, no churn). Only when the set
-// genuinely differs fall back to canonical sorted DB slugs -- still reusing a
-// template string wherever one is slug-equal, so only the real delta diffs.
+// matches the template's, keep the template's exact strings and order (preserves
+// `foresta_temperata`, no churn). The match uses the SAME canonical slug
+// normalizer the importer used to build the DB slugs (normalizeSlug: NFD + strip
+// diacritics), so accented Italian biome names match too (Codex P2 on #223) --
+// a hand-rolled [^a-z0-9] regex would map `Cafe Nino` and `Cafe' Nino` apart.
+// Only on a genuine set change fall back to canonical sorted DB slugs, still
+// reusing a template string wherever one is slug-equal so only the real delta diffs.
 function renderBiomes(dbSlugs, templateBiomes) {
   const dbSorted = [...dbSlugs].sort();
   if (!Array.isArray(templateBiomes)) return dbSorted;
-  const dbSet = new Set(dbSlugs.map(normBiome));
-  const tmplSet = new Set(templateBiomes.map(normBiome));
+  const dbSet = new Set(dbSlugs.map((b) => normalizeSlug(b)));
+  const tmplSet = new Set(templateBiomes.map((b) => normalizeSlug(b)));
   const setsEqual = dbSet.size === tmplSet.size && [...dbSet].every((n) => tmplSet.has(n));
   if (setsEqual) return [...templateBiomes];
-  const tmplByNorm = new Map(templateBiomes.map((b) => [normBiome(b), b]));
-  return dbSorted.map((s) => tmplByNorm.get(normBiome(s)) ?? s);
+  const tmplByNorm = new Map(templateBiomes.map((b) => [normalizeSlug(b), b]));
+  return dbSorted.map((s) => tmplByNorm.get(normalizeSlug(s)) ?? s);
 }
 
 function renderSpecies(speciesRow, template = null, provenance = null) {
