@@ -1,0 +1,132 @@
+name: "Taxonomy Export (RFC #4 S2)"
+
+# On-demand SHIPPING export (RFC #4 S2, docs/rfc/2026-06-11-bidirectional-sync.md).
+# Rebuilds the DB from the Game checkout (evo:import), releases a snapshot under
+# the operator-chosen tag, exports it back (evo:export, marker stamped) and diffs
+# against the same checkout. The job FAILS if the export is not fidelity-green
+# (divergent / unexpected / targetMissing) so a bad bundle never ships. On green
+# it uploads the export bundle as the `taxonomy-export` artifact; the operator
+# downloads it and opens the Game PR locally (OQ4 manual dispatch, OQ5 no
+# cross-repo PAT, Eduardo merges). Read-only vs Game; ephemeral CI Postgres.
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag stamped into _generated_from (e.g. v1.1.0)"
+        required: true
+        type: string
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: game
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d game"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/game?schema=public
+      # Passed via env (never inlined into run scripts) to avoid script injection.
+      RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+
+    steps:
+      - name: Checkout Game-Database
+        uses: actions/checkout@v4
+
+      - name: Checkout Game repo
+        uses: actions/checkout@v4
+        with:
+          repository: MasterDD-L34D/Game
+          path: _game
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: cd server && npm ci
+
+      - name: Bootstrap database (schema only, NO seed)
+        # Schema-only so the snapshot reflects ONLY the Game checkout (the seed
+        # would inject slugs absent from Game and pollute the export). Same
+        # reasoning as fidelity-report.yml.
+        run: cd server && npx prisma generate && npx prisma migrate deploy
+
+      - name: Import taxonomy from Game checkout
+        # --no-setup is load-bearing: the wrapper otherwise runs dev:setup (which
+        # seeds), re-introducing seed rows through the back door.
+        run: cd server && npm run evo:import -- --no-setup --repo ${{ github.workspace }}/_game
+
+      - name: Release snapshot under the chosen tag
+        working-directory: server
+        # Mirrors POST /:tag/release with the SAME shared snapshot writer
+        # (snapshotAllMasters); audit row skipped (ephemeral CI, no request ctx).
+        run: |
+          node -e "
+          const prisma = require('./db/prisma');
+          const { snapshotAllMasters } = require('./utils/versionSnapshot');
+          (async () => {
+            const tag = process.env.RELEASE_TAG;
+            if (!tag) { console.error('RELEASE_TAG is empty'); process.exit(1); }
+            const v = await prisma.taxonomyVersion.create({ data: { tag, status: 'draft' } });
+            await prisma.\$transaction(async (tx) => {
+              await tx.taxonomyVersion.update({ where: { id: v.id }, data: { status: 'released', releasedAt: new Date(), releasedBy: 'taxonomy-export' } });
+              const counts = await snapshotAllMasters(tx, v.id, (m) => console.log(m));
+              console.log('snapshot counts:', JSON.stringify(counts));
+            });
+            console.log('released', tag);
+            await prisma.\$disconnect();
+          })().catch((e) => { console.error(e); process.exit(1); });
+          "
+
+      - name: Export and diff against Game checkout
+        working-directory: server
+        run: npm run evo:export -- --version "$RELEASE_TAG" --out "$GITHUB_WORKSPACE/_export" --diff "$GITHUB_WORKSPACE/_game" --report "$GITHUB_WORKSPACE/fidelity-report.json"
+
+      - name: Print summary
+        run: |
+          jq '{version, generatedAt, targets: (.targets | map_values({counts, targetMissing: (.targetMissing // false)}))}' fidelity-report.json
+
+      - name: Verify fidelity green (block a bad export)
+        # The export bundle must NOT ship if any target diverges, has unexpected
+        # Game-only fields, or is missing. exported_only (incl. the first-export
+        # provenance marker) and model_gap are tolerated by design (RFC #4 GREEN
+        # = 0 divergent / unexpected / targetMissing).
+        run: |
+          node -e "
+          const r = require('${{ github.workspace }}/fidelity-report.json');
+          let bad = 0;
+          for (const [p, t] of Object.entries(r.targets || {})) {
+            const c = t.counts || {};
+            const tm = t.targetMissing ? 1 : 0;
+            const n = (c.divergent || 0) + (c.game_only_unexpected || 0) + tm;
+            if (n > 0) { console.error('NOT GREEN', p, JSON.stringify({ divergent: c.divergent || 0, unexpected: c.game_only_unexpected || 0, targetMissing: tm })); bad += n; }
+          }
+          if (bad > 0) { console.error('Export blocked: ' + bad + ' divergent/unexpected/targetMissing across targets'); process.exit(1); }
+          console.log('Fidelity green: 0 divergent / unexpected / targetMissing -- bundle is shippable');
+          "
+
+      - name: Upload export bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: taxonomy-export
+          path: _export/
+          retention-days: 30
+
+      - name: Upload fidelity report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fidelity-report
+          path: fidelity-report.json
+          retention-days: 30
