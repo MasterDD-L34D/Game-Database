@@ -227,6 +227,10 @@ model Species {
   environmentAffinity Json?
   jobsBias            Json?
   telemetry           Json?
+  sourceKey           String?
+  sourceFiles         Json?
+  sourceExtras        Json?
+  biomeSlugs          Json?
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
   deletedAt           DateTime?
@@ -443,6 +447,10 @@ model SpeciesVersion {
   environmentAffinity Json?
   jobsBias            Json?
   telemetry           Json?
+  sourceKey           String?
+  sourceFiles         Json?
+  sourceExtras        Json?
+  biomeSlugs          Json?
 
   capturedAt DateTime @default(now())
 

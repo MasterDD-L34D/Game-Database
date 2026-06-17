@@ -10,6 +10,7 @@ const CHUNK = 1000;
 // RFC #4 OQ2 (2026-06-11) adds nameEn/descriptionEn; old snapshots stay null by design.
 // RFC #4 S1c (2026-06-11) adds sourceKey; old snapshots stay null by design.
 // RFC #4 S1d: sourceFiles membership.
+// RFC #4 Sp1a: Species provenance + snapshot determinism (sourceKey, sourceFiles, sourceExtras, biomeSlugs). Old snapshots stay null by design.
 const FIELD_MAP = {
   trait: {
     delegate: 'trait',
@@ -42,6 +43,7 @@ const FIELD_MAP = {
       'displayName', 'trophicRole', 'functionalTags', 'flags', 'balance',
       'playableUnit', 'morphotype', 'vcCoefficients', 'spawnRules',
       'environmentAffinity', 'jobsBias', 'telemetry',
+      'sourceKey', 'sourceFiles', 'sourceExtras', 'biomeSlugs',
     ],
   },
   ecosystem: {
