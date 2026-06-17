@@ -10,6 +10,7 @@ const CHUNK = 1000;
 // RFC #4 OQ2 (2026-06-11) adds nameEn/descriptionEn; old snapshots stay null by design.
 // RFC #4 S1c (2026-06-11) adds sourceKey; old snapshots stay null by design.
 // RFC #4 S1d: sourceFiles membership.
+// RFC #4 Sp1a: Species provenance + snapshot determinism (sourceKey, sourceFiles, sourceExtras, biomeSlugs). Old snapshots stay null by design.
 const FIELD_MAP = {
   trait: {
     delegate: 'trait',
@@ -36,12 +37,17 @@ const FIELD_MAP = {
     delegate: 'species',
     snapshot: 'speciesVersion',
     fk: 'speciesId',
+    // RFC #4 Sp1a: biomeSlugs is recomputed from the live SpeciesBiome junction
+    // at snapshot time (the cache on the Species row is not maintained by the
+    // /species-biomes routes). See snapshotEntity + Codex P2 on PR #214.
+    recomputeBiomeSlugs: true,
     fields: [
       'slug', 'scientificName', 'commonName', 'kingdom', 'phylum', 'class',
       'order', 'family', 'genus', 'epithet', 'status', 'description',
       'displayName', 'trophicRole', 'functionalTags', 'flags', 'balance',
       'playableUnit', 'morphotype', 'vcCoefficients', 'spawnRules',
       'environmentAffinity', 'jobsBias', 'telemetry',
+      'sourceKey', 'sourceFiles', 'sourceExtras', 'biomeSlugs',
     ],
   },
   ecosystem: {
@@ -66,6 +72,27 @@ async function snapshotEntity(client, versionId, cfg, log = () => {}) {
       for (const f of cfg.fields) snap[f] = row[f];
       return snap;
     });
+    if (cfg.recomputeBiomeSlugs) {
+      // RFC #4 Sp1a (Codex P2 on PR #214): biomeSlugs is a denormalized cache the
+      // /species-biomes routes do not maintain, so the Species row can be stale.
+      // Recompute it from the live SpeciesBiome junction here so the immutable
+      // snapshot freezes the correct membership as of the release. Sorted for a
+      // canonical, reproducible order; biomeSlugs is set-semantics (the Sp1b
+      // fidelity diff compares it order-insensitively).
+      const links = await client.speciesBiome.findMany({
+        where: { speciesId: { in: rows.map((r) => r.id) } },
+        select: { speciesId: true, biome: { select: { slug: true } } },
+      });
+      const bySpecies = new Map();
+      for (const l of links) {
+        if (!l.biome || !l.biome.slug) continue;
+        if (!bySpecies.has(l.speciesId)) bySpecies.set(l.speciesId, []);
+        bySpecies.get(l.speciesId).push(l.biome.slug);
+      }
+      for (const snap of data) {
+        snap.biomeSlugs = (bySpecies.get(snap[cfg.fk]) || []).sort();
+      }
+    }
     const res = await client[cfg.snapshot].createMany({ data, skipDuplicates: true });
     total += res.count;
     skip += rows.length;

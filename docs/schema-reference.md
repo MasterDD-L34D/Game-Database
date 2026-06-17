@@ -201,6 +201,10 @@ For dominio/runtime/operational context (not schema), see
 | `environmentAffinity` | `Json?` | — |
 | `jobsBias` | `Json?` | — |
 | `telemetry` | `Json?` | — |
+| `sourceKey` | `String?` | — |
+| `sourceFiles` | `Json?` | — |
+| `sourceExtras` | `Json?` | — |
+| `biomeSlugs` | `Json?` | — |
 | `createdAt` | `DateTime` | @default(now()) |
 | `updatedAt` | `DateTime` | @updatedAt |
 | `deletedAt` | `DateTime?` | — |
@@ -464,6 +468,10 @@ For dominio/runtime/operational context (not schema), see
 | `environmentAffinity` | `Json?` | — |
 | `jobsBias` | `Json?` | — |
 | `telemetry` | `Json?` | — |
+| `sourceKey` | `String?` | — |
+| `sourceFiles` | `Json?` | — |
+| `sourceExtras` | `Json?` | — |
+| `biomeSlugs` | `Json?` | — |
 | `capturedAt` | `DateTime` | @default(now()) |
 
 **Relations**

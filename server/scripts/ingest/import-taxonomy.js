@@ -604,6 +604,21 @@ function normalizeSpecies(record) {
   const threatTier = pickText(record.balance?.threat_tier);
   const rarity = pickText(record.balance?.rarity);
   const derivedStatus = [threatTier, rarity].filter(Boolean).join(' / ') || null;
+
+  // RFC #4 Sp1a: Game-only unmapped fields
+  const sourceExtras = {};
+  if (record.derived_from_environment !== undefined) sourceExtras.derived_from_environment = record.derived_from_environment;
+  if (record.receipt !== undefined) sourceExtras.receipt = record.receipt;
+  if (record.hazards_expected !== undefined) sourceExtras.hazards_expected = record.hazards_expected;
+  if (record.path !== undefined) sourceExtras.path = record.path;
+  if (record.genetic_traits !== undefined) sourceExtras.genetic_traits = record.genetic_traits;
+  if (record.services_links !== undefined) sourceExtras.services_links = record.services_links;
+  // spawn_rules and environment_affinity are NOT collected here: they are already
+  // wholesale-mapped to the spawnRules / environmentAffinity columns. Duplicating them
+  // into sourceExtras would double-emit in the Sp1b exporter (sourceExtras is spread back).
+
+  const finalSourceExtras = Object.keys(sourceExtras).length > 0 ? sourceExtras : null;
+
   return {
     slug,
     scientificName,
@@ -631,6 +646,9 @@ function normalizeSpecies(record) {
     telemetry: record.telemetry && typeof record.telemetry === 'object' ? record.telemetry : null,
     traits: collectSpeciesTraits(record),
     biomes,
+    sourceKey: pickText(record.slug, record._id, record.id) || null,
+    sourceFiles: ['species-catalog'],
+    sourceExtras: finalSourceExtras,
   };
 }
 
@@ -840,6 +858,10 @@ function buildSpeciesUpsertArgs(normalized) {
       environmentAffinity: normalized.environmentAffinity ?? undefined,
       jobsBias: normalized.jobsBias?.length ? normalized.jobsBias : undefined,
       telemetry: normalized.telemetry ?? undefined,
+      sourceKey: normalized.sourceKey ?? null,
+      sourceFiles: normalized.sourceFiles ?? null,
+      sourceExtras: normalized.sourceExtras ?? null,
+      biomeSlugs: Array.isArray(normalized.biomes) ? normalized.biomes.map(b => b.biomeSlug).filter(Boolean) : null,
     },
     update: {
       scientificName: normalized.scientificName, commonName: normalized.commonName,
@@ -854,6 +876,10 @@ function buildSpeciesUpsertArgs(normalized) {
       environmentAffinity: normalized.environmentAffinity ?? undefined,
       jobsBias: normalized.jobsBias?.length ? normalized.jobsBias : undefined,
       telemetry: normalized.telemetry ?? undefined,
+      sourceKey: normalized.sourceKey ?? null,
+      sourceFiles: normalized.sourceFiles ?? null,
+      sourceExtras: normalized.sourceExtras ?? null,
+      biomeSlugs: Array.isArray(normalized.biomes) ? normalized.biomes.map(b => b.biomeSlug).filter(Boolean) : null,
     },
   });
 }
