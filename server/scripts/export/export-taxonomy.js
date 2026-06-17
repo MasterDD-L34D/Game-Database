@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { PrismaClient } = require('@prisma/client');
 const { resolveReleasedVersion, snapshotToMaster } = require('../../utils/versionRead');
-const { PATHS, MODEL_GAP, TRAIT_REF_MAPPED_FIELDS, renderGlossary, renderReference, renderSpecies } = require('./export-shapes');
+const { PATHS, MODEL_GAP, SPECIES_PROVENANCE_KEYS, TRAIT_REF_MAPPED_FIELDS, renderGlossary, renderReference, renderSpecies } = require('./export-shapes');
 
 const prisma = new PrismaClient();
 const args = process.argv.slice(2);
@@ -140,9 +140,10 @@ async function exportTaxonomy() {
   // schema_version / generated_at / total_species / species[]) is regenerated
   // downstream by Game's tooling, like species-canonical-index.json -- it is NOT
   // a direct DB export target (RFC #4 S-Q3, refined 2026-06-17).
+  const speciesProvenance = { generatedFrom: `Game-Database ${version.tag}`, generatedAt };
   for (const s of species) {
     if (s.sourceFiles && s.sourceFiles.includes('species_catalog_file')) {
-      exportedFiles[`${PATHS.SPECIES_DIR}/${s.slug}.json`] = renderSpecies(s, templateSpeciesFiles[s.slug]);
+      exportedFiles[`${PATHS.SPECIES_DIR}/${s.slug}.json`] = renderSpecies(s, templateSpeciesFiles[s.slug], speciesProvenance);
     }
   }
 
@@ -178,6 +179,8 @@ async function exportTaxonomy() {
         sampleDivergent: [],
       };
 
+      const isSpeciesTarget = relPath.startsWith(`${PATHS.SPECIES_DIR}/`);
+
       const fullPath = path.resolve(diffRoot, relPath);
       let gameContent = null;
       try {
@@ -203,7 +206,7 @@ async function exportTaxonomy() {
         // Compare records. Per-file species are a single root object; traits are
         // keyed by slug under .traits.
         let expTraits, gameTraits;
-        if (relPath.startsWith(`${PATHS.SPECIES_DIR}/`)) {
+        if (isSpeciesTarget) {
           expTraits = { __root__: expContent };
           gameTraits = { __root__: gameContent };
         } else {
@@ -218,6 +221,10 @@ async function exportTaxonomy() {
           const allFields = new Set([...Object.keys(expFields), ...Object.keys(gameFields)]);
 
           for (const field of allFields) {
+            // RFC #4 S2-Q1: the provenance marker is volatile metadata (release
+            // tag + timestamp), not a fidelity-subject field -- never classify
+            // it, or a stale marker in the Game file would false-flag divergent.
+            if (isSpeciesTarget && SPECIES_PROVENANCE_KEYS.includes(field)) continue;
             let classification;
             const expVal = expFields[field];
             const gameVal = gameFields[field];
@@ -274,13 +281,14 @@ async function exportTaxonomy() {
         // exported_only so the gap is visible in the fidelity numbers.
         targetReport.targetMissing = true;
         let expTraits;
-        if (relPath.startsWith(`${PATHS.SPECIES_DIR}/`)) {
+        if (isSpeciesTarget) {
           expTraits = { __root__: expContent };
         } else {
           expTraits = expContent.traits || {};
         }
         for (const fields of Object.values(expTraits)) {
           for (const field of Object.keys(fields)) {
+            if (isSpeciesTarget && SPECIES_PROVENANCE_KEYS.includes(field)) continue;
             targetReport.counts.exported_only++;
             if (!targetReport.perField[field]) targetReport.perField[field] = { matching: 0, divergent: 0, exported_only: 0, game_only_model_gap: 0, game_only_unexpected: 0 };
             targetReport.perField[field].exported_only++;

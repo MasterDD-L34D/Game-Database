@@ -13,6 +13,13 @@ const MODEL_GAP = [
   'last_synced_at',
 ];
 
+// RFC #4 S2-Q1: top-level provenance marker stamped on every exported species
+// JSON. Volatile by design (release tag + export timestamp). The fidelity diff
+// excludes these keys (a stale marker in the Game file must never count as
+// drift) and the importer (normalizeSpecies) only reads known fields, so the
+// marker never round-trips into the DB.
+const SPECIES_PROVENANCE_KEYS = ['_generated_from', 'generated_at'];
+
 function orderObjKeys(dbObj, templateObj) {
   if (!templateObj) return dbObj;
   const ordered = {};
@@ -144,9 +151,9 @@ const TRAIT_REF_MAPPED_FIELDS = [
 ];
 
 
-function renderSpecies(speciesRow, template = null) {
+function renderSpecies(speciesRow, template = null, provenance = null) {
   const obj = {};
-  
+
   if (speciesRow.slug !== undefined) obj.id = speciesRow.slug;
   if (speciesRow.trophicRole !== undefined) obj.role_trofico = speciesRow.trophicRole;
   if (speciesRow.functionalTags !== undefined) obj.functional_tags = speciesRow.functionalTags;
@@ -175,12 +182,26 @@ function renderSpecies(speciesRow, template = null) {
     }
   }
 
-  return orderObjKeys(obj, template);
+  const ordered = orderObjKeys(obj, template);
+
+  // RFC #4 S2-Q1: prepend the provenance marker so it is the first top-level
+  // key, independent of the Game template's key order. orderObjKeys never
+  // re-emits these keys (obj does not carry them), so the body stays stable.
+  if (provenance && provenance.generatedFrom) {
+    return {
+      _generated_from: provenance.generatedFrom,
+      generated_at: provenance.generatedAt,
+      ...ordered,
+    };
+  }
+
+  return ordered;
 }
 
 module.exports = {
   PATHS,
   MODEL_GAP,
+  SPECIES_PROVENANCE_KEYS,
   TRAIT_REF_MAPPED_FIELDS,
   renderGlossary,
   renderReference,
