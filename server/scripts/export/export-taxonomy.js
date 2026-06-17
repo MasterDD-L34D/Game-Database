@@ -81,7 +81,10 @@ async function exportTaxonomy() {
   let templateGlCore = null;
   const templateSpeciesFiles = {};
 
-  if (outDir && diffRoot) {
+  // Load Game templates whenever we diff (Codex P1 on #224): a report-only run
+  // (--diff/--report without --out) must compare the SAME template-faithful
+  // output that --out would ship, so fidelity numbers do not change with --out.
+  if (diffRoot) {
     try {
       const gl1FullPath = path.resolve(diffRoot, PATHS.TRAIT_GLOSSARY);
       if (fs.existsSync(gl1FullPath)) {

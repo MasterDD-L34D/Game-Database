@@ -485,11 +485,11 @@ test('exportTaxonomy', async (t) => {
     // Check per-file report
     const fileReport = report.targets['packs/evo_tactics_pack/docs/catalog/species/mock-species.json'];
     assert.ok(fileReport, 'Missing species file report');
-    // Step 2 runs --diff WITHOUT --out, so no template is loaded (templates gate on
-    // outDir && diffRoot): the export measures RAW DB fidelity and description (a
-    // MODEL_GAP field) is absent -> game_only_model_gap. The non-destructive overlay
-    // only kicks in when --out loads templates -- asserted in the faithful step below.
-    assert.equal(fileReport.perField['description']?.game_only_model_gap, 1);
+    // Templates now load for ANY --diff (Codex P1 on #224), so the report reflects
+    // the template-faithful output that --out would ship: the MODEL_GAP description
+    // is preserved from the template -> matching, never game_only_model_gap.
+    assert.equal(fileReport.perField['description']?.matching, 1);
+    assert.equal(fileReport.perField['description']?.game_only_model_gap ?? 0, 0);
     assert.equal(fileReport.perField['biomes'].matching, 1); // Order insensitive
     assert.equal(fileReport.counts.divergent, 0);
     assert.equal(fileReport.counts.game_only_unexpected, 0);
