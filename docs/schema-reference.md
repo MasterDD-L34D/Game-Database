@@ -99,6 +99,7 @@ For dominio/runtime/operational context (not schema), see
 | `slug` | `String` | @unique @db.VarChar(80) |
 | `sourceKey` | `String?` | — |
 | `sourceFiles` | `Json?` | — |
+| `sourceExtras` | `Json?` | — |
 | `name` | `String` | — |
 | `description` | `String?` | — |
 | `nameEn` | `String?` | — |
@@ -366,6 +367,7 @@ For dominio/runtime/operational context (not schema), see
 | `slug` | `String` | @db.VarChar(80) |
 | `sourceKey` | `String?` | — |
 | `sourceFiles` | `Json?` | — |
+| `sourceExtras` | `Json?` | — |
 | `name` | `String` | — |
 | `description` | `String?` | — |
 | `nameEn` | `String?` | — |
