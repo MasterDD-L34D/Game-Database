@@ -84,6 +84,11 @@ async function exportTaxonomy() {
   // Load Game templates whenever we diff (Codex P1 on #224): a report-only run
   // (--diff/--report without --out) must compare the SAME template-faithful
   // output that --out would ship, so fidelity numbers do not change with --out.
+  // EXCEPTION (RFC #4 S2 amendment, 2026-06-18): species export is rescoped to
+  // fidelity-shadow ONLY. The species shipping-mode transforms (overlay/marker/
+  // faithful) are gated on --out below, so a report-only species run consumes no
+  // template and measures RAW representation loss -- the species template loaded
+  // here is used solely by the --out shipping path.
   if (diffRoot) {
     try {
       const gl1FullPath = path.resolve(diffRoot, PATHS.TRAIT_GLOSSARY);
@@ -144,10 +149,23 @@ async function exportTaxonomy() {
   // schema_version / generated_at / total_species / species[]) is regenerated
   // downstream by Game's tooling, like species-canonical-index.json -- it is NOT
   // a direct DB export target (RFC #4 S-Q3, refined 2026-06-17).
-  const speciesProvenance = { generatedFrom: `Game-Database ${version.tag}`, generatedAt };
+  // RFC #4 S2 amendment (2026-06-18): species export is fidelity-shadow ONLY.
+  // The overlay (#224), provenance marker (#221) and template-faithful render
+  // (#223) are SHIPPING-MODE transforms -- they exist to produce a byte-faithful,
+  // Game-data-preserving, provenance-stamped file to SHIP. A report-only run
+  // (--diff without --out) measures RAW representation loss, so it must NOT apply
+  // them: otherwise MODEL_GAP fields (description, last_synced_at) copied from the
+  // template classify as `matching` and hide the very gap the shadow measures.
+  // Gating on --out keeps the parked shipping path intact for a future S3
+  // DB-as-SoT revival (taxonomy-export.yml uses --out) while fidelity-report.yml
+  // (report-only) sees raw fidelity. This deliberately scopes Codex P1 on #224
+  // (report == bundle) to traits: under the rescope there is no species bundle.
+  const shippingMode = !!outDir;
+  const speciesProvenance = shippingMode ? { generatedFrom: `Game-Database ${version.tag}`, generatedAt } : null;
   for (const s of species) {
     if (s.sourceFiles && s.sourceFiles.includes('species_catalog_file')) {
-      exportedFiles[`${PATHS.SPECIES_DIR}/${s.slug}.json`] = renderSpecies(s, templateSpeciesFiles[s.slug], speciesProvenance);
+      const speciesTemplate = shippingMode ? templateSpeciesFiles[s.slug] : null;
+      exportedFiles[`${PATHS.SPECIES_DIR}/${s.slug}.json`] = renderSpecies(s, speciesTemplate, speciesProvenance);
     }
   }
 

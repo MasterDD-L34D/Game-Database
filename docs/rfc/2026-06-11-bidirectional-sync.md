@@ -524,9 +524,14 @@ DB-owned surface, so the export-on-release / per-file PR premise was inverted:
 **Parked artifacts** (retained, harmless to the shadow, ready if S3 revives
 DB-as-SoT): the exporter provenance marker (Game-DB #221), template-faithful
 render (#223), non-destructive overlay (#224), and the `taxonomy-export.yml`
-workflow (#222). Caveat: the overlay makes MODEL_GAP fields classify as matching
-in the shadow report (0 model-gap), so a pure raw-representation shadow would
-need them reverted -- a separate follow-up, not done here.
+workflow (#222). Caveat (RESOLVED in #226): the overlay made MODEL_GAP fields
+classify as matching in the shadow report (0 model-gap). Rather than revert, the
+species shipping-mode transforms (overlay/marker/template-faithful) are now gated
+on --out, so the report-only fidelity shadow (fidelity-report.yml, no --out)
+renders raw and restores the description + last_synced_at model-gaps (17 each on
+the catalog-tier: matching 302, 0 divergent / unexpected / targetMissing), while
+the parked shipping path stays intact behind --out (taxonomy-export.yml) for an
+S3 DB-as-SoT revival.
 
 ## References
 
