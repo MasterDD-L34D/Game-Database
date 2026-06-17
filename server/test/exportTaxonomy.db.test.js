@@ -471,7 +471,9 @@ test('exportTaxonomy', async (t) => {
       biomes: ['foresta_temperata', 'desert', 'Pianura Erbos' + String.fromCharCode(0xE0)],
       vc: { risk: 0.7, tilt: 0.6, aggro: 0.2 }, // different nested key order than the DB row
       path: 'a/b/c',
-      receipt: 'r1'
+      receipt: 'r1',
+      jobs_bias: [], // empty array in Game; the DB row is null -> preserve [], do not churn to null
+      last_synced_at: '2026-05-15T10:41:13.627Z' // legacy stamp; MODEL_GAP -> preserved from template, not deleted
     };
     fs.writeFileSync(path.join(diffSpeciesDir, 'mock-species.json'), JSON.stringify(gameSpeciesData));
 
@@ -483,7 +485,11 @@ test('exportTaxonomy', async (t) => {
     // Check per-file report
     const fileReport = report.targets['packs/evo_tactics_pack/docs/catalog/species/mock-species.json'];
     assert.ok(fileReport, 'Missing species file report');
-    assert.equal(fileReport.perField['description']?.game_only_model_gap, 1);
+    // Templates now load for ANY --diff (Codex P1 on #224), so the report reflects
+    // the template-faithful output that --out would ship: the MODEL_GAP description
+    // is preserved from the template -> matching, never game_only_model_gap.
+    assert.equal(fileReport.perField['description']?.matching, 1);
+    assert.equal(fileReport.perField['description']?.game_only_model_gap ?? 0, 0);
     assert.equal(fileReport.perField['biomes'].matching, 1); // Order insensitive
     assert.equal(fileReport.counts.divergent, 0);
     assert.equal(fileReport.counts.game_only_unexpected, 0);
@@ -506,6 +512,12 @@ test('exportTaxonomy', async (t) => {
     // name (NOT re-slugged to hyphen / 'pianura-erbosa').
     assert.deepEqual(fData.biomes, ['foresta_temperata', 'desert', 'Pianura Erbos' + String.fromCharCode(0xE0)]);
     assert.deepEqual(Object.keys(fData.vc), ['risk', 'tilt', 'aggro']); // nested key order follows the template
+    // Non-destructive overlay: MODEL_GAP fields the DB does not model are preserved
+    // from the template (not deleted), and an absent-equivalent value keeps the
+    // template's representation ([] not null).
+    assert.equal(fData.description, 'Some game-authored text'); // preserved, not dropped
+    assert.equal(fData.last_synced_at, '2026-05-15T10:41:13.627Z'); // preserved, not dropped
+    assert.deepEqual(fData.jobs_bias, []); // [] preserved, not churned to null
     fs.rmSync(faithfulOutDir, { recursive: true, force: true });
 
     // 3. Test round-trip with importer. The testOutDir export now carries the
