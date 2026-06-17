@@ -489,6 +489,45 @@ is already live (Game #2750 / #2752 / #2755).
 S3 (export-only / import retired) stays the long-horizon step, gated on all four
 entities fidelity-complete + N quiet cycles with no drift.
 
+### Amendment (2026-06-18) -- SoT inversion: rescope to fidelity-shadow
+
+The first export attempt (release v1.1.0 via the taxonomy-export workflow)
+surfaced that the per-file species catalog is a GENERATED artifact, not a
+DB-owned surface, so the export-on-release / per-file PR premise was inverted:
+
+- Game's `scripts/update_evo_pack_catalog.js` (`npm run sync:evo-pack`) GENERATES
+  `packs/evo_tactics_pack/docs/catalog/species/<slug>.json` + `index.json` from
+  the authored upstream: the canonical `data/core/species/species_catalog.json`
+  (v0.4.x, ADR-2026-05-15 Option A) plus the per-species YAML under
+  `packs/evo_tactics_pack/data/species/**`.
+- `evo:import` reads those generated files, so the DB is DOWNSTREAM of
+  sync:evo-pack; `evo:export` writing them back is a second generator on the
+  same surface (collision) and would be overwritten on the next sync:evo-pack.
+- S-Q3 (above) vetoed only the canonical-index as a DB target; it was silent on
+  the per-file species + index.json and implicitly (wrongly) assumed the DB
+  owned them. Corrected here.
+
+**Ratified rescope (Eduardo, 2026-06-18): species export = fidelity-shadow ONLY.**
+
+- The DB does NOT write or PR the per-file species; they stay Game-generated.
+- The DB's species role stays the S1b fidelity report (measure representation
+  loss vs the Game checkout). No export-on-release, no `_generated_from`
+  shipping for species.
+- The Q8 authority-map entry (Game #2812) stands as documentation, but the
+  "first export" + "sync-narrow" ladder steps for species are CANCELLED.
+- True DB-as-SoT for species is deferred to S3+ and requires a Game-side
+  co-design to migrate the authoring (species_catalog.json + per-species YAML)
+  into the DB so there is a single generator. Until then species are
+  Game-authored-and-generated, DB-shadowed.
+- Game PR #2819 (per-file marker) is closed as wrong-surface.
+
+**Parked artifacts** (retained, harmless to the shadow, ready if S3 revives
+DB-as-SoT): the exporter provenance marker (Game-DB #221), template-faithful
+render (#223), non-destructive overlay (#224), and the `taxonomy-export.yml`
+workflow (#222). Caveat: the overlay makes MODEL_GAP fields classify as matching
+in the shadow report (0 model-gap), so a pure raw-representation shadow would
+need them reverted -- a separate follow-up, not done here.
+
 ## References
 
 - Spec: `docs/superpowers/specs/2026-05-20-game-database-value-roadmap-design.md` (Fase 3 deliverable 4, migration plan + KPI)
