@@ -176,6 +176,13 @@ function renderBiomes(dbSlugs, templateBiomes) {
   return dbSorted.map((s) => tmplByNorm.get(normalizeSlug(s)) ?? s);
 }
 
+// Treat null, undefined, and [] as the same "absent" value, matching how the
+// fidelity differ compares fields -- used to keep the template's chosen
+// representation instead of churning [] <-> null.
+function isAbsentValue(v) {
+  return v === null || v === undefined || (Array.isArray(v) && v.length === 0);
+}
+
 function renderSpecies(speciesRow, template = null, provenance = null) {
   const obj = {};
 
@@ -203,6 +210,22 @@ function renderSpecies(speciesRow, template = null, provenance = null) {
     for (const k of keys) {
       if (speciesRow.sourceExtras[k] !== undefined) {
         obj[k] = speciesRow.sourceExtras[k];
+      }
+    }
+  }
+
+  // Non-destructive overlay (RFC #4 S2): the DB does not model every Game field.
+  // Preserve MODEL_GAP fields (description, last_synced_at) verbatim from the
+  // template, and keep the template's representation wherever both sides are
+  // absent-equivalent (e.g. jobs_bias [] vs null), so a re-export only adds the
+  // marker instead of deleting Game-authored data or churning empty values.
+  if (template && typeof template === 'object' && !Array.isArray(template)) {
+    for (const f of MODEL_GAP) {
+      if (Object.hasOwn(template, f) && !Object.hasOwn(obj, f)) obj[f] = template[f];
+    }
+    for (const k of Object.keys(obj)) {
+      if (Object.hasOwn(template, k) && isAbsentValue(obj[k]) && isAbsentValue(template[k])) {
+        obj[k] = template[k];
       }
     }
   }
