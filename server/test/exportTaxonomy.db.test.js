@@ -375,6 +375,121 @@ test('exportTaxonomy', async (t) => {
     assert.equal(deepEqual([1, 2], [2, 1]), false);
   });
 
+  
+  await t.test('species export and fidelity report', async () => {
+    const mockTag = 'v-species-test';
+    const taxonomyVersion = await prisma.taxonomyVersion.create({
+      data: { tag: mockTag, status: 'released' }
+    });
+
+    const mockSpecies = await prisma.species.create({
+      data: {
+        slug: 'mock-species',
+        scientificName: 'Mockus testus',
+        kingdom: 'Animalia',
+        phylum: 'Chordata',
+        class: 'Mammalia',
+        order: 'Carnivora',
+        family: 'Felidae',
+        genus: 'Mockus',
+        epithet: 'testus',
+        displayName: 'Mock Species',
+        trophicRole: 'predator',
+        description: 'A very cool mock species.',
+        flags: ['fast'],
+      }
+    });
+
+    await prisma.speciesVersion.create({
+      data: {
+        versionId: taxonomyVersion.id,
+        speciesId: mockSpecies.id,
+        slug: mockSpecies.slug,
+        scientificName: mockSpecies.scientificName,
+        kingdom: mockSpecies.kingdom,
+        phylum: mockSpecies.phylum,
+        class: mockSpecies.class,
+        order: mockSpecies.order,
+        family: mockSpecies.family,
+        genus: mockSpecies.genus,
+        epithet: mockSpecies.epithet,
+        displayName: mockSpecies.displayName,
+        trophicRole: mockSpecies.trophicRole,
+        description: mockSpecies.description,
+        flags: mockSpecies.flags,
+        biomeSlugs: ['forest', 'desert'],
+        sourceExtras: { path: 'a/b/c', receipt: 'r1' }
+      }
+    });
+
+    // 1. Test basic output (no diff)
+    const testOutDir = path.join(__dirname, '.tmp_out_species');
+    execSync(`node ../scripts/export/export-taxonomy.js --version ${mockTag} --out ${testOutDir}`, { cwd: __dirname });
+
+    const speciesFile = path.join(testOutDir, 'packs/evo_tactics_pack/docs/catalog/species/mock-species.json');
+
+    assert.ok(fs.existsSync(speciesFile));
+
+    const sData = JSON.parse(fs.readFileSync(speciesFile, 'utf8'));
+    assert.equal(sData.description, undefined); // Excluded (non-exported, S-Q2)
+    assert.equal(sData.display_name, 'Mock Species'); // Mapped
+    assert.equal(sData.role_trofico, 'predator'); // Mapped
+    assert.deepEqual(sData.flags, ['fast']); // Passthrough
+    assert.deepEqual(sData.biomes, ['desert', 'forest']); // Set-sorted
+    assert.equal(sData.path, 'a/b/c'); // Spread sourceExtras
+    // index.json is NOT exported (generated summary, regenerated downstream -- RFC #4 S-Q3).
+
+    // 2. Test fidelity diff
+    const testDiffDir = path.join(__dirname, '.tmp_diff_species');
+    const diffSpeciesDir = path.join(testDiffDir, 'packs/evo_tactics_pack/docs/catalog/species');
+    fs.mkdirSync(diffSpeciesDir, { recursive: true });
+
+    // Provide a game target that misses 'description' (expected model gap)
+    // and has 'biomes' in a different order (should match, set semantics).
+    const gameSpeciesData = {
+      description: 'Some game-authored text',
+      display_name: 'Mock Species',
+      role_trofico: 'predator',
+      flags: ['fast'],
+      biomes: ['forest', 'desert'], // Reversed
+      path: 'a/b/c',
+      receipt: 'r1'
+    };
+    fs.writeFileSync(path.join(diffSpeciesDir, 'mock-species.json'), JSON.stringify(gameSpeciesData));
+
+    const reportPath = path.join(testDiffDir, 'report.json');
+    execSync(`node ../scripts/export/export-taxonomy.js --version ${mockTag} --diff ${testDiffDir} --report ${reportPath}`, { cwd: __dirname });
+
+    const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+    
+    // Check per-file report
+    const fileReport = report.targets['packs/evo_tactics_pack/docs/catalog/species/mock-species.json'];
+    assert.ok(fileReport, 'Missing species file report');
+    assert.equal(fileReport.perField['description']?.game_only_model_gap, 1);
+    assert.equal(fileReport.perField['biomes'].matching, 1); // Order insensitive
+    assert.equal(fileReport.counts.divergent, 0);
+    assert.equal(fileReport.counts.game_only_unexpected, 0);
+
+    // 3. Test round-trip with importer
+    const importOutput = execSync(`node ../scripts/ingest/import-taxonomy.js --repo ${testOutDir} --validate-only`, { cwd: __dirname }).toString();
+    try {
+      const importReport = JSON.parse(importOutput);
+      assert.equal(importReport.errori, 0);
+      // Guard vs vacuous pass (L-041): a path mismatch would import 0 files and
+      // report errori:0 trivially. Assert the exported species was actually read.
+      assert.ok(importReport.totali_letti > 0, `importer read 0 records (vacuous pass): ${importOutput}`);
+    } catch (e) {
+      assert.fail('Importer output could not be parsed as JSON: ' + importOutput);
+    }
+
+    // Cleanup
+    await prisma.speciesVersion.deleteMany({ where: { versionId: taxonomyVersion.id }});
+    await prisma.species.delete({ where: { id: mockSpecies.id }});
+    await prisma.taxonomyVersion.delete({ where: { id: taxonomyVersion.id }});
+    fs.rmSync(testOutDir, { recursive: true, force: true });
+    fs.rmSync(testDiffDir, { recursive: true, force: true });
+  });
+
   await t.test('differ treats [] as absent', async () => {
     const mockTag = 'v-absent-test';
     const taxonomyVersion = await prisma.taxonomyVersion.create({

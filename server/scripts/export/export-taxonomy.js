@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { PrismaClient } = require('@prisma/client');
 const { resolveReleasedVersion, snapshotToMaster } = require('../../utils/versionRead');
-const { PATHS, MODEL_GAP, TRAIT_REF_MAPPED_FIELDS, renderGlossary, renderReference } = require('./export-shapes');
+const { PATHS, MODEL_GAP, TRAIT_REF_MAPPED_FIELDS, renderGlossary, renderReference, renderSpecies } = require('./export-shapes');
 
 const prisma = new PrismaClient();
 const args = process.argv.slice(2);
@@ -71,11 +71,14 @@ async function exportTaxonomy() {
 
   const traitVersions = await prisma.traitVersion.findMany({ where: { versionId: version.id } });
   const traits = traitVersions.map(row => snapshotToMaster('trait', row));
+  const speciesVersions = await prisma.speciesVersion.findMany({ where: { versionId: version.id } });
+  const species = speciesVersions.map(row => snapshotToMaster('species', row));
   const updatedAt = version.releasedAt ? new Date(version.releasedAt).toISOString() : null;
 
   let templateGl1 = null;
   let templateRef = null;
   let templateGlCore = null;
+  const templateSpeciesFiles = {};
 
   if (outDir && diffRoot) {
     try {
@@ -104,6 +107,23 @@ async function exportTaxonomy() {
     } catch (e) {
       // ignore
     }
+
+    try {
+      const speciesDir = path.resolve(diffRoot, PATHS.SPECIES_DIR);
+      if (fs.existsSync(speciesDir)) {
+        const files = fs.readdirSync(speciesDir);
+        for (const f of files) {
+          if (f.endsWith('.json') && f !== 'index.json') {
+            const slug = f.slice(0, -5);
+            try {
+              templateSpeciesFiles[slug] = JSON.parse(fs.readFileSync(path.join(speciesDir, f), 'utf8'));
+            } catch (e) {}
+          }
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
   }
 
   const glossary1 = renderGlossary(traits.filter(t => !t.sourceFiles || t.sourceFiles.length === 0 || t.sourceFiles.includes('pack_glossary')), updatedAt, '1.0', templateGl1);
@@ -115,6 +135,14 @@ async function exportTaxonomy() {
     [PATHS.TRAIT_REFERENCE]: reference,
     [PATHS.CORE_GLOSSARY]: glossaryCore,
   };
+
+  // Per-file species export only. The species index.json (a generated summary:
+  // schema_version / generated_at / total_species / species[]) is regenerated
+  // downstream by Game's tooling, like species-canonical-index.json -- it is NOT
+  // a direct DB export target (RFC #4 S-Q3, refined 2026-06-17).
+  for (const s of species) {
+    exportedFiles[`${PATHS.SPECIES_DIR}/${s.slug}.json`] = renderSpecies(s, templateSpeciesFiles[s.slug]);
+  }
 
   if (outDir) {
     for (const [relPath, content] of Object.entries(exportedFiles)) {
@@ -131,6 +159,10 @@ async function exportTaxonomy() {
     fieldInventory: {
       traitReference: {
         mapped: TRAIT_REF_MAPPED_FIELDS,
+        modelGap: MODEL_GAP,
+      },
+      speciesFile: {
+        mapped: ["role_trofico","functional_tags","vc","spawn_rules","environment_affinity","jobs_bias","playable_unit","display_name","flags","balance","telemetry","morphotype","biomes"],
         modelGap: MODEL_GAP,
       },
     },
@@ -166,9 +198,16 @@ async function exportTaxonomy() {
           }
         }
 
-        // Compare traits
-        const expTraits = expContent.traits || {};
-        const gameTraits = gameContent.traits || {};
+        // Compare records. Per-file species are a single root object; traits are
+        // keyed by slug under .traits.
+        let expTraits, gameTraits;
+        if (relPath.startsWith(`${PATHS.SPECIES_DIR}/`)) {
+          expTraits = { __root__: expContent };
+          gameTraits = { __root__: gameContent };
+        } else {
+          expTraits = expContent.traits || {};
+          gameTraits = gameContent.traits || {};
+        }
         const allSlugs = new Set([...Object.keys(expTraits), ...Object.keys(gameTraits)]);
 
         for (const slug of allSlugs) {
@@ -192,7 +231,13 @@ async function exportTaxonomy() {
             }
 
             if (!expAbsent && !gameAbsent) {
-              if (deepEqual(expVal, gameVal)) {
+              let sortedExp = expVal;
+              let sortedGame = gameVal;
+              if (field === 'biomes' && Array.isArray(expVal) && Array.isArray(gameVal)) {
+                sortedExp = [...expVal].sort();
+                sortedGame = [...gameVal].sort();
+              }
+              if (deepEqual(sortedExp, sortedGame)) {
                 classification = 'matching';
               } else {
                 classification = 'divergent';
@@ -226,7 +271,12 @@ async function exportTaxonomy() {
         // report silently empty -- flag it and count every exported field as
         // exported_only so the gap is visible in the fidelity numbers.
         targetReport.targetMissing = true;
-        const expTraits = expContent.traits || {};
+        let expTraits;
+        if (relPath.startsWith(`${PATHS.SPECIES_DIR}/`)) {
+          expTraits = { __root__: expContent };
+        } else {
+          expTraits = expContent.traits || {};
+        }
         for (const fields of Object.values(expTraits)) {
           for (const field of Object.keys(fields)) {
             targetReport.counts.exported_only++;
