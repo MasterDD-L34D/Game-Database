@@ -406,6 +406,7 @@ test('exportTaxonomy', async (t) => {
         speciesId: mockSpecies.id,
         slug: mockSpecies.slug,
         scientificName: mockSpecies.scientificName,
+        sourceFiles: ['species_catalog_file'],
         kingdom: mockSpecies.kingdom,
         phylum: mockSpecies.phylum,
         class: mockSpecies.class,
@@ -431,6 +432,7 @@ test('exportTaxonomy', async (t) => {
     assert.ok(fs.existsSync(speciesFile));
 
     const sData = JSON.parse(fs.readFileSync(speciesFile, 'utf8'));
+    assert.equal(sData.id, 'mock-species');
     assert.equal(sData.description, undefined); // Excluded (non-exported, S-Q2)
     assert.equal(sData.display_name, 'Mock Species'); // Mapped
     assert.equal(sData.role_trofico, 'predator'); // Mapped
@@ -451,7 +453,7 @@ test('exportTaxonomy', async (t) => {
       display_name: 'Mock Species',
       role_trofico: 'predator',
       flags: ['fast'],
-      biomes: ['forest', 'desert'], // Reversed
+      biomes: ['FOREST', 'de_sert'], // Reversed, caps, underscores
       path: 'a/b/c',
       receipt: 'r1'
     };
@@ -555,6 +557,57 @@ test('exportTaxonomy', async (t) => {
     await prisma.trait.delete({ where: { id: filledTrait.id }});
     await prisma.taxonomyVersion.delete({ where: { id: taxonomyVersion.id }});
   });
+
+  await t.test('species ingestion merges multiple sources and preserves sourceExtras', async () => {
+    // Let's create a temporary mock directory structure with two files defining the same species.
+    const testRepo = path.join(__dirname, '.tmp_import_repo');
+    const catalogDir = path.join(testRepo, 'packs/evo_tactics_pack/docs/catalog');
+    fs.mkdirSync(path.join(catalogDir, 'species'), { recursive: true });
+
+    // Rich per-file source (docs/catalog/species/*.json -> 'species_catalog_file')
+    fs.writeFileSync(path.join(catalogDir, 'species/merge-test.json'), JSON.stringify({
+      slug: 'merge-test',
+      scientific_name: 'Merge testus',
+      derived_from_environment: { traits: ['t1'] }
+    }));
+
+    // Light catalog_data source (catalog_data.json -> 'catalog_data')
+    fs.writeFileSync(path.join(catalogDir, 'catalog_data.json'), JSON.stringify({
+      species: [
+        {
+           slug: 'merge-test',
+           scientific_name: 'Merge testus',
+           display_name: 'Merged Light'
+        }
+      ]
+    }));
+
+    // Import it (validate-only first)
+    const importOutput = execSync(`node ../scripts/ingest/import-taxonomy.js --repo ${testRepo} --validate-only`, { cwd: __dirname }).toString();
+    let report;
+    try {
+      report = JSON.parse(importOutput);
+    } catch (e) {
+      assert.fail('validate-only output is not JSON: ' + importOutput);
+    }
+    assert.equal(report.errori, 0);
+    assert.ok(report.totali_letti > 0, 'importer must read the merge-test species (vacuous-pass guard, L-041)');
+    
+    execSync(`node ../scripts/ingest/import-taxonomy.js --repo ${testRepo}`, { cwd: __dirname });
+    
+    const dbSp = await prisma.species.findUnique({ where: { slug: 'merge-test' }});
+    assert.ok(dbSp);
+    assert.deepEqual(dbSp.sourceFiles.sort(), ['catalog_data', 'species_catalog_file']);
+    assert.ok(dbSp.sourceExtras);
+    assert.ok(dbSp.sourceExtras.derived_from_environment);
+    assert.equal(dbSp.displayName, 'Merged Light');
+    
+    // cleanup
+    await prisma.species.delete({ where: { id: dbSp.id }});
+    fs.rmSync(testRepo, { recursive: true, force: true });
+  });
+
+
 });
 
 test.after(async () => {

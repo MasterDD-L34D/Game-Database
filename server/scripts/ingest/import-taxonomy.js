@@ -288,6 +288,12 @@ function classifySource(filePath) {
   return 'env_or_other';
 }
 
+function classifySpeciesSource(filePath) {
+  if (filePath.endsWith('catalog_data.json')) return 'catalog_data';
+  if (filePath.includes('docs/catalog/species/')) return 'species_catalog_file';
+  return 'species_other';
+}
+
 function isPlaceholderLabel(value, slug) {
   if (typeof value !== 'string') return false;
   // A real human label carries an uppercase letter (Title Case). A placeholder
@@ -647,7 +653,7 @@ function normalizeSpecies(record) {
     traits: collectSpeciesTraits(record),
     biomes,
     sourceKey: pickText(record.slug, record._id, record.id) || null,
-    sourceFiles: ['species-catalog'],
+    sourceFiles: [],
     sourceExtras: finalSourceExtras,
   };
 }
@@ -1026,8 +1032,9 @@ async function processBiomes(items) {
 async function processSpecies(items) {
   const t0 = performance.now();
   const report = createDomainReport('species', items.length);
-  const pending = [];
+  const pendingBySlug = new Map();
   for (const item of items) {
+    const sourceClass = classifySpeciesSource(item.file);
     for (const record of expandDomainRecords('species', item.file, item.data)) {
       report.read += 1;
       if (isEventSpecies(record)) {
@@ -1045,10 +1052,23 @@ async function processSpecies(items) {
       }
       report.normalized += 1;
       noteCompleteness(report, 'species', normalized);
-      if (verbose) console.log(`Species: ${normalized.slug}`);
-      pending.push(normalized);
+      
+      normalized.sourceFiles = [sourceClass];
+      
+      if (!pendingBySlug.has(normalized.slug)) {
+        pendingBySlug.set(normalized.slug, []);
+      }
+      pendingBySlug.get(normalized.slug).push({ record: normalized, sourceClass });
     }
   }
+
+  const pending = [];
+  for (const [slug, records] of pendingBySlug.entries()) {
+    const merged = mergeSpeciesRecords(records);
+    if (verbose) console.log(`Species: ${merged.slug} (sources: ${merged.sourceFiles.join(', ')})`);
+    pending.push(merged);
+  }
+
   if (!dryRun) {
     // Phase A: batch upsert species master records
     for (let i = 0; i < pending.length; i += BATCH_SIZE) {
@@ -1129,6 +1149,90 @@ async function processSpecies(items) {
   return report;
 }
 
+function mergeSpeciesRecords(records) {
+  if (!records || records.length === 0) return null;
+
+  const getRank = (cls, ranks) => {
+    const idx = ranks.indexOf(cls);
+    return idx === -1 ? 0 : ranks.length - idx;
+  };
+
+  const SOURCE_RANKS = ['species_catalog_file', 'catalog_data', 'species_other', 'ecosystem_derived'];
+  
+  const merged = { ...records[0].record };
+  merged.sourceFiles = [];
+  merged.sourceExtras = {};
+
+  const sourceSet = new Set();
+  
+  for (const { record, sourceClass } of records) {
+    if (sourceClass) sourceSet.add(sourceClass);
+    if (Array.isArray(record.sourceFiles)) {
+      for (const s of record.sourceFiles) sourceSet.add(s);
+    }
+  }
+
+  // Find best base record overall based on rank
+  let bestRank = -1;
+  for (const { record, sourceClass } of records) {
+    const rank = getRank(sourceClass, SOURCE_RANKS);
+    if (rank > bestRank) {
+      bestRank = rank;
+      for (const k of Object.keys(record)) {
+        if (k !== 'sourceExtras' && k !== 'sourceFiles') {
+          merged[k] = record[k];
+        }
+      }
+    }
+  }
+
+  // Pass 2: backfill null/undefined fields from the highest-rank record that has
+  // a populated value (a populated value is never overwritten by a null).
+  for (const k of Object.keys(merged)) {
+    if (k !== 'sourceExtras' && k !== 'sourceFiles') {
+      let currentVal = merged[k];
+      if (currentVal === null || currentVal === undefined) {
+         // Try to find it in other records
+         let bestVal = null;
+         let localBestRank = -1;
+         for (const { record, sourceClass } of records) {
+            const rank = getRank(sourceClass, SOURCE_RANKS);
+            if (record[k] !== null && record[k] !== undefined && rank > localBestRank) {
+               localBestRank = rank;
+               bestVal = record[k];
+            }
+         }
+         if (bestVal !== null) {
+            merged[k] = bestVal;
+         }
+      }
+    }
+  }
+
+  // sourceExtras merge per-key: rich > light. 
+  // we know species_catalog_file (rich) > catalog_data (light)
+  const extrasMap = {};
+  const extrasRanks = {};
+
+  for (const { record, sourceClass } of records) {
+    const rank = getRank(sourceClass, SOURCE_RANKS);
+    if (record.sourceExtras) {
+      for (const [ek, ev] of Object.entries(record.sourceExtras)) {
+         if (ev === null || ev === undefined) continue;
+         if (extrasRanks[ek] === undefined || rank > extrasRanks[ek]) {
+           extrasRanks[ek] = rank;
+           extrasMap[ek] = ev;
+         }
+      }
+    }
+  }
+  
+  merged.sourceExtras = Object.keys(extrasMap).length > 0 ? extrasMap : null;
+  merged.sourceFiles = [...sourceSet].sort();
+
+  return merged;
+}
+
 async function processEcosystems(items) {
   const t0 = performance.now();
   const report = createDomainReport('ecosystems', items.length);
@@ -1204,7 +1308,7 @@ async function processEcosystems(items) {
         }
         for (const speciesEntry of normalized.species) {
           if (!speciesEntry.speciesSlug) continue;
-          const species = await prisma.species.upsert({ where: { slug: speciesEntry.speciesSlug }, create: { slug: speciesEntry.speciesSlug, scientificName: speciesEntry.speciesSlug }, update: {} });
+          const species = await prisma.species.upsert({ where: { slug: speciesEntry.speciesSlug }, create: { slug: speciesEntry.speciesSlug, scientificName: speciesEntry.speciesSlug, sourceFiles: ['ecosystem_derived'] }, update: {} });
           const role = ROLE_VALUES.includes(speciesEntry.role) ? speciesEntry.role : 'common';
           await prisma.ecosystemSpecies.upsert({
             where: { ecosystemId_speciesId_role: { ecosystemId, speciesId: species.id, role } },

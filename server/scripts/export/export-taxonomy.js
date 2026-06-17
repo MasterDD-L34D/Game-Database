@@ -141,7 +141,9 @@ async function exportTaxonomy() {
   // downstream by Game's tooling, like species-canonical-index.json -- it is NOT
   // a direct DB export target (RFC #4 S-Q3, refined 2026-06-17).
   for (const s of species) {
-    exportedFiles[`${PATHS.SPECIES_DIR}/${s.slug}.json`] = renderSpecies(s, templateSpeciesFiles[s.slug]);
+    if (s.sourceFiles && s.sourceFiles.includes('species_catalog_file')) {
+      exportedFiles[`${PATHS.SPECIES_DIR}/${s.slug}.json`] = renderSpecies(s, templateSpeciesFiles[s.slug]);
+    }
   }
 
   if (outDir) {
@@ -234,8 +236,8 @@ async function exportTaxonomy() {
               let sortedExp = expVal;
               let sortedGame = gameVal;
               if (field === 'biomes' && Array.isArray(expVal) && Array.isArray(gameVal)) {
-                sortedExp = [...expVal].sort();
-                sortedGame = [...gameVal].sort();
+                sortedExp = [...expVal].map(b => String(b).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')).sort();
+                sortedGame = [...gameVal].map(b => String(b).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')).sort();
               }
               if (deepEqual(sortedExp, sortedGame)) {
                 classification = 'matching';
