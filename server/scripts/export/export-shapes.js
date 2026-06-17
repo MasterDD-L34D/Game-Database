@@ -21,11 +21,15 @@ const MODEL_GAP = [
 const SPECIES_PROVENANCE_KEYS = ['_generated_from', 'generated_at'];
 
 function orderObjKeys(dbObj, templateObj) {
-  if (!templateObj) return dbObj;
+  // Order keys to match the Game template at every depth so a re-export stays
+  // byte-faithful to the hand-authored file (only genuine value changes diff).
+  // Scalars and arrays pass through untouched (array order is significant data).
+  if (!templateObj || typeof templateObj !== 'object' || Array.isArray(templateObj)) return dbObj;
+  if (!dbObj || typeof dbObj !== 'object' || Array.isArray(dbObj)) return dbObj;
   const ordered = {};
   for (const key of Object.keys(templateObj)) {
     if (Object.hasOwn(dbObj, key)) {
-      ordered[key] = dbObj[key];
+      ordered[key] = orderObjKeys(dbObj[key], templateObj[key]);
     }
   }
   for (const key of Object.keys(dbObj)) {
@@ -151,6 +155,29 @@ const TRAIT_REF_MAPPED_FIELDS = [
 ];
 
 
+// Normalize a biome label/slug the way the fidelity differ does, so the exporter
+// can recognize a template biome that is the same slug in a different separator
+// or casing (e.g. Game's `foresta_temperata` vs the DB's hyphenated slug).
+function normBiome(b) {
+  return String(b).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+// Emit biomes faithfully to the Game template: when the snapshot's biome set
+// matches the template's (separator/order aside), keep the template's exact
+// strings and order (preserves `foresta_temperata`, no churn). Only when the set
+// genuinely differs fall back to canonical sorted DB slugs -- still reusing a
+// template string wherever one is slug-equal, so only the real delta diffs.
+function renderBiomes(dbSlugs, templateBiomes) {
+  const dbSorted = [...dbSlugs].sort();
+  if (!Array.isArray(templateBiomes)) return dbSorted;
+  const dbSet = new Set(dbSlugs.map(normBiome));
+  const tmplSet = new Set(templateBiomes.map(normBiome));
+  const setsEqual = dbSet.size === tmplSet.size && [...dbSet].every((n) => tmplSet.has(n));
+  if (setsEqual) return [...templateBiomes];
+  const tmplByNorm = new Map(templateBiomes.map((b) => [normBiome(b), b]));
+  return dbSorted.map((s) => tmplByNorm.get(normBiome(s)) ?? s);
+}
+
 function renderSpecies(speciesRow, template = null, provenance = null) {
   const obj = {};
 
@@ -170,7 +197,7 @@ function renderSpecies(speciesRow, template = null, provenance = null) {
   if (speciesRow.morphotype !== undefined) obj.morphotype = speciesRow.morphotype;
 
   if (speciesRow.biomeSlugs && Array.isArray(speciesRow.biomeSlugs)) {
-    obj.biomes = [...speciesRow.biomeSlugs].sort();
+    obj.biomes = renderBiomes(speciesRow.biomeSlugs, template && template.biomes);
   }
 
   if (speciesRow.sourceExtras && typeof speciesRow.sourceExtras === 'object') {
@@ -206,5 +233,6 @@ module.exports = {
   renderGlossary,
   renderReference,
   renderSpecies,
+  renderBiomes,
   orderObjKeys,
 };
