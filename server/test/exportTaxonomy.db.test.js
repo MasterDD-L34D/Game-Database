@@ -446,34 +446,31 @@ test('exportTaxonomy', async (t) => {
     assert.ok(typeof sData.generated_at === 'string' && sData.generated_at.length > 0);
     // index.json is NOT exported (generated summary, regenerated downstream -- RFC #4 S-Q3).
 
-    // 2. Test fidelity diff
+    // 2. Raw fidelity shadow (report-only, NO --out): RFC #4 S2 amendment
+    // (2026-06-18) rescoped species export to fidelity-shadow. A report-only run
+    // skips the shipping-mode transforms (overlay / marker / template-faithful,
+    // gated on --out), so MODEL_GAP fields the DB does not model surface as
+    // game_only_model_gap -- the raw representation loss the shadow must measure,
+    // NOT hide behind a template overlay.
     const testDiffDir = path.join(__dirname, '.tmp_diff_species');
     const diffSpeciesDir = path.join(testDiffDir, 'packs/evo_tactics_pack/docs/catalog/species');
     fs.mkdirSync(diffSpeciesDir, { recursive: true });
 
-    // Provide a game target that misses 'description' (expected model gap)
-    // and has 'biomes' in a different order (should match, set semantics).
+    // Realistic Game per-file species: NO provenance marker (Game files are
+    // generated upstream and carry none). 'description' + 'last_synced_at' are
+    // Game-authored MODEL_GAP fields the DB cannot reconstruct; 'biomes' use the
+    // Game underscore/accent forms. The a-grave is built via fromCharCode so the
+    // source stays ASCII (ADR-0021); it slug-normalizes to DB 'pianura-erbosa'.
     const gameSpeciesData = {
-      // Exercises both marker paths (RFC #4 S2-Q1, Codex P2 on #221): a stale
-      // `_generated_from` present on BOTH sides must be ignored (volatile value,
-      // no divergent), while a marker key ABSENT from the Game file must surface
-      // as exported_only so a removed/never-landed marker is not hidden.
-      _generated_from: 'Game-Database v0.0.0-stale',
-      // generated_at intentionally omitted -> exported_only
       description: 'Some game-authored text',
       display_name: 'Mock Species',
       role_trofico: 'predator',
       flags: ['fast'],
-      // Game underscore convention + an accented name. The a-grave is built via
-      // fromCharCode so the source stays ASCII (ADR-0021); it slugs to DB
-      // 'pianura-erbosa' only via the canonical NFD normalizer, so the export
-      // must preserve it verbatim rather than re-slug to hyphen (Codex P2 on #223).
       biomes: ['foresta_temperata', 'desert', 'Pianura Erbos' + String.fromCharCode(0xE0)],
       vc: { risk: 0.7, tilt: 0.6, aggro: 0.2 }, // different nested key order than the DB row
       path: 'a/b/c',
       receipt: 'r1',
-      jobs_bias: [], // empty array in Game; the DB row is null -> preserve [], do not churn to null
-      last_synced_at: '2026-05-15T10:41:13.627Z' // legacy stamp; MODEL_GAP -> preserved from template, not deleted
+      last_synced_at: '2026-05-15T10:41:13.627Z'
     };
     fs.writeFileSync(path.join(diffSpeciesDir, 'mock-species.json'), JSON.stringify(gameSpeciesData));
 
@@ -481,44 +478,82 @@ test('exportTaxonomy', async (t) => {
     execSync(`node ../scripts/export/export-taxonomy.js --version ${mockTag} --diff ${testDiffDir} --report ${reportPath}`, { cwd: __dirname });
 
     const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
-    
-    // Check per-file report
+
     const fileReport = report.targets['packs/evo_tactics_pack/docs/catalog/species/mock-species.json'];
     assert.ok(fileReport, 'Missing species file report');
-    // Templates now load for ANY --diff (Codex P1 on #224), so the report reflects
-    // the template-faithful output that --out would ship: the MODEL_GAP description
-    // is preserved from the template -> matching, never game_only_model_gap.
-    assert.equal(fileReport.perField['description']?.matching, 1);
-    assert.equal(fileReport.perField['description']?.game_only_model_gap ?? 0, 0);
-    assert.equal(fileReport.perField['biomes'].matching, 1); // Order insensitive
+    // Core of the rescope: with no overlay in raw mode, the MODEL_GAP fields are
+    // reported as the real representation loss, not concealed as matching.
+    assert.equal(fileReport.perField['description']?.game_only_model_gap, 1);
+    assert.equal(fileReport.perField['description']?.matching ?? 0, 0);
+    assert.equal(fileReport.perField['last_synced_at']?.game_only_model_gap, 1);
+    assert.equal(fileReport.perField['biomes'].matching, 1); // slug-normalized -> set-equal
     assert.equal(fileReport.counts.divergent, 0);
     assert.equal(fileReport.counts.game_only_unexpected, 0);
-    // RFC #4 S2-Q1 (Codex P2 on #221): volatile marker value ignored, absence reported.
-    // _generated_from present on both sides (stale value) -> never classified, so the
-    // divergent=0 asserted above holds despite DB and Game carrying different tags.
+    // No marker is stamped in raw mode and the Game file carries none, so neither
+    // provenance key appears in the report.
     assert.equal(fileReport.perField['_generated_from'], undefined);
-    // generated_at absent from the Game file -> surfaced as exported_only.
-    assert.equal(fileReport.perField['generated_at']?.exported_only, 1);
+    assert.equal(fileReport.perField['generated_at'], undefined);
 
-    // Byte-faithfulness (route-B first-export finding): with a Game template the
-    // export must reproduce the template's exact biome strings (separator/casing)
-    // and nested key order, so a re-export only adds the marker instead of
-    // re-slugging biomes (foresta_temperata -> foresta-temperata) or reordering
-    // nested keys. Re-run with both --out and --diff and inspect the file.
-    const faithfulOutDir = path.join(__dirname, '.tmp_out_faithful');
-    execSync(`node ../scripts/export/export-taxonomy.js --version ${mockTag} --out ${faithfulOutDir} --diff ${testDiffDir}`, { cwd: __dirname });
-    const fData = JSON.parse(fs.readFileSync(path.join(faithfulOutDir, 'packs/evo_tactics_pack/docs/catalog/species/mock-species.json'), 'utf8'));
-    // template forms preserved verbatim: underscore separator AND the accented
-    // name (NOT re-slugged to hyphen / 'pianura-erbosa').
-    assert.deepEqual(fData.biomes, ['foresta_temperata', 'desert', 'Pianura Erbos' + String.fromCharCode(0xE0)]);
-    assert.deepEqual(Object.keys(fData.vc), ['risk', 'tilt', 'aggro']); // nested key order follows the template
-    // Non-destructive overlay: MODEL_GAP fields the DB does not model are preserved
-    // from the template (not deleted), and an absent-equivalent value keeps the
-    // template's representation ([] not null).
-    assert.equal(fData.description, 'Some game-authored text'); // preserved, not dropped
-    assert.equal(fData.last_synced_at, '2026-05-15T10:41:13.627Z'); // preserved, not dropped
-    assert.deepEqual(fData.jobs_bias, []); // [] preserved, not churned to null
-    fs.rmSync(faithfulOutDir, { recursive: true, force: true });
+    // 3. Shipping mode (--out --diff): RFC #4 S2 PARKED path, retained for a
+    // future S3 DB-as-SoT revival (taxonomy-export.yml). The shipping transforms
+    // preserve Game data, stamp the provenance marker, and stay byte-faithful so
+    // the bundle is shippable. Here the overlay makes the MODEL_GAP 'description'
+    // classify as matching -- the raw measurement lives in step 2, the shippable
+    // file here.
+    const shipDiffDir = path.join(__dirname, '.tmp_diff_species_ship');
+    const shipSpeciesDir = path.join(shipDiffDir, 'packs/evo_tactics_pack/docs/catalog/species');
+    fs.mkdirSync(shipSpeciesDir, { recursive: true });
+    // Game file with a STALE marker on both sides + 'generated_at' omitted, to
+    // exercise the diff's marker handling (RFC #4 S2-Q1, Codex P2 on #221): the
+    // volatile value present on both sides is never classified; a marker key
+    // absent from the Game file surfaces as exported_only.
+    const gameSpeciesShip = {
+      _generated_from: 'Game-Database v0.0.0-stale',
+      description: 'Some game-authored text',
+      display_name: 'Mock Species',
+      role_trofico: 'predator',
+      flags: ['fast'],
+      biomes: ['foresta_temperata', 'desert', 'Pianura Erbos' + String.fromCharCode(0xE0)],
+      vc: { risk: 0.7, tilt: 0.6, aggro: 0.2 }, // different nested key order than the DB row
+      path: 'a/b/c',
+      receipt: 'r1',
+      jobs_bias: [], // empty array in Game; DB row is null -> overlay preserves [], no churn
+      last_synced_at: '2026-05-15T10:41:13.627Z'
+    };
+    fs.writeFileSync(path.join(shipSpeciesDir, 'mock-species.json'), JSON.stringify(gameSpeciesShip));
+
+    const shipOutDir = path.join(__dirname, '.tmp_out_ship');
+    const shipReportPath = path.join(shipDiffDir, 'report.json');
+    execSync(`node ../scripts/export/export-taxonomy.js --version ${mockTag} --out ${shipOutDir} --diff ${shipDiffDir} --report ${shipReportPath}`, { cwd: __dirname });
+
+    const shipReport = JSON.parse(fs.readFileSync(shipReportPath, 'utf8'));
+    const shipFileReport = shipReport.targets['packs/evo_tactics_pack/docs/catalog/species/mock-species.json'];
+    assert.ok(shipFileReport, 'Missing shipping species file report');
+    // Overlay preserves the template MODEL_GAP value -> matching, not model-gap.
+    assert.equal(shipFileReport.perField['description']?.matching, 1);
+    assert.equal(shipFileReport.perField['description']?.game_only_model_gap ?? 0, 0);
+    assert.equal(shipFileReport.perField['biomes'].matching, 1);
+    assert.equal(shipFileReport.counts.divergent, 0);
+    assert.equal(shipFileReport.counts.game_only_unexpected, 0);
+    // Volatile marker present on both sides -> never classified; generated_at
+    // absent from the Game file -> exported_only.
+    assert.equal(shipFileReport.perField['_generated_from'], undefined);
+    assert.equal(shipFileReport.perField['generated_at']?.exported_only, 1);
+
+    // Byte-faithfulness of the shipped file: provenance marker first key, template
+    // biome strings verbatim (underscore + accented name, NOT re-slugged), nested
+    // key order from the template, and MODEL_GAP / absent-equivalent values
+    // preserved (description + last_synced_at kept; jobs_bias stays []).
+    const shipData = JSON.parse(fs.readFileSync(path.join(shipOutDir, 'packs/evo_tactics_pack/docs/catalog/species/mock-species.json'), 'utf8'));
+    assert.equal(Object.keys(shipData)[0], '_generated_from');
+    assert.equal(shipData._generated_from, `Game-Database ${mockTag}`);
+    assert.deepEqual(shipData.biomes, ['foresta_temperata', 'desert', 'Pianura Erbos' + String.fromCharCode(0xE0)]);
+    assert.deepEqual(Object.keys(shipData.vc), ['risk', 'tilt', 'aggro']);
+    assert.equal(shipData.description, 'Some game-authored text');
+    assert.equal(shipData.last_synced_at, '2026-05-15T10:41:13.627Z');
+    assert.deepEqual(shipData.jobs_bias, []);
+    fs.rmSync(shipOutDir, { recursive: true, force: true });
+    fs.rmSync(shipDiffDir, { recursive: true, force: true });
 
     // 3. Test round-trip with importer. The testOutDir export now carries the
     // RFC #4 S2-Q1 provenance marker; normalizeSpecies reads only known fields,

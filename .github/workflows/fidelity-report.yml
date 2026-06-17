@@ -2,10 +2,12 @@ name: "Fidelity Report (RFC #4 S1b)"
 
 # On-demand shadow fidelity report: rebuild the DB from the Game checkout
 # (evo:import, i18n-aware after #185), release a snapshot, export it back
-# (evo:export, #187) and diff against the same checkout. The resulting
-# report measures pure representation loss (model-gap) and is the S2 gate
-# input (docs/rfc/2026-06-11-bidirectional-sync.md). Read-only vs Game;
-# ephemeral CI Postgres; no repo writes -- the report is a run artifact.
+# (evo:export, #187) report-only and diff against the same checkout. The
+# resulting report measures pure representation loss (model-gap). Per the RFC #4
+# S2 amendment (2026-06-18) species export is fidelity-shadow ONLY, so this runs
+# WITHOUT --out (no shipping-mode overlay) -- the shippable bundle + green-gate
+# live in taxonomy-export.yml. Read-only vs Game; ephemeral CI Postgres; no repo
+# writes -- the report is a run artifact (docs/rfc/2026-06-11-bidirectional-sync.md).
 
 on:
   workflow_dispatch:
@@ -86,12 +88,15 @@ jobs:
           })().catch((e) => { console.error(e); process.exit(1); });
           "
 
-      - name: Export and diff against Game checkout
+      - name: Export and diff against Game checkout (report-only, raw shadow)
         working-directory: server
-        # --out makes every run also produce the export bundle (S2 GO,
-        # ratified 2026-06-12): the operator downloads the taxonomy-export
-        # artifact and opens the Game PR locally (OQ5: no cross-repo PAT).
-        run: npm run evo:export -- --version v0.0.0-fidelity-${{ github.run_id }} --out ${{ github.workspace }}/_export --diff ${{ github.workspace }}/_game --report ${{ github.workspace }}/fidelity-report.json
+        # Report-only (NO --out): RFC #4 S2 amendment (2026-06-18) rescoped species
+        # export to fidelity-shadow. Raw mode skips the species shipping-mode
+        # transforms (overlay / marker / template-faithful, gated on --out), so the
+        # report measures pure representation loss -- MODEL_GAP fields (description,
+        # last_synced_at) classify as game_only_model_gap, not matching. The
+        # shippable bundle now lives in taxonomy-export.yml (--out + green-gate).
+        run: npm run evo:export -- --version v0.0.0-fidelity-${{ github.run_id }} --diff ${{ github.workspace }}/_game --report ${{ github.workspace }}/fidelity-report.json
 
       - name: Print summary
         run: |
@@ -102,11 +107,4 @@ jobs:
         with:
           name: fidelity-report
           path: fidelity-report.json
-          retention-days: 30
-
-      - name: Upload export bundle artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: taxonomy-export
-          path: _export/
           retention-days: 30
