@@ -404,6 +404,47 @@ Sp2 export    export-on-release for species: branch + PR on Game (GENERATED
 - environmentAffinity.koppen / spawn_rules.densita: confirm these are DB-mapped
   (Json) vs sourceExtras during the Sp1b field inventory.
 
+## Species fidelity gap-closing (Sp1c -- ratified 2026-06-17)
+
+The Sp1b shadow exporter shipped (#216). The first real fidelity run
+(fidelity-report.yml run 27697871099, against a released snapshot rebuilt from a
+Game checkout) measured species fidelity as NOT green -- exactly the S1-shadow
+purpose (measure the gap before any S2 write). Counts: matching 258, divergent 8,
+game_only_model_gap 17, game_only_unexpected 53, targetMissing 22 (39 DB species
+vs ~21 catalog-tier). Sp1c closes the five gap categories below.
+
+### Gaps + ratified fixes (Eduardo, 2026-06-17)
+
+| Gap | Root cause (evidence) | Resolution |
+|---|---|---|
+| `id` missing (x17) | renderSpecies omits the per-file `id` field | **Fix**: emit `id` = species slug. |
+| `sourceExtras` nulled (x7: derived_from_environment / receipt / genetic_traits / services_links) | Dual-source upsert -- the rich per-file species record AND the light `catalog_data.json` record upsert the same slug; last-write-wins (worsened by the Sp1a `?? null` update) nulls the rich sourceExtras when the light record is processed last | **Fix**: merge species records per-slug with field-precedence (the rich per-file source wins for the unmapped Game-only fields), mirroring `mergeTraitRecords`. |
+| `biomes` divergent (x8) | Slug-normalization ONLY: Game files carry non-canonical biome strings (`FORESTA_TEMPERATA`, `foresta_temperata`) while the DB junction stores canonical slugs (`foresta-temperata`) -- same set, different form | **Ratified**: the fidelity diff slug-normalizes both sides before comparing `biomes` (normalization-only -> matching); the exporter emits canonical slugs, so S2 canonicalizes the Game files' biome casing (a consistency improvement). |
+| `last_synced_at` (x17) | Game-authored sync timestamp, not DB-owned | **Ratified**: add to the species MODEL_GAP -- non-exported, drift-check ignores it (same class as `description`, S-Q2). |
+| targetMissing (x22) | The DB holds ~18 ecosystem-derived species (extracted from `data/species/<biome>/*.yaml` + ecosystem YAMLs at import) that have no `docs/catalog/species/*.json` per-file | **Ratified**: filter the export to the catalog-tier (species that have a `docs/catalog/species/` per-file). Requires real `sourceFiles` membership -- Sp1a hardcoded `['species-catalog']`; Sp1c makes it source-faithful (catalog-per-file vs ecosystem-derived vs catalog_data). Ecosystem-derived species stay on their own surface, NOT exported to docs/catalog. Mirrors the trait exporter's sourceFiles filter. |
+
+### Acceptance (Sp1c)
+
+- [ ] renderSpecies emits `id` (= slug); `last_synced_at` added to the species
+      MODEL_GAP (non-exported, classified game_only_model_gap by the diff).
+- [ ] Import: species records merged per-slug with field-precedence so the rich
+      per-file fields (sourceExtras) survive the light catalog_data.json record;
+      `sourceFiles` reflects the real source(s) (catalog-per-file /
+      ecosystem-derived / catalog_data), not a hardcoded constant.
+- [ ] Exporter filters to catalog-tier species (sourceFiles includes the
+      catalog-per-file marker); ecosystem-derived species are not emitted.
+- [ ] Fidelity diff slug-normalizes `biomes` before comparing
+      (normalization-only difference = matching).
+- [ ] A fresh fidelity-report.yml run on the catalog-tier shows GREEN: 0
+      divergent, 0 game_only_unexpected, 0 targetMissing; only the intended
+      model-gaps (`description`, `last_synced_at`).
+- [ ] Existing trait export + species tests stay green. ASCII-only. No new
+      production dependencies.
+
+S2 (export-on-release, PR-to-Game) stays gated on this green fidelity + Q8 (a
+Game canon-authority map entry for DB-origin species) + the cross-repo actor
+decision (OQ5: local operator CLI).
+
 ## References
 
 - Spec: `docs/superpowers/specs/2026-05-20-game-database-value-roadmap-design.md` (Fase 3 deliverable 4, migration plan + KPI)
