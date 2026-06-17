@@ -10,6 +10,7 @@ const PATHS = {
 const MODEL_GAP = [
   // Future gaps
   'description',
+  'last_synced_at',
 ];
 
 function orderObjKeys(dbObj, templateObj) {
@@ -146,6 +147,7 @@ const TRAIT_REF_MAPPED_FIELDS = [
 function renderSpecies(speciesRow, template = null) {
   const obj = {};
   
+  if (speciesRow.slug !== undefined) obj.id = speciesRow.slug;
   if (speciesRow.trophicRole !== undefined) obj.role_trofico = speciesRow.trophicRole;
   if (speciesRow.functionalTags !== undefined) obj.functional_tags = speciesRow.functionalTags;
   if (speciesRow.vcCoefficients !== undefined) obj.vc = speciesRow.vcCoefficients;
