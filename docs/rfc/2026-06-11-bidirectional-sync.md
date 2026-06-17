@@ -567,3 +567,4 @@ S3+ effort -- a Game-side authoring migration so one generator owns each surface
 - CI: Game `evo-import-gate.yml` (dry-run gate), this repo `evo-import-sync.yml` (6h scheduled import)
 - Game consumers: `apps/backend/services/catalog.js`, `apps/backend/services/traitRepository.js`, `packages/contracts/schemas/glossary.schema.json`
 - Governance: external-repo boundary (branch+PR, merge Eduardo-only); Game authority map `docs/planning/EVO_FINAL_DESIGN_SOURCE_AUTHORITY_MAP.md`
+- S3 scoping: `docs/rfc/2026-06-18-s3-db-as-sot-scoping.md` (DB-as-SoT migration co-design input -- schema gap + consumers + mechanics + flagged recommendation)
