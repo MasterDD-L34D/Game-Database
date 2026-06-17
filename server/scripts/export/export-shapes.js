@@ -10,17 +10,54 @@ const MODEL_GAP = [
   // Future gaps
 ];
 
-function renderGlossary(traits, updatedAt, schemaVersion) {
-  const traitsMap = {};
-  const sortedTraits = [...traits].sort((a, b) => (a.sourceKey || a.slug).localeCompare(b.sourceKey || b.slug));
+function orderObjKeys(dbObj, templateObj) {
+  if (!templateObj) return dbObj;
+  const ordered = {};
+  for (const key of Object.keys(templateObj)) {
+    if (key in dbObj) {
+      ordered[key] = dbObj[key];
+    }
+  }
+  for (const key of Object.keys(dbObj)) {
+    if (!(key in ordered)) {
+      ordered[key] = dbObj[key];
+    }
+  }
+  return ordered;
+}
 
+function renderGlossary(traits, updatedAt, schemaVersion, template = null) {
+  const traitsMap = {};
+  const dbTraitsByKey = {};
+  for (const trait of traits) {
+    dbTraitsByKey[trait.sourceKey || trait.slug] = trait;
+  }
+
+  const buildObj = (trait) => ({
+    label_it: trait.name,
+    label_en: trait.nameEn || trait.name,
+    description_it: trait.description,
+    description_en: trait.descriptionEn || trait.description,
+  });
+
+  const processedKeys = new Set();
+
+  if (template && template.traits) {
+    for (const key of Object.keys(template.traits)) {
+      if (key in dbTraitsByKey) {
+        const dbObj = buildObj(dbTraitsByKey[key]);
+        traitsMap[key] = orderObjKeys(dbObj, template.traits[key]);
+        processedKeys.add(key);
+      }
+    }
+  }
+
+  const sortedTraits = [...traits].sort((a, b) => (a.sourceKey || a.slug).localeCompare(b.sourceKey || b.slug));
   for (const trait of sortedTraits) {
-    traitsMap[trait.sourceKey || trait.slug] = {
-      label_it: trait.name,
-      label_en: trait.nameEn || trait.name,
-      description_it: trait.description,
-      description_en: trait.descriptionEn || trait.description,
-    };
+    const key = trait.sourceKey || trait.slug;
+    if (!processedKeys.has(key)) {
+      traitsMap[key] = buildObj(trait);
+    }
   }
 
   return {
@@ -31,11 +68,14 @@ function renderGlossary(traits, updatedAt, schemaVersion) {
   };
 }
 
-function renderReference(traits) {
+function renderReference(traits, template = null) {
   const traitsMap = {};
-  const sortedTraits = [...traits].sort((a, b) => (a.sourceKey || a.slug).localeCompare(b.sourceKey || b.slug));
+  const dbTraitsByKey = {};
+  for (const trait of traits) {
+    dbTraitsByKey[trait.sourceKey || trait.slug] = trait;
+  }
 
-  for (const trait of sortedTraits) {
+  const buildObj = (trait) => {
     const obj = {};
     if (trait.name != null) obj.label = trait.name;
     if (trait.familyType != null) obj.famiglia_tipologia = trait.familyType;
@@ -51,12 +91,30 @@ function renderReference(traits) {
     if (trait.selectiveDrive != null) obj.spinta_selettiva = trait.selectiveDrive;
     if (trait.weakness != null) obj.debolezza = trait.weakness;
 
-    let finalObj = obj;
     if (trait.sourceExtras && Object.keys(trait.sourceExtras).length > 0) {
-      finalObj = { ...obj, ...trait.sourceExtras };
+      return { ...obj, ...trait.sourceExtras };
     }
+    return obj;
+  };
 
-    traitsMap[trait.sourceKey || trait.slug] = finalObj;
+  const processedKeys = new Set();
+
+  if (template && template.traits) {
+    for (const key of Object.keys(template.traits)) {
+      if (key in dbTraitsByKey) {
+        const dbObj = buildObj(dbTraitsByKey[key]);
+        traitsMap[key] = orderObjKeys(dbObj, template.traits[key]);
+        processedKeys.add(key);
+      }
+    }
+  }
+
+  const sortedTraits = [...traits].sort((a, b) => (a.sourceKey || a.slug).localeCompare(b.sourceKey || b.slug));
+  for (const trait of sortedTraits) {
+    const key = trait.sourceKey || trait.slug;
+    if (!processedKeys.has(key)) {
+      traitsMap[key] = buildObj(trait);
+    }
   }
 
   return {
