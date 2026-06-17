@@ -439,6 +439,10 @@ test('exportTaxonomy', async (t) => {
     assert.deepEqual(sData.flags, ['fast']); // Passthrough
     assert.deepEqual(sData.biomes, ['desert', 'forest']); // Set-sorted
     assert.equal(sData.path, 'a/b/c'); // Spread sourceExtras
+    // RFC #4 S2-Q1: top-level provenance marker, first key, carrying the release tag.
+    assert.equal(Object.keys(sData)[0], '_generated_from');
+    assert.equal(sData._generated_from, `Game-Database ${mockTag}`);
+    assert.ok(typeof sData.generated_at === 'string' && sData.generated_at.length > 0);
     // index.json is NOT exported (generated summary, regenerated downstream -- RFC #4 S-Q3).
 
     // 2. Test fidelity diff
@@ -449,6 +453,12 @@ test('exportTaxonomy', async (t) => {
     // Provide a game target that misses 'description' (expected model gap)
     // and has 'biomes' in a different order (should match, set semantics).
     const gameSpeciesData = {
+      // Exercises both marker paths (RFC #4 S2-Q1, Codex P2 on #221): a stale
+      // `_generated_from` present on BOTH sides must be ignored (volatile value,
+      // no divergent), while a marker key ABSENT from the Game file must surface
+      // as exported_only so a removed/never-landed marker is not hidden.
+      _generated_from: 'Game-Database v0.0.0-stale',
+      // generated_at intentionally omitted -> exported_only
       description: 'Some game-authored text',
       display_name: 'Mock Species',
       role_trofico: 'predator',
@@ -471,8 +481,16 @@ test('exportTaxonomy', async (t) => {
     assert.equal(fileReport.perField['biomes'].matching, 1); // Order insensitive
     assert.equal(fileReport.counts.divergent, 0);
     assert.equal(fileReport.counts.game_only_unexpected, 0);
+    // RFC #4 S2-Q1 (Codex P2 on #221): volatile marker value ignored, absence reported.
+    // _generated_from present on both sides (stale value) -> never classified, so the
+    // divergent=0 asserted above holds despite DB and Game carrying different tags.
+    assert.equal(fileReport.perField['_generated_from'], undefined);
+    // generated_at absent from the Game file -> surfaced as exported_only.
+    assert.equal(fileReport.perField['generated_at']?.exported_only, 1);
 
-    // 3. Test round-trip with importer
+    // 3. Test round-trip with importer. The testOutDir export now carries the
+    // RFC #4 S2-Q1 provenance marker; normalizeSpecies reads only known fields,
+    // so the marker is dropped (never reaches Ajv) and validate-only stays clean.
     const importOutput = execSync(`node ../scripts/ingest/import-taxonomy.js --repo ${testOutDir} --validate-only`, { cwd: __dirname }).toString();
     try {
       const importReport = JSON.parse(importOutput);
