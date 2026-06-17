@@ -453,7 +453,7 @@ test('exportTaxonomy', async (t) => {
       display_name: 'Mock Species',
       role_trofico: 'predator',
       flags: ['fast'],
-      biomes: ['FOREST', 'de_sert'], // Reversed, caps, underscores
+      biomes: ['FOREST', 'DESERT'], // reversed + caps -> normalizes to match DB ['desert','forest']
       path: 'a/b/c',
       receipt: 'r1'
     };
@@ -602,7 +602,10 @@ test('exportTaxonomy', async (t) => {
     assert.ok(dbSp.sourceExtras.derived_from_environment);
     assert.equal(dbSp.displayName, 'Merged Light');
     
-    // cleanup
+    // cleanup (delete junction rows first -- FK constraints on speciesId)
+    await prisma.speciesTrait.deleteMany({ where: { speciesId: dbSp.id } });
+    await prisma.speciesBiome.deleteMany({ where: { speciesId: dbSp.id } });
+    await prisma.ecosystemSpecies.deleteMany({ where: { speciesId: dbSp.id } });
     await prisma.species.delete({ where: { id: dbSp.id }});
     fs.rmSync(testRepo, { recursive: true, force: true });
   });
