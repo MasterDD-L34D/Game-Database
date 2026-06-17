@@ -1,5 +1,7 @@
 'use strict';
 
+const { normalizeSlug } = require('../../utils/slug');
+
 const PATHS = {
   TRAIT_GLOSSARY: 'packs/evo_tactics_pack/docs/catalog/trait_glossary.json',
   TRAIT_REFERENCE: 'packs/evo_tactics_pack/docs/catalog/trait_reference.json',
@@ -21,11 +23,15 @@ const MODEL_GAP = [
 const SPECIES_PROVENANCE_KEYS = ['_generated_from', 'generated_at'];
 
 function orderObjKeys(dbObj, templateObj) {
-  if (!templateObj) return dbObj;
+  // Order keys to match the Game template at every depth so a re-export stays
+  // byte-faithful to the hand-authored file (only genuine value changes diff).
+  // Scalars and arrays pass through untouched (array order is significant data).
+  if (!templateObj || typeof templateObj !== 'object' || Array.isArray(templateObj)) return dbObj;
+  if (!dbObj || typeof dbObj !== 'object' || Array.isArray(dbObj)) return dbObj;
   const ordered = {};
   for (const key of Object.keys(templateObj)) {
     if (Object.hasOwn(dbObj, key)) {
-      ordered[key] = dbObj[key];
+      ordered[key] = orderObjKeys(dbObj[key], templateObj[key]);
     }
   }
   for (const key of Object.keys(dbObj)) {
@@ -151,6 +157,25 @@ const TRAIT_REF_MAPPED_FIELDS = [
 ];
 
 
+// Emit biomes faithfully to the Game template: when the snapshot's biome set
+// matches the template's, keep the template's exact strings and order (preserves
+// `foresta_temperata`, no churn). The match uses the SAME canonical slug
+// normalizer the importer used to build the DB slugs (normalizeSlug: NFD + strip
+// diacritics), so accented Italian biome names match too (Codex P2 on #223) --
+// a hand-rolled [^a-z0-9] regex would map `Cafe Nino` and `Cafe' Nino` apart.
+// Only on a genuine set change fall back to canonical sorted DB slugs, still
+// reusing a template string wherever one is slug-equal so only the real delta diffs.
+function renderBiomes(dbSlugs, templateBiomes) {
+  const dbSorted = [...dbSlugs].sort();
+  if (!Array.isArray(templateBiomes)) return dbSorted;
+  const dbSet = new Set(dbSlugs.map((b) => normalizeSlug(b)));
+  const tmplSet = new Set(templateBiomes.map((b) => normalizeSlug(b)));
+  const setsEqual = dbSet.size === tmplSet.size && [...dbSet].every((n) => tmplSet.has(n));
+  if (setsEqual) return [...templateBiomes];
+  const tmplByNorm = new Map(templateBiomes.map((b) => [normalizeSlug(b), b]));
+  return dbSorted.map((s) => tmplByNorm.get(normalizeSlug(s)) ?? s);
+}
+
 function renderSpecies(speciesRow, template = null, provenance = null) {
   const obj = {};
 
@@ -170,7 +195,7 @@ function renderSpecies(speciesRow, template = null, provenance = null) {
   if (speciesRow.morphotype !== undefined) obj.morphotype = speciesRow.morphotype;
 
   if (speciesRow.biomeSlugs && Array.isArray(speciesRow.biomeSlugs)) {
-    obj.biomes = [...speciesRow.biomeSlugs].sort();
+    obj.biomes = renderBiomes(speciesRow.biomeSlugs, template && template.biomes);
   }
 
   if (speciesRow.sourceExtras && typeof speciesRow.sourceExtras === 'object') {
@@ -206,5 +231,6 @@ module.exports = {
   renderGlossary,
   renderReference,
   renderSpecies,
+  renderBiomes,
   orderObjKeys,
 };

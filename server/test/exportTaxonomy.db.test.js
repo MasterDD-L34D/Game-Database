@@ -418,7 +418,8 @@ test('exportTaxonomy', async (t) => {
         trophicRole: mockSpecies.trophicRole,
         description: mockSpecies.description,
         flags: mockSpecies.flags,
-        biomeSlugs: ['forest', 'desert'],
+        biomeSlugs: ['foresta-temperata', 'desert', 'pianura-erbosa'],
+        vcCoefficients: { aggro: 0.2, risk: 0.7, tilt: 0.6 },
         sourceExtras: { path: 'a/b/c', receipt: 'r1' }
       }
     });
@@ -437,7 +438,7 @@ test('exportTaxonomy', async (t) => {
     assert.equal(sData.display_name, 'Mock Species'); // Mapped
     assert.equal(sData.role_trofico, 'predator'); // Mapped
     assert.deepEqual(sData.flags, ['fast']); // Passthrough
-    assert.deepEqual(sData.biomes, ['desert', 'forest']); // Set-sorted
+    assert.deepEqual(sData.biomes, ['desert', 'foresta-temperata', 'pianura-erbosa']); // no template -> canonical sorted DB slugs
     assert.equal(sData.path, 'a/b/c'); // Spread sourceExtras
     // RFC #4 S2-Q1: top-level provenance marker, first key, carrying the release tag.
     assert.equal(Object.keys(sData)[0], '_generated_from');
@@ -463,7 +464,12 @@ test('exportTaxonomy', async (t) => {
       display_name: 'Mock Species',
       role_trofico: 'predator',
       flags: ['fast'],
-      biomes: ['FOREST', 'DESERT'], // reversed + caps -> normalizes to match DB ['desert','forest']
+      // Game underscore convention + an accented name. The a-grave is built via
+      // fromCharCode so the source stays ASCII (ADR-0021); it slugs to DB
+      // 'pianura-erbosa' only via the canonical NFD normalizer, so the export
+      // must preserve it verbatim rather than re-slug to hyphen (Codex P2 on #223).
+      biomes: ['foresta_temperata', 'desert', 'Pianura Erbos' + String.fromCharCode(0xE0)],
+      vc: { risk: 0.7, tilt: 0.6, aggro: 0.2 }, // different nested key order than the DB row
       path: 'a/b/c',
       receipt: 'r1'
     };
@@ -487,6 +493,20 @@ test('exportTaxonomy', async (t) => {
     assert.equal(fileReport.perField['_generated_from'], undefined);
     // generated_at absent from the Game file -> surfaced as exported_only.
     assert.equal(fileReport.perField['generated_at']?.exported_only, 1);
+
+    // Byte-faithfulness (route-B first-export finding): with a Game template the
+    // export must reproduce the template's exact biome strings (separator/casing)
+    // and nested key order, so a re-export only adds the marker instead of
+    // re-slugging biomes (foresta_temperata -> foresta-temperata) or reordering
+    // nested keys. Re-run with both --out and --diff and inspect the file.
+    const faithfulOutDir = path.join(__dirname, '.tmp_out_faithful');
+    execSync(`node ../scripts/export/export-taxonomy.js --version ${mockTag} --out ${faithfulOutDir} --diff ${testDiffDir}`, { cwd: __dirname });
+    const fData = JSON.parse(fs.readFileSync(path.join(faithfulOutDir, 'packs/evo_tactics_pack/docs/catalog/species/mock-species.json'), 'utf8'));
+    // template forms preserved verbatim: underscore separator AND the accented
+    // name (NOT re-slugged to hyphen / 'pianura-erbosa').
+    assert.deepEqual(fData.biomes, ['foresta_temperata', 'desert', 'Pianura Erbos' + String.fromCharCode(0xE0)]);
+    assert.deepEqual(Object.keys(fData.vc), ['risk', 'tilt', 'aggro']); // nested key order follows the template
+    fs.rmSync(faithfulOutDir, { recursive: true, force: true });
 
     // 3. Test round-trip with importer. The testOutDir export now carries the
     // RFC #4 S2-Q1 provenance marker; normalizeSpecies reads only known fields,
