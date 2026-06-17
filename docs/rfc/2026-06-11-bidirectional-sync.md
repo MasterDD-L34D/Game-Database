@@ -445,6 +445,50 @@ S2 (export-on-release, PR-to-Game) stays gated on this green fidelity + Q8 (a
 Game canon-authority map entry for DB-origin species) + the cross-repo actor
 decision (OQ5: local operator CLI).
 
+## Species S2: export-on-release (scoping -- ratified 2026-06-17)
+
+Species fidelity is GREEN on the catalog-tier (Sp1a #214 / Sp1b #216 / Sp1c #219;
+fidelity-report.yml run 27706615133: 17 species, matching 302, 0 divergent / 0
+game_only_unexpected / 0 targetMissing, only the `description` + `last_synced_at`
+model-gaps). S2 promotes species to export-on-release, mirroring the trait S2 that
+is already live (Game #2750 / #2752 / #2755).
+
+### Mechanism (ratified OQ4 / OQ5, trait-S2 precedent)
+
+- **Trigger (OQ4)**: manual operator CLI -- `npm run evo:export -- --version
+  <tag> --out <Game-checkout>` over a released TaxonomyVersion.
+- **Actor (OQ5)**: the local operator opens the Game branch + PR (gh); no
+  standing credential / automation (that is an S3 question).
+- **Gate**: Game's `evo-import-gate` validates the export PR (round-trip,
+  errori=0). Eduardo merges (external-repo boundary).
+- **Surface**: per-file `packs/evo_tactics_pack/docs/catalog/species/<slug>.json`
+  for the catalog-tier ONLY (sourceFiles includes `species_catalog_file`).
+  Ecosystem-derived species and the generated index / canonical-index are NOT
+  exported -- regenerated downstream by Game's tooling.
+
+### Ratified resolutions (Eduardo, 2026-06-17)
+
+| # | Question | Ratified |
+|---|---|---|
+| S2-Q1 | GENERATED-from marker in per-file species | **Top-level `_generated_from: "Game-Database <tag>"`** (+ generated_at) in each exported species JSON; import treats it as Game-only (sourceExtras) and the drift-check uses it. |
+| S2-Q2 | 6h sync vs exported species (anti ping-pong, OQ7) | **Narrow + drift-check**: restrict `evo-import-sync.yml` to EXCLUDE catalog-tier species; add a read-only drift-check that fails loud on Game-side divergence from the released snapshot. |
+| S2-Q3 (Q8) | Game canon-authority for species | **Extend Game `docs/planning/EVO_FINAL_DESIGN_SOURCE_AUTHORITY_MAP.md` section 4.6** to name species as the second wave (after traits) under Game-Database SoT for released taxonomy content (cross-repo doc PR, Eduardo-merge). Prerequisite for the first species export PR. |
+
+### Execution ladder (staged, Eduardo-gated)
+
+1. **Q8 doc** -- extend Game section 4.6 to include species (cross-repo doc PR;
+   Eduardo merges). Prerequisite for step 2.
+2. **First export** -- release a TaxonomyVersion (post-Sp1c snapshot) ->
+   `evo:export --version <tag> --out <Game-checkout>` (catalog-tier species +
+   the `_generated_from` header) -> Game branch + PR -> evo-import-gate ->
+   Eduardo merges.
+3. **Sync-narrow** -- land the OQ7 sync-narrow + the species drift-check on
+   Game-Database.
+4. **(S3, later)** -- automation of the cross-repo PR + the release-hook trigger.
+
+S3 (export-only / import retired) stays the long-horizon step, gated on all four
+entities fidelity-complete + N quiet cycles with no drift.
+
 ## References
 
 - Spec: `docs/superpowers/specs/2026-05-20-game-database-value-roadmap-design.md` (Fase 3 deliverable 4, migration plan + KPI)
