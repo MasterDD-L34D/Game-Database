@@ -533,6 +533,32 @@ the catalog-tier: matching 302, 0 divergent / unexpected / targetMissing), while
 the parked shipping path stays intact behind --out (taxonomy-export.yml) for an
 S3 DB-as-SoT revival.
 
+### Biome/ecosystem S2 verdict (2026-06-18) -- import-only, no export-back
+
+A SoT-check (after the species rescope, applying the same lens) confirms biome +
+ecosystem export-on-release is NOT viable -- more clearly than species:
+
+- **No per-file surface**: biomes/ecosystems live only in the monolithic
+  `catalog_data.json` (`biomi[]` enriched in-place by sync:evo-pack) plus the
+  authored `data/ecosystems/*.biome.yaml` / `*.ecosystem.yaml`. There is no
+  `docs/catalog/biomes/<id>.json` per-file catalog (the `docs/catalog/biomes/`
+  dir holds only HTML), so the species per-file PR pattern does not apply.
+- **No exporter**: `export-taxonomy.js` emits only the trait glossaries + per-file
+  species; there is no `renderBiome`/`renderEcosystem` or `BIOME_DIR`. Export-back
+  would require new exporter code.
+- **Same SoT inversion**: the authored upstream is the Game YAML; the DB imports
+  it (downstream). Exporting to `catalog_data.json` would collide with
+  sync:evo-pack, which writes that file.
+- **Already parked + model-gap**: OQ3 set Ecosystem "import-only for now"; the DB
+  Ecosystem model is thinner than the YAML (spawn rules / creature lists are not
+  modelled), so an export would lose Game-authored data.
+
+**Verdict (Eduardo, 2026-06-18): biome + ecosystem stay import-only /
+fidelity-shadow. No export-back.** This closes RFC #4 S2 across all four
+entities: traits export-shipped (live); species fidelity-shadow; biome +
+ecosystem import-only. True DB-as-SoT for species / biome / ecosystem is a single
+S3+ effort -- a Game-side authoring migration so one generator owns each surface.
+
 ## References
 
 - Spec: `docs/superpowers/specs/2026-05-20-game-database-value-roadmap-design.md` (Fase 3 deliverable 4, migration plan + KPI)
