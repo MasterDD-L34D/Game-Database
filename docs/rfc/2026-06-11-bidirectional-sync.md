@@ -3,6 +3,7 @@
 **Date**: 2026-06-11
 **Author**: coordinator session (Lenovo, claude-fable-5)
 **Status**: RATIFIED 2026-06-11 -- Eduardo resolved all 8 open questions (see "Ratified resolutions"); merged as scoping draft in #182 same day. Option B + ladder S0->S3 binding; S1 split into S1a (i18n model extension) + S1b (shadow exporter) per OQ2 override. No implementation in this RFC.
+**S3 verdict (2026-06-19)**: **CLOSED -- NO-GO-at-scope** (NO_GO_STEADY_STATE, confidence high). Ratified by master-dd after an external falsification of the S3 scoping brief (`2026-06-18-s3-db-as-sot-scoping.md`, #228): file-first authoring + DB downstream-shadow + DB-trait-export = long-term equilibrium. GO_NARROW (DB authors only the gameplay subset, forward-generating into the file snapshot) deferred behind explicit triggers. Decision record: Game `docs/adr/ADR-2026-06-19-taxonomy-authoring-sot-steady-state.md`.
 **Scope**: Game-Database export path + Game pack-catalog consumption + cross-repo governance. **Eduardo-sovereign gate mandatory** (value-roadmap spec, Fase 3 deliverable 4).
 **Spec reference**: `docs/superpowers/specs/2026-05-20-game-database-value-roadmap-design.md` deliverable 4: "Bidirectional sync (RFC + implementation): Game <-> DB canonical flow review. Migration plan: Fase 1 import-only -> Fase 2 dual-write -> Fase 3 export-only."
 
