@@ -1,6 +1,6 @@
 # S3 scoping: DB-as-SoT authoring migration (RFC #4 follow-on)
 
-**Status: SCOPING (not ratified).** Co-design input for a Game-led session.
+**Status: RESOLVED 2026-06-19 -- NO_GO_STEADY_STATE (see Verdict below).** Original framing below preserved. Co-design input for a Game-led session.
 Prepared 2026-06-18 from a read-only recon (schema gap + runtime consumers +
 migration mechanics). Parent: `docs/rfc/2026-06-11-bidirectional-sync.md`
 (RFC #4, "Species S2" + the 2026-06-18 amendments). This brief does NOT ratify
@@ -112,6 +112,26 @@ it already works) -- may be the right long-term steady state, not a temporary
 S2 compromise. If any DB-as-SoT is still wanted, the lower-risk path is to scope
 it NARROWLY to the gameplay subset the DB already models, leaving the rich
 authoring in files.
+
+## Verdict (2026-06-19 -- ratified)
+
+**NO_GO_STEADY_STATE** (confidence high), ratified by master-dd. The recommendation
+above was CONFIRMED -- not overturned -- by an external falsification workflow (3
+ground-truth verify agents + steelman PRO vs red-team NO-GO + synthesis):
+
+- The cost basis held: DB is a thin gameplay-typed projection (32 / 16 / 9 scalar
+  cols) vs rich authored sources (59 / 122 / 35 leaf-paths); no biome/eco exporter
+  and no YAML emitter exist (0 first-party `yaml.dump`/`stringify` hits). Corrections
+  to this brief: biome richness ~122 leaf-paths (not ~150); active roster = 22 (not
+  21, off-by-one); `*.biome.yaml` has NO runtime reader at all.
+- The one option this brief under-evaluated -- a forward-generating GO_NARROW (DB
+  authors only the gameplay subset it already models, rendering into the existing
+  file snapshot, no export-back, no YAML emitter) -- is PRESERVED behind 3 falsifiable
+  triggers (2nd human editor / live-service content tool / file-side integrity
+  scaffolding costing more than a 1-entity DB pilot), not foreclosed.
+
+Decision record: Game `docs/adr/ADR-2026-06-19-taxonomy-authoring-sot-steady-state.md`.
+RFC #4 S3 marked CLOSED (NO-GO-at-scope) in `2026-06-11-bidirectional-sync.md`.
 
 ## If pursued anyway -- sequencing sketch
 
