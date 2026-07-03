@@ -316,6 +316,7 @@ For dominio/runtime/operational context (not schema), see
 **Block directives**
 
 - `@@unique([ecosystemId, biomeId])`
+- `@@index([biomeId])`
 
 ### EcosystemSpecies
 
@@ -336,6 +337,7 @@ For dominio/runtime/operational context (not schema), see
 **Block directives**
 
 - `@@unique([ecosystemId, speciesId, role])`
+- `@@index([speciesId])`
 
 ### TaxonomyVersion
 
