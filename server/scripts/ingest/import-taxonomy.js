@@ -722,6 +722,35 @@ function noteError(report, message) {
   console.error(`[error:${report.domain}] ${message}`);
 }
 
+// Drop records whose existing DB row is soft-deleted (deletedAt != null).
+// `slug` is a global @unique (not partial), so an upsert-on-slug would target
+// the soft-deleted row and overwrite its content even though the delete was
+// deliberate -- and the unattended evo-import cron (every 6h) would do it
+// silently. Policy (fleet-verify 2026-07-03): SKIP + WARN. The deleted row is
+// left untouched and the SoT-vs-DB divergence surfaces via noteSkip
+// (report.skipReasons.soft_deleted) instead of being applied blind. Injectable
+// `client` + `dryRun` keep it unit-testable without a live DB.
+async function filterSoftDeletedRecords(client, model, pending, report, { dryRun = false } = {}) {
+  if (dryRun || !Array.isArray(pending) || pending.length === 0) return pending;
+  const slugs = pending.map((r) => r && r.slug).filter(Boolean);
+  if (slugs.length === 0) return pending;
+  const dead = await client[model].findMany({
+    where: { slug: { in: slugs }, deletedAt: { not: null } },
+    select: { slug: true },
+  });
+  if (!dead || dead.length === 0) return pending;
+  const deadSet = new Set(dead.map((d) => d.slug));
+  const kept = [];
+  for (const rec of pending) {
+    if (rec && deadSet.has(rec.slug)) {
+      noteSkip(report, `${rec.slug}: soft-deleted in DB (deletedAt set) -- import will not overwrite it`, 'soft_deleted');
+    } else {
+      kept.push(rec);
+    }
+  }
+  return kept;
+}
+
 function assessCompleteness(domain, normalized) {
   if (!normalized || typeof normalized !== 'object') return 'partial';
   if (domain === 'traits') {
@@ -918,12 +947,13 @@ async function processTraits(items) {
     }
   }
   
-  const pending = [];
+  let pending = [];
   for (const [slug, records] of pendingBySlug.entries()) {
     const merged = mergeTraitRecords(records);
     if (verbose) console.log(`Trait: ${merged.slug} (sources: ${merged.sourceFiles.join(', ')})`);
     pending.push(merged);
   }
+  pending = await filterSoftDeletedRecords(prisma, 'trait', pending, report, { dryRun });
 
   if (!dryRun) {
     for (let i = 0; i < pending.length; i += BATCH_SIZE) {
@@ -955,7 +985,7 @@ async function processTraits(items) {
 async function processBiomes(items) {
   const t0 = performance.now();
   const report = createDomainReport('biomes', items.length);
-  const pending = [];
+  let pending = [];
   const parentLinks = [];
   for (const item of items) {
     for (const record of expandDomainRecords('biomes', item.file, item.data)) {
@@ -975,6 +1005,7 @@ async function processBiomes(items) {
       pending.push(normalized);
     }
   }
+  pending = await filterSoftDeletedRecords(prisma, 'biome', pending, report, { dryRun });
   if (!dryRun) {
     for (let i = 0; i < pending.length; i += BATCH_SIZE) {
       const batch = pending.slice(i, i + BATCH_SIZE);
@@ -1062,12 +1093,13 @@ async function processSpecies(items) {
     }
   }
 
-  const pending = [];
+  let pending = [];
   for (const [slug, records] of pendingBySlug.entries()) {
     const merged = mergeSpeciesRecords(records);
     if (verbose) console.log(`Species: ${merged.slug} (sources: ${merged.sourceFiles.join(', ')})`);
     pending.push(merged);
   }
+  pending = await filterSoftDeletedRecords(prisma, 'species', pending, report, { dryRun });
 
   if (!dryRun) {
     // Phase A: batch upsert species master records
@@ -1236,7 +1268,7 @@ function mergeSpeciesRecords(records) {
 async function processEcosystems(items) {
   const t0 = performance.now();
   const report = createDomainReport('ecosystems', items.length);
-  const pending = [];
+  let pending = [];
   for (const item of items) {
     for (const record of expandDomainRecords('ecosystems', item.file, item.data)) {
       report.read += 1;
@@ -1255,6 +1287,7 @@ async function processEcosystems(items) {
       pending.push(normalized);
     }
   }
+  pending = await filterSoftDeletedRecords(prisma, 'ecosystem', pending, report, { dryRun });
   if (!dryRun) {
     // Phase A: batch upsert ecosystem master records
     for (let i = 0; i < pending.length; i += BATCH_SIZE) {
@@ -1434,4 +1467,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { computeExitCode, parseFlagFromArgs, normalizeTrait, classifySource, mergeTraitRecords, buildTraitUpsertArgs };
+module.exports = { computeExitCode, parseFlagFromArgs, normalizeTrait, classifySource, mergeTraitRecords, buildTraitUpsertArgs, filterSoftDeletedRecords };

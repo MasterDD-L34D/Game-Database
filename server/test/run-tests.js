@@ -26,6 +26,7 @@ const testFiles = [
   'search.test.js',
   'audit.test.js',
   'importValidator.test.js',
+  'importSoftDelete.test.js',
   'httpErrors.test.js',
 ];
 
