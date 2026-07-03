@@ -34,3 +34,7 @@ Thumbs.db
 
 # Insomnia API client export (generated)
 docs/insomnia/
+
+# CI: evo-import-sync checks the Game repo out here (embedded git repo).
+# Must never be staged by `git add -A` (was committed as a 160000 gitlink).
+_game/

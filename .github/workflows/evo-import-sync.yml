@@ -5,6 +5,13 @@ on:
     - cron: "17 */6 * * *"
   workflow_dispatch:
 
+# The sync job pushes a branch and opens a PR: the default GITHUB_TOKEN is
+# read-only, which is why "Create sync branch and PR" failed with a 403
+# ("denied to github-actions[bot]"). Grant the minimum write scopes it needs.
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   sync:
     runs-on: ubuntu-latest
