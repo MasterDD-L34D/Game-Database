@@ -316,6 +316,9 @@ model EcosystemBiome {
   biome       Biome     @relation(fields: [biomeId], references: [id])
 
   @@unique([ecosystemId, biomeId])
+  // reverse-FK index: biomeId is the non-leading unique column, so parent
+  // Biome DELETE (ON DELETE RESTRICT) would otherwise seq-scan this table.
+  @@index([biomeId])
 }
 
 model EcosystemSpecies {
@@ -330,6 +333,9 @@ model EcosystemSpecies {
   species     Species   @relation(fields: [speciesId], references: [id])
 
   @@unique([ecosystemId, speciesId, role])
+  // reverse-FK index: speciesId is a non-leading unique column, so parent
+  // Species DELETE (ON DELETE RESTRICT) would otherwise seq-scan this table.
+  @@index([speciesId])
 }
 
 model TaxonomyVersion {
