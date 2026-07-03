@@ -59,11 +59,15 @@ jobs:
       - name: Check for changes
         id: diff
         run: |
-          cd server
-          npm run dev:setup 2>/dev/null || true
-          # Re-export to detect drift (compare DB state post-import)
-          echo "Import completed successfully"
-          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          # has_changes reflects the real working-tree state after evo:import
+          # (Create-PR step below re-checks via git diff --cached before committing).
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Import produced file changes -> will open sync PR"
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Import produced no file changes -> skipping sync PR"
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Create sync branch and PR
         if: steps.diff.outputs.has_changes == 'true'
