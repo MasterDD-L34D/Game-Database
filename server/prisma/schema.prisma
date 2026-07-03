@@ -356,6 +356,17 @@ model TaxonomyVersion {
   @@index([status, releasedAt])
 }
 
+// FK delete-policy is DELIBERATELY asymmetric across the two table families
+// (fleet-verify 2026-07-03 -- documenting the intent so it is not a footgun):
+//   * catalog junctions (SpeciesTrait/SpeciesBiome/EcosystemBiome/EcosystemSpecies)
+//     -> default RESTRICT: you cannot delete a master that is still referenced.
+//   * the *Version snapshot tables below -> onDelete: Cascade: a version snapshot
+//     has no meaning without its master, so it is disposable with it.
+// In normal app flow masters are SOFT-deleted (deletedAt), never hard-deleted, so
+// this Cascade never actually fires today -- it is latent. WARNING to whoever
+// later writes a hard-delete/purge script: a raw DELETE on a master will SILENTLY
+// wipe its version history (Cascade) while being BLOCKED on the junctions
+// (Restrict). Purge version rows explicitly, or reconcile this policy first.
 model TraitVersion {
   id        String          @id @default(cuid())
   traitId   String
