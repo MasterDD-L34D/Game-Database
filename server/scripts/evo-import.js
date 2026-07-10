@@ -42,4 +42,6 @@ fs.appendFileSync(
   path.join(logDir, 'evo-import-history.log'),
   `${new Date().toISOString()} ${mode} ok host=${os.hostname()} args=${forwardedArgs.join(' ')}\n`,
 );
-console.log(`[evo-import] Esito registrato in logs/evo-import-history.log (${mode})`);
+// stderr, not stdout: import-taxonomy.js keeps stdout JSON-only for machine
+// consumers and this line would land AFTER the JSON report, breaking parsers.
+console.error(`[evo-import] Esito registrato in logs/evo-import-history.log (${mode})`);
