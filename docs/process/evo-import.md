@@ -88,8 +88,9 @@ Ogni esecuzione di `npm run evo:import` andata a buon fine appende una riga a
 ```
 
 Il log risponde alla domanda "quando e' stato aggiornato l'ultima volta il DB
-standing di QUESTA macchina". Le esecuzioni `--dry-run` sono marcate `dry-run`
-e non contano come aggiornamento del DB.
+standing di QUESTA macchina". Le esecuzioni senza scritture DB sono marcate
+col loro modo (`dry-run`, `validate-only`) e non contano come aggiornamento:
+solo le righe `import ok` indicano un update reale.
 
 ## CI: smoke test, NON sync
 

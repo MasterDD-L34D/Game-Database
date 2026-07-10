@@ -32,7 +32,10 @@ run(process.execPath, [path.join('scripts', 'ingest', 'import-taxonomy.js'), ...
 // Reaching this point means the import exited 0 (run() exits the process on
 // failure). Append a history line so "when was the standing DB last updated"
 // has an answer; logs/ is gitignored, the history is per-machine by design.
-const mode = forwardedArgs.includes('--dry-run') ? 'dry-run' : 'import';
+// Mode labels mirror import-taxonomy.js: --validate-only implies dry-run
+// (no DB writes), so neither counts as an update of the standing DB.
+const hasFlag = (name) => forwardedArgs.some((a) => a === name || a.startsWith(`${name}=`));
+const mode = hasFlag('--validate-only') ? 'validate-only' : hasFlag('--dry-run') ? 'dry-run' : 'import';
 const logDir = path.join(rootDir, 'logs');
 fs.mkdirSync(logDir, { recursive: true });
 fs.appendFileSync(

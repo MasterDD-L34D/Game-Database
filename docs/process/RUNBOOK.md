@@ -208,8 +208,10 @@ NOTE
 
 Ogni `npm run evo:import` riuscito appende una riga a
 `server/logs/evo-import-history.log` (gitignored, per-macchina): timestamp UTC,
-modo (`import`/`dry-run`), hostname, argomenti. E' la fonte di verita' per
-"quando e' stato aggiornato l'ultima volta il DB standing di questa macchina".
+modo (`import`/`dry-run`/`validate-only`), hostname, argomenti. E' la fonte di
+verita' per "quando e' stato aggiornato l'ultima volta il DB standing di questa
+macchina": solo le righe `import ok` sono update reali (gli altri modi non
+scrivono sul DB).
 
 ---
 
