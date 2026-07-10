@@ -35,6 +35,11 @@ Thumbs.db
 # Insomnia API client export (generated)
 docs/insomnia/
 
-# CI: evo-import-sync checks the Game repo out here (embedded git repo).
+# CI: evo-import-smoke checks the Game repo out here (embedded git repo).
 # Must never be staged by `git add -A` (was committed as a 160000 gitlink).
 _game/
+
+# Per-machine import history log, written by server/scripts/evo-import.js
+# (see docs/process/evo-import.md). Local by design: it records when THIS
+# machine's standing DB was last updated.
+server/logs/

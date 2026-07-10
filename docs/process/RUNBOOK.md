@@ -12,7 +12,7 @@ Preparare un database locale/staging con schema aggiornato + seed base prima del
 ### Procedura (locale)
 
 ```powershell
-cd C:\Users\VGit\Documents\GitHub\Game-Database\server
+cd C:\dev\Game-Database\server
 npm install
 npm run dev:setup
 ```
@@ -26,7 +26,7 @@ npm run dev:setup
 ### Verifica rapida bootstrap
 
 ```powershell
-cd C:\Users\VGit\Documents\GitHub\Game-Database\server
+cd C:\dev\Game-Database\server
 npm run dev
 # In un altro terminale:
 Invoke-WebRequest http://localhost:3333/health
@@ -43,7 +43,7 @@ Usare questa sezione quando serve ripartire da DB pulito (test, QA, replay impor
 ### Reset completo + seed
 
 ```powershell
-cd C:\Users\VGit\Documents\GitHub\Game-Database\server
+cd C:\dev\Game-Database\server
 npx prisma migrate reset --force
 ```
 
@@ -52,7 +52,7 @@ Il comando resetta il database, riapplica le migrazioni ed esegue il seed.
 ### Seed senza reset
 
 ```powershell
-cd C:\Users\VGit\Documents\GitHub\Game-Database\server
+cd C:\dev\Game-Database\server
 npm run dev:setup
 ```
 
@@ -71,7 +71,7 @@ Usare in caso di ambiente “rotto” (dipendenze incoerenti, DB fuori sync, imp
 3. Reinstalla dipendenze:
 
 ```powershell
-cd C:\Users\VGit\Documents\GitHub\Game-Database\server
+cd C:\dev\Game-Database\server
 Remove-Item node_modules -Recurse -Force
 npm install
 ```
@@ -85,13 +85,13 @@ npm run dev:setup
 5. Esegui dry-run import per validazione input:
 
 ```powershell
-npm run evo:import -- --repo C:\Users\VGit\Documents\GitHub\Game --dry-run
+npm run evo:import -- --repo C:\dev\Game --dry-run
 ```
 
 6. Esegui import reale:
 
 ```powershell
-npm run evo:import -- --repo C:\Users\VGit\Documents\GitHub\Game
+npm run evo:import -- --repo C:\dev\Game
 ```
 
 ---
@@ -125,7 +125,7 @@ IMPORT REPORT
 - data_ora_utc: 2026-04-10T14:30:00Z
 - ambiente: local|staging|prod
 - operatore: <nome o CI job>
-- repo_sorgente: C:\Users\VGit\Documents\GitHub\Game
+- repo_sorgente: C:\dev\Game
 - comando: npm run evo:import -- --repo ... [--dry-run]
 - esito: OK|KO
 
@@ -204,8 +204,168 @@ NOTE
 
 ---
 
-## 8) Riferimenti rapidi
+## 8) Log storico import
+
+Ogni `npm run evo:import` riuscito appende una riga a
+`server/logs/evo-import-history.log` (gitignored, per-macchina): timestamp UTC,
+modo (`import`/`dry-run`/`validate-only`), hostname, argomenti. E' la fonte di
+verita' per "quando e' stato aggiornato l'ultima volta il DB standing di questa
+macchina": solo le righe `import ok` sono update reali (gli altri modi non
+scrivono sul DB).
+
+---
+
+## 9) Servizio standing su Lenovo (porta 3333)
+
+Il backend `Game` in produzione (Lenovo) interroga `http://localhost:3333/api/traits/glossary`
+(default `GAME_DATABASE_URL`, attivo salvo `GAME_DATABASE_ENABLED=false`) e fa
+fallback sui file locali se il servizio non risponde. Senza servizio attivo il
+gioco funziona comunque, ma ogni boot logga `fetch failed`.
+
+Stato rilevato 2026-07-10: sul Lenovo il repo esiste con `node_modules`, ma
+mancano `server/.env`, il Postgres dedicato e il task di avvio -- lo stack non
+e' mai stato provisionato. Procedura completa sotto. Pattern di riferimento:
+task `EvoTacticsBackend` gia' attivo sulla stessa macchina (Postgres portable
+`C:\dev\tools\pgsql` + datadir dedicato + task Boot/Logon con restart).
+
+Tutti i comandi vanno eseguiti SUL Lenovo (regola cross-PC: azioni mutanti solo
+dalla macchina che possiede il canonical).
+
+### 9.1) Provisioning one-time
+
+```powershell
+# 1. Postgres portable dedicato, porta 5433 (il 5432 e' del backend Game)
+& C:\dev\tools\pgsql\bin\initdb.exe -D C:\dev\tools\pgdata-gamedb -U postgres -E UTF8
+New-Item -ItemType Directory C:\dev\tools\pgdata-gamedb\log
+& C:\dev\tools\pgsql\bin\pg_ctl.exe -D C:\dev\tools\pgdata-gamedb -o "-p 5433" -l C:\dev\tools\pgdata-gamedb\log\pg-autostart.log start
+& C:\dev\tools\pgsql\bin\createdb.exe -h localhost -p 5433 -U postgres game
+
+# 2. Config server (.env NON va committato)
+cd C:\dev\Game-Database\server
+Copy-Item .env.example .env
+# Edita .env: DATABASE_URL=postgresql://postgres@localhost:5433/game?schema=public
+# (auth locale trust: il DB binda solo localhost).
+# HOST=127.0.0.1  <-- OBBLIGATORIO su questo servizio (default = 0.0.0.0!).
+# L'unico consumatore e' il backend Game sulla STESSA macchina (default
+# GAME_DATABASE_URL=http://localhost:3333): il bind loopback basta e chiude
+# ogni esposizione LAN. Non e' un dettaglio: le mutazioni /api/records
+# (POST/PATCH/DELETE) sono deliberatamente NON gated da requireTaxonomyWrite
+# (routes/records.js), quindi un bind 0.0.0.0 senza Basic Auth esporrebbe
+# scritture anonime a tutta la LAN.
+# APP_AUTH_USER / APP_AUTH_PASSWORD: LASCIALI NON settati su questo servizio.
+# La Basic Auth copre TUTTO /api/* (app.js la monta prima dei router) e il
+# consumer Game NON manda credenziali (catalog.js: solo header Accept):
+# con auth ON il glossary risponde 401 e Game resta per sempre in fallback.
+# Col bind loopback l'auth non serve: raggiunge il servizio solo chi e' gia'
+# sulla macchina.
+# Esporre in LAN (HOST=0.0.0.0) = scelta consapevole che RICHIEDE Basic Auth
+# attiva E un consumer Game capace di mandare credenziali (modifica lato Game)
+# -- oggi non esiste, quindi: loopback.
+
+# 3. Schema + seed + primo import (repo Game aggiornato prima: git -C C:\dev\Game pull --ff-only)
+# Nessun export manuale di DATABASE_URL necessario in questi comandi: sia la
+# CLI Prisma (dev:setup) sia Prisma Client a runtime (import) auto-caricano
+# server/.env quando la cwd e' server/ (verificato empiricamente: pre-require
+# process.env vuoto -> post-require popolato dal .env).
+npm install
+npm run dev:setup
+npm run evo:import -- --repo C:\dev\Game --dry-run   # verifica report
+npm run evo:import -- --repo C:\dev\Game             # import reale (scrive anche il log storico)
+```
+
+### 9.2) Script di avvio
+
+Crea `C:\Users\edusc\start-game-database.cmd` (stesso pattern di
+`start-evo-backend.cmd`: prima il Postgres dedicato in modo idempotente, poi
+l'API con log persistente). ATTENZIONE: il server NON ha un loader dotenv
+(legge `process.env` diretto), quindi lo script DEVE sourcare `server/.env`
+prima di lanciare `node index.js` -- senza, `/health` risponde ma ogni
+endpoint Prisma (incluso `/api/traits/glossary` usato da Game) fallisce:
+
+```cmd
+@echo off
+REM Avvio servizio Game-Database (API 3333). Idempotente: pg_ctl start e' un
+REM no-op se il Postgres dedicato (datadir pgdata-gamedb, porta 5433) gira gia'.
+REM set -a + source .env = esporta DATABASE_URL/PORT/APP_AUTH_* al processo node.
+REM tr -d '\r' = .env salvato CRLF su Windows non deve iniettare \r nei valori.
+REM Gate readiness: se il Postgres non e' pronto entro 90s lo script ESCE 1
+REM senza lanciare node (il server non connette Prisma allo startup, quindi
+REM /health resterebbe verde con i dati rotti); l'exit non-zero fa scattare
+REM il RestartOnFailure del task (retry ogni minuto).
+"C:\Program Files\Git\bin\bash.exe" -lc "(/c/dev/tools/pgsql/bin/pg_ctl.exe -D /c/dev/tools/pgdata-gamedb -o '-p 5433' -l /c/dev/tools/pgdata-gamedb/log/pg-autostart.log start >/dev/null 2>&1 || true); ok=0; for i in $(seq 1 90); do /c/dev/tools/pgsql/bin/pg_isready.exe -h localhost -p 5433 -q && ok=1 && break; sleep 1; done; [ $ok -eq 1 ] || { echo $(date -u -Iseconds) pgdata-gamedb non pronto dopo 90s, abort >> /c/Users/edusc/game-database.log; exit 1; }; cd /c/dev/Game-Database/server && set -a && source <(tr -d '\r' < ./.env) && set +a && node index.js >> /c/Users/edusc/game-database.log 2>&1"
+```
+
+### 9.3) Task di avvio (Boot + Logon, restart automatico)
+
+Salva come `C:\Users\edusc\game-database-server.xml` (mirror del task
+`EvoTacticsBackend`):
+
+```xml
+<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.3" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <URI>\GameDatabaseServer</URI>
+  </RegistrationInfo>
+  <Principals>
+    <Principal id="Author">
+      <UserId>CODEMASTERDD\edusc</UserId>
+      <LogonType>InteractiveToken</LogonType>
+    </Principal>
+  </Principals>
+  <Settings>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <RestartOnFailure>
+      <Count>999</Count>
+      <Interval>PT1M</Interval>
+    </RestartOnFailure>
+    <UseUnifiedSchedulingEngine>true</UseUnifiedSchedulingEngine>
+  </Settings>
+  <Triggers>
+    <LogonTrigger>
+      <UserId>CODEMASTERDD\edusc</UserId>
+    </LogonTrigger>
+    <BootTrigger />
+  </Triggers>
+  <Actions Context="Author">
+    <Exec>
+      <Command>C:\Users\edusc\start-game-database.cmd</Command>
+    </Exec>
+  </Actions>
+</Task>
+```
+
+Registrazione + avvio:
+
+```powershell
+schtasks /create /tn GameDatabaseServer /xml C:\Users\edusc\game-database-server.xml
+schtasks /run /tn GameDatabaseServer
+```
+
+Nota restart: come per `EvoTacticsBackend`, "riavviare" il servizio = Stop +
+Start del task (uno Start da solo e' no-op se il task risulta gia' running).
+
+### 9.4) Verifica
+
+```powershell
+# Sul Lenovo (il servizio binda 127.0.0.1: si verifica solo da qui)
+Invoke-WebRequest http://localhost:3333/health
+Invoke-WebRequest http://localhost:3333/api/traits/glossary
+# Controprova sicurezza, da un'altra macchina della LAN (es. Ryzen):
+# DEVE fallire (connessione rifiutata) -- se risponde, HOST non e' 127.0.0.1.
+Invoke-WebRequest http://192.168.1.10:3333/health
+```
+
+Poi riavvia il backend Game (task `EvoTacticsBackend`, Stop + Start) e verifica
+che nel log di boot NON compaia piu' il `fetch failed` del glossario.
+
+---
+
+## 10) Riferimenti rapidi
 
 - Guida import: [`docs/process/evo-import.md`](./evo-import.md)
 - Config ingest: [`server/scripts/ingest/evo-import.config.json`](../../server/scripts/ingest/evo-import.config.json)
 - Script ingest: [`server/scripts/ingest/import-taxonomy.js`](../../server/scripts/ingest/import-taxonomy.js)
+- Smoke CI: [`.github/workflows/evo-import-smoke.yml`](../../.github/workflows/evo-import-smoke.yml)

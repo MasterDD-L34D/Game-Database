@@ -11,9 +11,10 @@ Questo progetto importa i cataloghi del repository sorgente `Game` nel database 
 
 ## Sorgente ufficiale v1
 
-Repository validato:
+Repository validato (checkout locale del repo `Game`; path per macchina):
 
-- `C:\Users\VGit\Documents\GitHub\Game`
+- Ryzen: `C:\dev\Game`
+- Lenovo: `C:\dev\Game`
 
 Input usati dal runtime:
 
@@ -45,8 +46,8 @@ Fuori scope runtime:
 ```powershell
 Set-Location server
 npm install
-npm run evo:import -- --repo C:\Users\VGit\Documents\GitHub\Game --dry-run
-npm run evo:import -- --repo C:\Users\VGit\Documents\GitHub\Game
+npm run evo:import -- --repo C:\dev\Game --dry-run
+npm run evo:import -- --repo C:\dev\Game
 ```
 
 Parametri utili:
@@ -76,6 +77,30 @@ Nel dettaglio per dominio sono inclusi anche:
 - `esempi_scarti` (sample sintetico)
 
 Questo report vale sia in `dry-run` sia in import reale.
+
+## Log storico degli import
+
+Ogni esecuzione di `npm run evo:import` andata a buon fine appende una riga a
+`server/logs/evo-import-history.log` (gitignored, per-macchina):
+
+```text
+2026-07-10T09:15:00.000Z import ok host=CodeMasterDD args=--repo C:\dev\Game
+```
+
+Il log risponde alla domanda "quando e' stato aggiornato l'ultima volta il DB
+standing di QUESTA macchina". Le esecuzioni senza scritture DB sono marcate
+col loro modo (`dry-run`, `validate-only`) e non contano come aggiornamento:
+solo le righe `import ok` indicano un update reale.
+
+## CI: smoke test, NON sync
+
+Il workflow `.github/workflows/evo-import-smoke.yml` (fino a 2026-07 si
+chiamava `evo-import-sync.yml`) esegue l'intera pipeline di import contro un
+Postgres usa-e-getta nel job runner, ogni 6 ore. Verde = "l'importer funziona
+ancora contro il catalogo Game di oggi". NON aggiorna nessun database standing
+e non puo' aprire PR di sync: l'import scrive solo sul DB, mai sul checkout.
+L'aggiornamento del DB standing e' SOLO manuale (procedura sopra + runbook
+[`docs/process/RUNBOOK.md`](./RUNBOOK.md), sezione servizio Lenovo).
 
 ## Note operative
 
