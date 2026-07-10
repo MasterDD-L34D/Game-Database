@@ -244,8 +244,16 @@ New-Item -ItemType Directory C:\dev\tools\pgdata-gamedb\log
 cd C:\dev\Game-Database\server
 Copy-Item .env.example .env
 # Edita .env: DATABASE_URL=postgresql://postgres@localhost:5433/game?schema=public
-# (auth locale trust: il DB binda solo localhost). Imposta APP_AUTH_USER /
-# APP_AUTH_PASSWORD se esponi in LAN con Basic Auth (vedi .env.example).
+# (auth locale trust: il DB binda solo localhost).
+# APP_AUTH_USER / APP_AUTH_PASSWORD: LASCIALI NON settati su questo servizio.
+# La Basic Auth copre TUTTO /api/* (app.js la monta prima dei router) e il
+# consumer Game NON manda credenziali (catalog.js: solo header Accept):
+# con auth ON il glossary risponde 401 e Game resta per sempre in fallback,
+# cioe' il servizio non serve a niente. Con auth OFF il server e' comunque
+# read-only per gli anonimi (fail-closed CWE-290: niente ruoli = scritture
+# negate, vedi middleware/user.js) -- esattamente cio' che serve qui.
+# Abilita Basic Auth SOLO se/quando il fetch di Game imparera' a mandare
+# credenziali (richiede modifica lato Game).
 
 # 3. Schema + seed + primo import (repo Game aggiornato prima: git -C C:\dev\Game pull --ff-only)
 npm install
