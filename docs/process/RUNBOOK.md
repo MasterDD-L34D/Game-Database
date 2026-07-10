@@ -269,7 +269,11 @@ REM Avvio servizio Game-Database (API 3333). Idempotente: pg_ctl start e' un
 REM no-op se il Postgres dedicato (datadir pgdata-gamedb, porta 5433) gira gia'.
 REM set -a + source .env = esporta DATABASE_URL/PORT/APP_AUTH_* al processo node.
 REM tr -d '\r' = .env salvato CRLF su Windows non deve iniettare \r nei valori.
-"C:\Program Files\Git\bin\bash.exe" -lc "(/c/dev/tools/pgsql/bin/pg_ctl.exe -D /c/dev/tools/pgdata-gamedb -o '-p 5433' -l /c/dev/tools/pgdata-gamedb/log/pg-autostart.log start >/dev/null 2>&1 || true); for i in $(seq 1 90); do /c/dev/tools/pgsql/bin/pg_isready.exe -h localhost -p 5433 -q && break; sleep 1; done; cd /c/dev/Game-Database/server && set -a && source <(tr -d '\r' < ./.env) && set +a && node index.js >> /c/Users/edusc/game-database.log 2>&1"
+REM Gate readiness: se il Postgres non e' pronto entro 90s lo script ESCE 1
+REM senza lanciare node (il server non connette Prisma allo startup, quindi
+REM /health resterebbe verde con i dati rotti); l'exit non-zero fa scattare
+REM il RestartOnFailure del task (retry ogni minuto).
+"C:\Program Files\Git\bin\bash.exe" -lc "(/c/dev/tools/pgsql/bin/pg_ctl.exe -D /c/dev/tools/pgdata-gamedb -o '-p 5433' -l /c/dev/tools/pgdata-gamedb/log/pg-autostart.log start >/dev/null 2>&1 || true); ok=0; for i in $(seq 1 90); do /c/dev/tools/pgsql/bin/pg_isready.exe -h localhost -p 5433 -q && ok=1 && break; sleep 1; done; [ $ok -eq 1 ] || { echo $(date -u -Iseconds) pgdata-gamedb non pronto dopo 90s, abort >> /c/Users/edusc/game-database.log; exit 1; }; cd /c/dev/Game-Database/server && set -a && source <(tr -d '\r' < ./.env) && set +a && node index.js >> /c/Users/edusc/game-database.log 2>&1"
 ```
 
 ### 9.3) Task di avvio (Boot + Logon, restart automatico)
