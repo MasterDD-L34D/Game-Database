@@ -263,6 +263,10 @@ Copy-Item .env.example .env
 # -- oggi non esiste, quindi: loopback.
 
 # 3. Schema + seed + primo import (repo Game aggiornato prima: git -C C:\dev\Game pull --ff-only)
+# Nessun export manuale di DATABASE_URL necessario in questi comandi: sia la
+# CLI Prisma (dev:setup) sia Prisma Client a runtime (import) auto-caricano
+# server/.env quando la cwd e' server/ (verificato empiricamente: pre-require
+# process.env vuoto -> post-require popolato dal .env).
 npm install
 npm run dev:setup
 npm run evo:import -- --repo C:\dev\Game --dry-run   # verifica report
