@@ -245,15 +245,22 @@ cd C:\dev\Game-Database\server
 Copy-Item .env.example .env
 # Edita .env: DATABASE_URL=postgresql://postgres@localhost:5433/game?schema=public
 # (auth locale trust: il DB binda solo localhost).
+# HOST=127.0.0.1  <-- OBBLIGATORIO su questo servizio (default = 0.0.0.0!).
+# L'unico consumatore e' il backend Game sulla STESSA macchina (default
+# GAME_DATABASE_URL=http://localhost:3333): il bind loopback basta e chiude
+# ogni esposizione LAN. Non e' un dettaglio: le mutazioni /api/records
+# (POST/PATCH/DELETE) sono deliberatamente NON gated da requireTaxonomyWrite
+# (routes/records.js), quindi un bind 0.0.0.0 senza Basic Auth esporrebbe
+# scritture anonime a tutta la LAN.
 # APP_AUTH_USER / APP_AUTH_PASSWORD: LASCIALI NON settati su questo servizio.
 # La Basic Auth copre TUTTO /api/* (app.js la monta prima dei router) e il
 # consumer Game NON manda credenziali (catalog.js: solo header Accept):
-# con auth ON il glossary risponde 401 e Game resta per sempre in fallback,
-# cioe' il servizio non serve a niente. Con auth OFF il server e' comunque
-# read-only per gli anonimi (fail-closed CWE-290: niente ruoli = scritture
-# negate, vedi middleware/user.js) -- esattamente cio' che serve qui.
-# Abilita Basic Auth SOLO se/quando il fetch di Game imparera' a mandare
-# credenziali (richiede modifica lato Game).
+# con auth ON il glossary risponde 401 e Game resta per sempre in fallback.
+# Col bind loopback l'auth non serve: raggiunge il servizio solo chi e' gia'
+# sulla macchina.
+# Esporre in LAN (HOST=0.0.0.0) = scelta consapevole che RICHIEDE Basic Auth
+# attiva E un consumer Game capace di mandare credenziali (modifica lato Game)
+# -- oggi non esiste, quindi: loopback.
 
 # 3. Schema + seed + primo import (repo Game aggiornato prima: git -C C:\dev\Game pull --ff-only)
 npm install
@@ -339,10 +346,12 @@ Start del task (uno Start da solo e' no-op se il task risulta gia' running).
 ### 9.4) Verifica
 
 ```powershell
-# Sul Lenovo
+# Sul Lenovo (il servizio binda 127.0.0.1: si verifica solo da qui)
 Invoke-WebRequest http://localhost:3333/health
-# Da un'altra macchina della LAN (es. Ryzen)
-Invoke-WebRequest http://192.168.1.10:3333/api/traits/glossary
+Invoke-WebRequest http://localhost:3333/api/traits/glossary
+# Controprova sicurezza, da un'altra macchina della LAN (es. Ryzen):
+# DEVE fallire (connessione rifiutata) -- se risponde, HOST non e' 127.0.0.1.
+Invoke-WebRequest http://192.168.1.10:3333/health
 ```
 
 Poi riavvia il backend Game (task `EvoTacticsBackend`, Stop + Start) e verifica
