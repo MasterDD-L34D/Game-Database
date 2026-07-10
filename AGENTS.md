@@ -44,9 +44,9 @@
   - `backend-and-frontend-tests.yml`
   - `playwright-e2e.yml`
   - `prisma-seed.yml`
-  - `evo-import-sync.yml`
+  - `evo-import-smoke.yml`
   - `schema-doc-check.yml` (added in PR-γ #121: fails if `docs/schema-reference.md` is out-of-sync with `server/prisma/schema.prisma`)
-- `evo-import-sync.yml` is a scheduled/manual workflow that checks out the sibling `Game` repo, runs `npm run evo:import`, and opens a PR with synced changes when needed.
+- `evo-import-smoke.yml` (named `evo-import-sync.yml` until 2026-07) is a scheduled/manual smoke test: it checks out the sibling `Game` repo and runs `npm run evo:import` against a throwaway Postgres service container. It does NOT update any standing database and opens no PR (the import writes to the DB only, never to the checkout). The standing LAN database is updated manually -- see `docs/process/evo-import.md`.
 - CI uses Node `20` for backend/frontend checks, Playwright, and schema-doc-check; Node `18` for the Prisma seed verification workflow.
 
 ## Pre-merge protocol (MANDATORY)

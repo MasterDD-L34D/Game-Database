@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 const { spawnSync } = require('child_process');
+const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const args = process.argv.slice(2);
@@ -26,3 +28,15 @@ if (shouldRunSetup) {
 
 console.log('[evo-import] Esecuzione import-taxonomy.js');
 run(process.execPath, [path.join('scripts', 'ingest', 'import-taxonomy.js'), ...forwardedArgs]);
+
+// Reaching this point means the import exited 0 (run() exits the process on
+// failure). Append a history line so "when was the standing DB last updated"
+// has an answer; logs/ is gitignored, the history is per-machine by design.
+const mode = forwardedArgs.includes('--dry-run') ? 'dry-run' : 'import';
+const logDir = path.join(rootDir, 'logs');
+fs.mkdirSync(logDir, { recursive: true });
+fs.appendFileSync(
+  path.join(logDir, 'evo-import-history.log'),
+  `${new Date().toISOString()} ${mode} ok host=${os.hostname()} args=${forwardedArgs.join(' ')}\n`,
+);
+console.log(`[evo-import] Esito registrato in logs/evo-import-history.log (${mode})`);
