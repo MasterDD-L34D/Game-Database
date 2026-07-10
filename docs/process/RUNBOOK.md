@@ -258,13 +258,18 @@ npm run evo:import -- --repo C:\dev\Game             # import reale (scrive anch
 
 Crea `C:\Users\edusc\start-game-database.cmd` (stesso pattern di
 `start-evo-backend.cmd`: prima il Postgres dedicato in modo idempotente, poi
-l'API con log persistente):
+l'API con log persistente). ATTENZIONE: il server NON ha un loader dotenv
+(legge `process.env` diretto), quindi lo script DEVE sourcare `server/.env`
+prima di lanciare `node index.js` -- senza, `/health` risponde ma ogni
+endpoint Prisma (incluso `/api/traits/glossary` usato da Game) fallisce:
 
 ```cmd
 @echo off
 REM Avvio servizio Game-Database (API 3333). Idempotente: pg_ctl start e' un
 REM no-op se il Postgres dedicato (datadir pgdata-gamedb, porta 5433) gira gia'.
-"C:\Program Files\Git\bin\bash.exe" -lc "(/c/dev/tools/pgsql/bin/pg_ctl.exe -D /c/dev/tools/pgdata-gamedb -o '-p 5433' -l /c/dev/tools/pgdata-gamedb/log/pg-autostart.log start >/dev/null 2>&1 || true); for i in $(seq 1 90); do /c/dev/tools/pgsql/bin/pg_isready.exe -h localhost -p 5433 -q && break; sleep 1; done; cd /c/dev/Game-Database/server && node index.js >> /c/Users/edusc/game-database.log 2>&1"
+REM set -a + source .env = esporta DATABASE_URL/PORT/APP_AUTH_* al processo node.
+REM tr -d '\r' = .env salvato CRLF su Windows non deve iniettare \r nei valori.
+"C:\Program Files\Git\bin\bash.exe" -lc "(/c/dev/tools/pgsql/bin/pg_ctl.exe -D /c/dev/tools/pgdata-gamedb -o '-p 5433' -l /c/dev/tools/pgdata-gamedb/log/pg-autostart.log start >/dev/null 2>&1 || true); for i in $(seq 1 90); do /c/dev/tools/pgsql/bin/pg_isready.exe -h localhost -p 5433 -q && break; sleep 1; done; cd /c/dev/Game-Database/server && set -a && source <(tr -d '\r' < ./.env) && set +a && node index.js >> /c/Users/edusc/game-database.log 2>&1"
 ```
 
 ### 9.3) Task di avvio (Boot + Logon, restart automatico)
